@@ -21,17 +21,37 @@ type Message struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// Publish sends a message to Redis pub/sub without needing a Hub.
+// Publisher publishes messages to Redis pub/sub.
 // Use from services that don't run WebSocket (ingester, worker, OCPP).
-func Publish(ctx context.Context, rdb *redis.Client, channel, topic, event string, payload any) error {
-	p, err := json.Marshal(payload)
+type Publisher struct {
+	rdb     *redis.Client
+	channel string
+}
+
+func NewPublisher(rdb *redis.Client, channel string) *Publisher {
+	return &Publisher{
+		rdb:     rdb,
+		channel: channel,
+	}
+}
+
+func (p *Publisher) Publish(ctx context.Context, topic, event string, payload any) error {
+	return publish(ctx, p.rdb, p.channel, topic, event, payload)
+}
+
+func (p *Publisher) Broadcast(ctx context.Context, event string, payload any) error {
+	return p.Publish(ctx, "", event, payload)
+}
+
+func publish(ctx context.Context, rdb *redis.Client, channel, topic, event string, payload any) error {
+	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	data, err := json.Marshal(Message{
 		Topic:   topic,
 		Event:   event,
-		Payload: p,
+		Payload: raw,
 	})
 	if err != nil {
 		return err
@@ -95,7 +115,7 @@ func (h *Hub) Subscribe(ctx context.Context) {
 }
 
 func (h *Hub) Publish(ctx context.Context, topic, event string, payload any) error {
-	return Publish(ctx, h.rdb, h.channel, topic, event, payload)
+	return publish(ctx, h.rdb, h.channel, topic, event, payload)
 }
 
 func (h *Hub) Broadcast(ctx context.Context, event string, payload any) error {

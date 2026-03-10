@@ -15,13 +15,6 @@ import (
 // Return empty string for broadcast-only connections.
 type Identifier func(r *http.Request) string
 
-// TopicFromQuery returns an Identifier that reads from a query parameter.
-func TopicFromQuery(key string) Identifier {
-	return func(r *http.Request) string {
-		return r.URL.Query().Get(key)
-	}
-}
-
 type Message struct {
 	Topic   string          `json:"topic"`
 	Event   string          `json:"event"`

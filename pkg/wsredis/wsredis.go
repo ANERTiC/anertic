@@ -8,8 +8,19 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
-	"github.com/redis/go-redis/v9"
 )
+
+// Broker abstracts pub/sub operations.
+type Broker interface {
+	Publish(ctx context.Context, message any) error
+	Subscribe(ctx context.Context) Subscription
+}
+
+// Subscription abstracts a Redis subscription channel.
+type Subscription interface {
+	Channel() <-chan string
+	Close() error
+}
 
 // Identifier extracts a topic from the HTTP request.
 // Return empty string for broadcast-only connections.
@@ -21,29 +32,8 @@ type Message struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// Publisher publishes messages to Redis pub/sub.
-// Use from services that don't run WebSocket (ingester, worker, OCPP).
-type Publisher struct {
-	rdb     *redis.Client
-	channel string
-}
-
-func NewPublisher(rdb *redis.Client, channel string) *Publisher {
-	return &Publisher{
-		rdb:     rdb,
-		channel: channel,
-	}
-}
-
-func (p *Publisher) Publish(ctx context.Context, topic, event string, payload any) error {
-	return publish(ctx, p.rdb, p.channel, topic, event, payload)
-}
-
-func (p *Publisher) Broadcast(ctx context.Context, event string, payload any) error {
-	return p.Publish(ctx, "", event, payload)
-}
-
-func publish(ctx context.Context, rdb *redis.Client, channel, topic, event string, payload any) error {
+// Send publishes a message to a specific topic via Redis pub/sub.
+func Send(ctx context.Context, b Broker, topic, event string, payload any) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -56,38 +46,41 @@ func publish(ctx context.Context, rdb *redis.Client, channel, topic, event strin
 	if err != nil {
 		return err
 	}
-	return rdb.Publish(ctx, channel, data).Err()
+	return b.Publish(ctx, data)
+}
+
+// SendAll publishes a message to all connections via Redis pub/sub.
+func SendAll(ctx context.Context, b Broker, event string, payload any) error {
+	return Send(ctx, b, "", event, payload)
 }
 
 type Hub struct {
 	mu      sync.RWMutex
 	topics  map[string]map[*websocket.Conn]struct{}
 	all     map[*websocket.Conn]struct{}
-	rdb     *redis.Client
-	channel string
-	id      Identifier
+	broker Broker
+	id     Identifier
 }
 
-func New(rdb *redis.Client, channel string, id Identifier) *Hub {
+func NewServer(b Broker, id Identifier) *Hub {
 	if id == nil {
 		id = func(r *http.Request) string { return "" }
 	}
 	return &Hub{
-		topics:  make(map[string]map[*websocket.Conn]struct{}),
-		all:     make(map[*websocket.Conn]struct{}),
-		rdb:     rdb,
-		channel: channel,
-		id:      id,
+		topics: make(map[string]map[*websocket.Conn]struct{}),
+		all:    make(map[*websocket.Conn]struct{}),
+		broker: b,
+		id:     id,
 	}
 }
 
 func (h *Hub) Subscribe(ctx context.Context) {
-	sub := h.rdb.Subscribe(ctx, h.channel)
+	sub := h.broker.Subscribe(ctx)
 	defer sub.Close()
 
 	for msg := range sub.Channel() {
 		var m Message
-		if err := json.Unmarshal([]byte(msg.Payload), &m); err != nil {
+		if err := json.Unmarshal([]byte(msg), &m); err != nil {
 			slog.Error("wsredis: unmarshal", "error", err)
 			continue
 		}
@@ -112,14 +105,6 @@ func (h *Hub) Subscribe(ctx context.Context) {
 		}
 		h.mu.RUnlock()
 	}
-}
-
-func (h *Hub) Publish(ctx context.Context, topic, event string, payload any) error {
-	return publish(ctx, h.rdb, h.channel, topic, event, payload)
-}
-
-func (h *Hub) Broadcast(ctx context.Context, event string, payload any) error {
-	return h.Publish(ctx, "", event, payload)
 }
 
 func (h *Hub) Handler() http.Handler {

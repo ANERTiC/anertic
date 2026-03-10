@@ -51,7 +51,7 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	hub := wsredis.New(rdb, "readings:realtime", wsredis.TopicFromQuery("site_id"))
+	hub := wsredis.NewServer(wsredis.NewRedisBroker(rdb, "ocpp:realtime"), wsredis.TopicFromPath("chargePoint"))
 	go hub.Subscribe(context.Background())
 
 	mux := httpmux.New()
@@ -69,11 +69,8 @@ func run() error {
 	mux.Handle("/", am.NotFoundHandler())
 	api.Mount(mux, am)
 
-	// WebSocket: real-time readings via Redis PubSub
-	mux.Handle("GET /ws/readings", hub.Handler())
-
 	// OCPP WebSocket endpoint for EV chargers
-	// mux.Handle("GET /ocpp/{chargePointID}", ocpp.Handler(db, rdb))
+	mux.Handle("GET /ocpp/{chargePoint}", hub.Handler())
 
 	srv.Handler = mux
 	srv.Use(cors.New())

@@ -48,7 +48,8 @@ func readMessage(t *testing.T, conn *websocket.Conn) map[string]any {
 
 func TestBroadcast(t *testing.T) {
 	rdb := newTestRedis(t)
-	hub := New(rdb, "test:broadcast", nil)
+	b := NewRedisBroker(rdb, "test:broadcast")
+	hub := NewServer(b, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,7 +63,7 @@ func TestBroadcast(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	err := hub.Broadcast(context.Background(), "ping", map[string]string{"msg": "hello"})
+	err := SendAll(context.Background(), b, "ping", map[string]string{"msg": "hello"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +81,8 @@ func TestBroadcast(t *testing.T) {
 
 func TestTopicFiltering(t *testing.T) {
 	rdb := newTestRedis(t)
-	hub := New(rdb, "test:topic", TopicFromQuery("site_id"))
+	b := NewRedisBroker(rdb, "test:topic")
+	hub := NewServer(b, TopicFromQuery("site_id"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -94,18 +96,16 @@ func TestTopicFiltering(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	err := hub.Publish(context.Background(), "site_a", "reading", map[string]int{"power": 100})
+	err := Send(context.Background(), b, "site_a", "reading", map[string]int{"power": 100})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// site_a should receive
 	msg := readMessage(t, wsA)
 	if msg["event"] != "reading" {
 		t.Errorf("expected event reading, got %v", msg["event"])
 	}
 
-	// site_b should NOT receive — timeout expected
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel2()
 	var unexpected map[string]any
@@ -117,7 +117,8 @@ func TestTopicFiltering(t *testing.T) {
 
 func TestBroadcastReachesAllTopics(t *testing.T) {
 	rdb := newTestRedis(t)
-	hub := New(rdb, "test:all-topics", TopicFromQuery("id"))
+	b := NewRedisBroker(rdb, "test:all-topics")
+	hub := NewServer(b, TopicFromQuery("id"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -132,7 +133,7 @@ func TestBroadcastReachesAllTopics(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	err := hub.Broadcast(context.Background(), "announce", "hello all")
+	err := SendAll(context.Background(), b, "announce", "hello all")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +151,10 @@ func TestMultipleReplicas(t *testing.T) {
 	rdb2 := newTestRedis(t)
 
 	channel := "test:replicas"
-	hub1 := New(rdb1, channel, TopicFromQuery("room"))
-	hub2 := New(rdb2, channel, TopicFromQuery("room"))
+	b1 := NewRedisBroker(rdb1, channel)
+	b2 := NewRedisBroker(rdb2, channel)
+	hub1 := NewServer(b1, TopicFromQuery("room"))
+	hub2 := NewServer(b2, TopicFromQuery("room"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -163,20 +166,16 @@ func TestMultipleReplicas(t *testing.T) {
 	srv2 := httptest.NewServer(hub2.Handler())
 	defer srv2.Close()
 
-	// client on replica 1
 	ws1 := dial(t, "ws"+srv1.URL[4:]+"?room=chat")
-	// client on replica 2
 	ws2 := dial(t, "ws"+srv2.URL[4:]+"?room=chat")
 
 	time.Sleep(50 * time.Millisecond)
 
-	// publish from replica 1
-	err := hub1.Publish(context.Background(), "chat", "msg", "from replica 1")
+	err := Send(context.Background(), b1, "chat", "msg", "from replica 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// both should receive
 	msg1 := readMessage(t, ws1)
 	msg2 := readMessage(t, ws2)
 
@@ -190,7 +189,8 @@ func TestMultipleReplicas(t *testing.T) {
 
 func TestTopicFromPath(t *testing.T) {
 	rdb := newTestRedis(t)
-	hub := New(rdb, "test:path", TopicFromPath("id"))
+	b := NewRedisBroker(rdb, "test:path")
+	hub := NewServer(b, TopicFromPath("id"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -205,7 +205,7 @@ func TestTopicFromPath(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	err := hub.Publish(context.Background(), "charger_001", "status", map[string]string{"status": "charging"})
+	err := Send(context.Background(), b, "charger_001", "status", map[string]string{"status": "charging"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,8 @@ func TestTopicFromPath(t *testing.T) {
 
 func TestDisconnectCleanup(t *testing.T) {
 	rdb := newTestRedis(t)
-	hub := New(rdb, "test:cleanup", TopicFromQuery("t"))
+	b := NewRedisBroker(rdb, "test:cleanup")
+	hub := NewServer(b, TopicFromQuery("t"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

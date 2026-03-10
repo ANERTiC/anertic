@@ -9,7 +9,7 @@ import (
 
 	"github.com/acoshift/configfile"
 
-	"github.com/ANERTiC/anertic/pkg/pipeline"
+	"github.com/anertic/anertic/pkg/pipeline"
 )
 
 func main() {

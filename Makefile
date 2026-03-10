@@ -6,7 +6,7 @@ generate:
 fmt:
 	@echo "Formatting code and sorting imports..."
 	gofmt -s -w .
-	go run golang.org/x/tools/cmd/goimports@latest -w -local github.com/ANERTiC/anertic .
+	go run golang.org/x/tools/cmd/goimports@latest -w -local github.com/anertic/anertic .
 
 fmt-check:
 	@echo "Checking formatting and import order..."

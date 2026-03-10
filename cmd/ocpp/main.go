@@ -12,7 +12,7 @@ import (
 	"github.com/acoshift/configfile"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/ANERTiC/anertic/pkg/ocpp"
+	"github.com/anertic/anertic/pkg/ocpp"
 )
 
 func main() {

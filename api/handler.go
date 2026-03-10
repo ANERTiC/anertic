@@ -4,10 +4,10 @@ import (
 	"github.com/acoshift/arpc/v2"
 	"github.com/moonrhythm/httpmux"
 
-	"github.com/ANERTiC/anertic/api/device"
-	"github.com/ANERTiC/anertic/api/insight"
-	"github.com/ANERTiC/anertic/api/reading"
-	"github.com/ANERTiC/anertic/api/site"
+	"github.com/anertic/anertic/api/device"
+	"github.com/anertic/anertic/api/insight"
+	"github.com/anertic/anertic/api/reading"
+	"github.com/anertic/anertic/api/site"
 )
 
 func Mount(mux *httpmux.Mux, am *arpc.Manager) {

@@ -1,4 +1,4 @@
-module github.com/ANERTiC/anertic
+module github.com/anertic/anertic
 
 go 1.25.0
 

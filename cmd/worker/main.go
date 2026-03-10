@@ -9,7 +9,7 @@ import (
 
 	"github.com/acoshift/configfile"
 
-	"github.com/ANERTiC/anertic/pkg/insight"
+	"github.com/anertic/anertic/pkg/insight"
 )
 
 func main() {

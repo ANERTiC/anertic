@@ -15,9 +15,9 @@ import (
 	"github.com/moonrhythm/parapet/pkg/cors"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/ANERTiC/anertic/api"
-	"github.com/ANERTiC/anertic/pkg/rdctx"
-	"github.com/ANERTiC/anertic/pkg/ws"
+	"github.com/anertic/anertic/api"
+	"github.com/anertic/anertic/pkg/rdctx"
+	"github.com/anertic/anertic/pkg/ws"
 )
 
 func main() {

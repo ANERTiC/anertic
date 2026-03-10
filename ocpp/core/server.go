@@ -1,4 +1,4 @@
-package ocpp
+package core
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func Handler(hub *Hub) http.Handler {
 				return
 			}
 
-			go handleOCPPMessage(r.Context(), hub, cp, data)
+			go handleOCPPMessage(r.Context(), cp, data)
 		}
 	})
 }
@@ -57,7 +57,7 @@ func Handler(hub *Hub) http.Handler {
 //   [2, "messageId", "action", {payload}]    — Call (from charger)
 //   [3, "messageId", {payload}]              — CallResult (response to our call)
 //   [4, "messageId", "errorCode", "desc", {}] — CallError
-func handleOCPPMessage(ctx context.Context, hub *Hub, cp *ChargePoint, data []byte) {
+func handleOCPPMessage(ctx context.Context, cp *ChargePoint, data []byte) {
 	var msg []json.RawMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		slog.Error("invalid ocpp message", "error", err, "chargePointID", cp.Identity)
@@ -83,7 +83,7 @@ func handleOCPPMessage(ctx context.Context, hub *Hub, cp *ChargePoint, data []by
 		}
 		var action string
 		json.Unmarshal(msg[2], &action)
-		handleCall(ctx, hub, cp, msgID, action, msg[3])
+		handleCall(ctx, cp, msgID, action, msg[3])
 
 	case MessageTypeCallResult:
 		// response to our outgoing call
@@ -95,49 +95,49 @@ func handleOCPPMessage(ctx context.Context, hub *Hub, cp *ChargePoint, data []by
 	}
 }
 
-func handleCall(ctx context.Context, hub *Hub, cp *ChargePoint, msgID string, action string, payload json.RawMessage) {
+func handleCall(ctx context.Context, cp *ChargePoint, msgID string, action string, payload json.RawMessage) {
 	slog.Debug("ocpp call", "chargePointID", cp.Identity, "action", action)
 
 	switch action {
 	case "BootNotification":
-		cp.Reply(ctx, msgID, map[string]any{
-			"status":      "Accepted",
-			"currentTime": "",
-			"interval":    60,
-		})
+		callAction(ctx, cp, msgID, payload, func(p *BootNotificationParams) { p.ChargePointID = cp.Identity }, BootNotification)
 
 	case "Heartbeat":
-		cp.Reply(ctx, msgID, map[string]any{
-			"currentTime": "",
-		})
+		callAction(ctx, cp, msgID, payload, func(p *HeartbeatParams) { p.ChargePointID = cp.Identity }, Heartbeat)
 
 	case "StatusNotification":
-		// TODO: update charger status in DB
-		cp.Reply(ctx, msgID, map[string]any{})
+		callAction(ctx, cp, msgID, payload, func(p *StatusNotificationParams) { p.ChargePointID = cp.Identity }, StatusNotification)
 
 	case "MeterValues":
-		// TODO: parse meter values, insert into readings via Redis publish
-		cp.Reply(ctx, msgID, map[string]any{})
+		callAction(ctx, cp, msgID, payload, func(p *MeterValuesParams) { p.ChargePointID = cp.Identity }, MeterValues)
 
 	case "StartTransaction":
-		// TODO: create charging session, return transactionId
-		cp.Reply(ctx, msgID, map[string]any{
-			"transactionId": 1,
-			"idTagInfo": map[string]any{
-				"status": "Accepted",
-			},
-		})
+		callAction(ctx, cp, msgID, payload, func(p *StartTransactionParams) { p.ChargePointID = cp.Identity }, StartTransaction)
 
 	case "StopTransaction":
-		// TODO: close charging session
-		cp.Reply(ctx, msgID, map[string]any{
-			"idTagInfo": map[string]any{
-				"status": "Accepted",
-			},
-		})
+		callAction(ctx, cp, msgID, payload, func(p *StopTransactionParams) { p.ChargePointID = cp.Identity }, StopTransaction)
 
 	default:
 		slog.Warn("unhandled ocpp action", "action", action, "chargePointID", cp.Identity)
 		cp.Reply(ctx, msgID, map[string]any{})
 	}
+}
+
+func callAction[P any, R any](ctx context.Context, cp *ChargePoint, msgID string, payload json.RawMessage, bind func(*P), fn func(context.Context, P) (*R, error)) {
+	var p P
+	if err := json.Unmarshal(payload, &p); err != nil {
+		slog.Error("invalid payload", "error", err, "chargePointID", cp.Identity)
+		cp.Reply(ctx, msgID, map[string]any{})
+		return
+	}
+	bind(&p)
+
+	result, err := fn(ctx, p)
+	if err != nil {
+		slog.Error("action error", "error", err, "chargePointID", cp.Identity)
+		cp.Reply(ctx, msgID, map[string]any{})
+		return
+	}
+
+	cp.Reply(ctx, msgID, result)
 }

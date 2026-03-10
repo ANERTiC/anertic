@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,9 +11,11 @@ import (
 	"time"
 
 	"github.com/acoshift/configfile"
+	"github.com/acoshift/pgsql/pgctx"
+	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/anertic/anertic/pkg/ocpp"
+	ocpp "github.com/anertic/anertic/ocpp/core"
 	"github.com/anertic/anertic/pkg/wsredis"
 )
 
@@ -30,6 +33,12 @@ func run() error {
 
 	cfg := configfile.NewEnvReader()
 
+	db, err := sql.Open("postgres", cfg.StringDefault("DATABASE_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
 	opt, err := redis.ParseURL(cfg.StringDefault("REDIS_URL", "redis://localhost:6379"))
 	if err != nil {
 		return err
@@ -43,6 +52,8 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	ctx = pgctx.NewContext(ctx, db)
+
 	go hub.Subscribe(ctx)
 
 	mux := http.NewServeMux()
@@ -50,7 +61,7 @@ func run() error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	mux.Handle("GET /ocpp/{chargePointID}", ocpp.Handler(hub))
+	mux.Handle("GET /ocpp/{chargePointID}", pgctx.Middleware(db)(ocpp.Handler(hub)))
 
 	addr := cfg.StringDefault("OCPP_ADDR", ":8081")
 	srv := &http.Server{

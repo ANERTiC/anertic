@@ -17,7 +17,7 @@ import (
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/pkg/rdctx"
-	"github.com/anertic/anertic/pkg/ws"
+	"github.com/anertic/anertic/pkg/wsredis"
 )
 
 func main() {
@@ -51,8 +51,8 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	hub := ws.NewHub(rdb)
-	go hub.Subscribe(context.Background(), "readings:realtime")
+	hub := wsredis.New(rdb, "readings:realtime")
+	go hub.Subscribe(context.Background())
 
 	mux := httpmux.New()
 

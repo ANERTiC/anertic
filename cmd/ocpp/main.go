@@ -15,7 +15,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
-	ocpp "github.com/anertic/anertic/ocpp/core"
+	"github.com/anertic/anertic/ocppv16"
 	"github.com/anertic/anertic/pkg/wsredis"
 )
 
@@ -47,7 +47,7 @@ func run() error {
 	defer rdb.Close()
 
 	broker := wsredis.NewRedisBroker(rdb, "ocpp:bus")
-	hub := ocpp.NewHub(broker)
+	hub := ocppv16.NewHub(broker)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -61,7 +61,7 @@ func run() error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	mux.Handle("GET /ocpp/{chargePointID}", pgctx.Middleware(db)(ocpp.Handler(hub)))
+	mux.Handle("GET /ocpp/{chargePointID}", pgctx.Middleware(db)(ocppv16.Handler(hub)))
 
 	addr := cfg.StringDefault("OCPP_ADDR", ":8081")
 	srv := &http.Server{

@@ -1,4 +1,4 @@
-package core
+package ocppv16
 
 import (
 	"context"
@@ -11,15 +11,6 @@ import (
 
 // Hub manages OCPP charge point connections with wsredis Broker
 // for cross-replica command routing.
-//
-// Pattern:
-//
-//	API replica A receives RemoteStart request
-//	→ publishes to broker
-//	→ OCPP replica B (holds the WS connection) picks it up
-//	→ forwards to charger, gets response
-//	→ publishes response to broker
-//	→ API replica A receives response
 type Hub struct {
 	mu          sync.RWMutex
 	connections map[string]*ChargePoint // chargePointID → connection
@@ -75,12 +66,6 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
-// envelope wraps commands and responses on the same broker channel.
-type envelope struct {
-	Type string          `json:"type"` // "cmd" or "resp"
-	Data json.RawMessage `json:"data"`
-}
-
 // Subscribe listens for commands and responses from other replicas via broker.
 func (h *Hub) Subscribe(ctx context.Context) {
 	sub := h.broker.Subscribe(ctx)
@@ -132,7 +117,7 @@ func (h *Hub) Subscribe(ctx context.Context) {
 func (h *Hub) SendCommand(ctx context.Context, cmd *Command) (*CommandResponse, error) {
 	cp := h.GetLocal(cmd.ChargePointID)
 	if cp != nil {
-		return h.executeCommandDirect(ctx, cp, cmd)
+		return executeRemoteCommand(ctx, cp, cmd)
 	}
 
 	return h.sendRemoteCommand(ctx, cmd)
@@ -184,7 +169,7 @@ func (h *Hub) sendRemoteCommand(ctx context.Context, cmd *Command) (*CommandResp
 }
 
 func (h *Hub) executeCommand(ctx context.Context, cp *ChargePoint, cmd *Command) {
-	resp, err := h.executeCommandDirect(ctx, cp, cmd)
+	resp, err := executeRemoteCommand(ctx, cp, cmd)
 	if err != nil {
 		resp = &CommandResponse{
 			RequestID: cmd.RequestID,
@@ -193,22 +178,4 @@ func (h *Hub) executeCommand(ctx context.Context, cp *ChargePoint, cmd *Command)
 	}
 
 	h.publish(ctx, "resp", resp)
-}
-
-func (h *Hub) executeCommandDirect(ctx context.Context, cp *ChargePoint, cmd *Command) (*CommandResponse, error) {
-	switch cmd.Action {
-	case ActionRemoteStart:
-		return cp.RemoteStartTransaction(ctx, cmd)
-	case ActionRemoteStop:
-		return cp.RemoteStopTransaction(ctx, cmd)
-	case ActionReset:
-		return cp.Reset(ctx, cmd)
-	case ActionGetConfiguration:
-		return cp.GetConfiguration(ctx, cmd)
-	default:
-		return &CommandResponse{
-			RequestID: cmd.RequestID,
-			Error:     "unsupported action: " + cmd.Action,
-		}, nil
-	}
 }

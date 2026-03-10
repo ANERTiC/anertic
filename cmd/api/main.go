@@ -52,7 +52,7 @@ func run() error {
 	defer rdb.Close()
 
 	hub := ws.NewHub(rdb)
-	go hub.Subscribe(context.Background())
+	go hub.Subscribe(context.Background(), "readings:realtime")
 
 	mux := httpmux.New()
 

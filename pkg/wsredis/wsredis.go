@@ -11,31 +11,45 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type Hub struct {
-	mu      sync.RWMutex
-	rooms   map[string]map[*websocket.Conn]struct{}
-	all     map[*websocket.Conn]struct{}
-	rdb     *redis.Client
-	channel string
+// Identifier extracts a topic from the HTTP request.
+// Return empty string for broadcast-only connections.
+type Identifier func(r *http.Request) string
+
+// TopicFromQuery returns an Identifier that reads from a query parameter.
+func TopicFromQuery(key string) Identifier {
+	return func(r *http.Request) string {
+		return r.URL.Query().Get(key)
+	}
 }
 
 type Message struct {
-	Room    string          `json:"room"`
+	Topic   string          `json:"topic"`
 	Event   string          `json:"event"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-func New(rdb *redis.Client, channel string) *Hub {
+type Hub struct {
+	mu      sync.RWMutex
+	topics  map[string]map[*websocket.Conn]struct{}
+	all     map[*websocket.Conn]struct{}
+	rdb     *redis.Client
+	channel string
+	id      Identifier
+}
+
+func New(rdb *redis.Client, channel string, id Identifier) *Hub {
+	if id == nil {
+		id = func(r *http.Request) string { return "" }
+	}
 	return &Hub{
-		rooms:   make(map[string]map[*websocket.Conn]struct{}),
+		topics:  make(map[string]map[*websocket.Conn]struct{}),
 		all:     make(map[*websocket.Conn]struct{}),
 		rdb:     rdb,
 		channel: channel,
+		id:      id,
 	}
 }
 
-// Subscribe listens to Redis pub/sub and fans out to local connections.
-// Run as a goroutine: go hub.Subscribe(ctx)
 func (h *Hub) Subscribe(ctx context.Context) {
 	sub := h.rdb.Subscribe(ctx, h.channel)
 	defer sub.Close()
@@ -56,14 +70,12 @@ func (h *Hub) Subscribe(ctx context.Context) {
 		}
 
 		h.mu.RLock()
-		if m.Room == "" {
-			// broadcast to all
+		if m.Topic == "" {
 			for conn := range h.all {
 				conn.Write(ctx, websocket.MessageText, data)
 			}
 		} else {
-			// fan out to room only
-			for conn := range h.rooms[m.Room] {
+			for conn := range h.topics[m.Topic] {
 				conn.Write(ctx, websocket.MessageText, data)
 			}
 		}
@@ -71,32 +83,26 @@ func (h *Hub) Subscribe(ctx context.Context) {
 	}
 }
 
-// Publish sends a message to Redis pub/sub.
-// All replicas subscribed to the channel will receive it.
-func (h *Hub) Publish(ctx context.Context, room, event string, payload any) error {
+func (h *Hub) Publish(ctx context.Context, topic, event string, payload any) error {
 	p, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	m := Message{
-		Room:    room,
+	data, err := json.Marshal(Message{
+		Topic:   topic,
 		Event:   event,
 		Payload: p,
-	}
-	data, err := json.Marshal(m)
+	})
 	if err != nil {
 		return err
 	}
 	return h.rdb.Publish(ctx, h.channel, data).Err()
 }
 
-// Broadcast sends a message to all connected clients across all replicas.
 func (h *Hub) Broadcast(ctx context.Context, event string, payload any) error {
 	return h.Publish(ctx, "", event, payload)
 }
 
-// Handler returns an HTTP handler for WebSocket connections.
-// Room is determined by the "room" query parameter.
 func (h *Hub) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -108,9 +114,9 @@ func (h *Hub) Handler() http.Handler {
 		}
 		defer conn.CloseNow()
 
-		room := r.URL.Query().Get("room")
-		h.join(conn, room)
-		defer h.leave(conn, room)
+		topic := h.id(r)
+		h.join(conn, topic)
+		defer h.leave(conn, topic)
 
 		for {
 			_, _, err := conn.Read(r.Context())
@@ -121,28 +127,28 @@ func (h *Hub) Handler() http.Handler {
 	})
 }
 
-func (h *Hub) join(conn *websocket.Conn, room string) {
+func (h *Hub) join(conn *websocket.Conn, topic string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	h.all[conn] = struct{}{}
-	if room != "" {
-		if h.rooms[room] == nil {
-			h.rooms[room] = make(map[*websocket.Conn]struct{})
+	if topic != "" {
+		if h.topics[topic] == nil {
+			h.topics[topic] = make(map[*websocket.Conn]struct{})
 		}
-		h.rooms[room][conn] = struct{}{}
+		h.topics[topic][conn] = struct{}{}
 	}
 }
 
-func (h *Hub) leave(conn *websocket.Conn, room string) {
+func (h *Hub) leave(conn *websocket.Conn, topic string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	delete(h.all, conn)
-	if room != "" {
-		delete(h.rooms[room], conn)
-		if len(h.rooms[room]) == 0 {
-			delete(h.rooms, room)
+	if topic != "" {
+		delete(h.topics[topic], conn)
+		if len(h.topics[topic]) == 0 {
+			delete(h.topics, topic)
 		}
 	}
 }

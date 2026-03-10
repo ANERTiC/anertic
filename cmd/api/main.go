@@ -51,7 +51,7 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	hub := wsredis.New(rdb, "readings:realtime")
+	hub := wsredis.New(rdb, "readings:realtime", wsredis.TopicFromQuery("site_id"))
 	go hub.Subscribe(context.Background())
 
 	mux := httpmux.New()

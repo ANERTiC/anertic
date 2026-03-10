@@ -7,3 +7,7 @@
 vendor/
 .claude/
 .DS_Store
+ocpp
+api
+ingester
+worker

@@ -17,7 +17,6 @@ import (
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/pkg/rdctx"
-	"github.com/anertic/anertic/pkg/wsredis"
 )
 
 func main() {
@@ -51,9 +50,6 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	hub := wsredis.NewServer(wsredis.NewRedisBroker(rdb, "ocpp:realtime"), wsredis.TopicFromPath("chargePoint"))
-	go hub.Subscribe(context.Background())
-
 	mux := httpmux.New()
 
 	am := arpc.New()
@@ -68,9 +64,6 @@ func run() error {
 
 	mux.Handle("/", am.NotFoundHandler())
 	api.Mount(mux, am)
-
-	// OCPP WebSocket endpoint for EV chargers
-	mux.Handle("GET /ocpp/{chargePoint}", hub.Handler())
 
 	srv.Handler = mux
 	srv.Use(cors.New())

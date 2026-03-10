@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/pkg/ocpp"
+	"github.com/anertic/anertic/pkg/wsredis"
 )
 
 func main() {
@@ -36,14 +37,13 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	hub := ocpp.NewHub(rdb)
+	broker := wsredis.NewRedisBroker(rdb, "ocpp:bus")
+	hub := ocpp.NewHub(broker)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// start Redis PubSub subscribers for cross-replica command routing
-	go hub.SubscribeCommands(ctx)
-	go hub.SubscribeResponses(ctx)
+	go hub.Subscribe(ctx)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func run() error {
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      mux,
-		ReadTimeout:  0, // no timeout for websocket
+		ReadTimeout:  0,
 		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
 	}

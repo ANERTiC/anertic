@@ -6,31 +6,34 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/anertic/anertic/pkg/wsredis"
 )
 
-// Hub manages OCPP charge point connections with Redis PubSub
+// Hub manages OCPP charge point connections with wsredis Broker
 // for cross-replica command routing.
 //
 // Pattern:
-//   API replica A receives RemoteStart request
-//   → publishes to Redis "ocpp:cmd:{chargePointID}"
-//   → OCPP replica B (holds the WS connection) picks it up
-//   → forwards to charger, gets response
-//   → publishes response to Redis "ocpp:resp:{requestID}"
-//   → API replica A receives response
+//
+//	API replica A receives RemoteStart request
+//	→ publishes to broker
+//	→ OCPP replica B (holds the WS connection) picks it up
+//	→ forwards to charger, gets response
+//	→ publishes response to broker
+//	→ API replica A receives response
 type Hub struct {
 	mu          sync.RWMutex
 	connections map[string]*ChargePoint // chargePointID → connection
-	redis       *redis.Client
-	handlers    map[string]chan []byte // requestID → response channel
-	handlersMu  sync.RWMutex
+
+	broker wsredis.Broker
+
+	handlers   map[string]chan []byte // requestID → response channel
+	handlersMu sync.RWMutex
 }
 
-func NewHub(rdb *redis.Client) *Hub {
+func NewHub(broker wsredis.Broker) *Hub {
 	return &Hub{
 		connections: make(map[string]*ChargePoint),
-		redis:       rdb,
+		broker:      broker,
 		handlers:    make(map[string]chan []byte),
 	}
 }
@@ -41,9 +44,6 @@ func (h *Hub) Register(cp *ChargePoint) {
 	h.connections[cp.Identity] = cp
 	h.mu.Unlock()
 
-	// announce presence in Redis so other replicas know where this charger lives
-	h.redis.Set(context.Background(), "ocpp:location:"+cp.Identity, "", 0)
-
 	slog.Info("charger registered", "chargePointID", cp.Identity)
 }
 
@@ -52,8 +52,6 @@ func (h *Hub) Unregister(chargePointID string) {
 	h.mu.Lock()
 	delete(h.connections, chargePointID)
 	h.mu.Unlock()
-
-	h.redis.Del(context.Background(), "ocpp:location:"+chargePointID)
 
 	slog.Info("charger unregistered", "chargePointID", chargePointID)
 }
@@ -77,69 +75,87 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
-// SubscribeCommands listens for commands from other replicas via Redis PubSub.
-// Each replica subscribes to "ocpp:cmd:*" and handles commands for its local connections.
-func (h *Hub) SubscribeCommands(ctx context.Context) {
-	sub := h.redis.PSubscribe(ctx, "ocpp:cmd:*")
-	defer sub.Close()
-
-	ch := sub.Channel()
-	for msg := range ch {
-		var cmd Command
-		if err := json.Unmarshal([]byte(msg.Payload), &cmd); err != nil {
-			slog.Error("failed to parse ocpp command", "error", err)
-			continue
-		}
-
-		cp := h.GetLocal(cmd.ChargePointID)
-		if cp == nil {
-			// not our charger, ignore
-			continue
-		}
-
-		go h.executeCommand(ctx, cp, &cmd)
-	}
+// envelope wraps commands and responses on the same broker channel.
+type envelope struct {
+	Type string          `json:"type"` // "cmd" or "resp"
+	Data json.RawMessage `json:"data"`
 }
 
-// SubscribeResponses listens for command responses from other replicas.
-func (h *Hub) SubscribeResponses(ctx context.Context) {
-	sub := h.redis.PSubscribe(ctx, "ocpp:resp:*")
+// Subscribe listens for commands and responses from other replicas via broker.
+func (h *Hub) Subscribe(ctx context.Context) {
+	sub := h.broker.Subscribe(ctx)
 	defer sub.Close()
 
-	ch := sub.Channel()
-	for msg := range ch {
-		var resp CommandResponse
-		if err := json.Unmarshal([]byte(msg.Payload), &resp); err != nil {
-			slog.Error("failed to parse ocpp response", "error", err)
+	for msg := range sub.Channel() {
+		var env envelope
+		if err := json.Unmarshal([]byte(msg), &env); err != nil {
+			slog.Error("failed to parse ocpp envelope", "error", err)
 			continue
 		}
 
-		h.handlersMu.RLock()
-		respCh, ok := h.handlers[resp.RequestID]
-		h.handlersMu.RUnlock()
+		switch env.Type {
+		case "cmd":
+			var cmd Command
+			if err := json.Unmarshal(env.Data, &cmd); err != nil {
+				slog.Error("failed to parse ocpp command", "error", err)
+				continue
+			}
 
-		if ok {
-			respCh <- []byte(msg.Payload)
+			cp := h.GetLocal(cmd.ChargePointID)
+			if cp == nil {
+				continue
+			}
+
+			go h.executeCommand(ctx, cp, &cmd)
+
+		case "resp":
+			var resp CommandResponse
+			if err := json.Unmarshal(env.Data, &resp); err != nil {
+				slog.Error("failed to parse ocpp response", "error", err)
+				continue
+			}
+
+			h.handlersMu.RLock()
+			respCh, ok := h.handlers[resp.RequestID]
+			h.handlersMu.RUnlock()
+
+			if ok {
+				respCh <- env.Data
+			}
 		}
 	}
 }
 
 // SendCommand sends a command to a charge point.
 // If the charger is on this replica, execute directly.
-// Otherwise, publish to Redis for the correct replica to pick up.
+// Otherwise, publish to broker for the correct replica to pick up.
 func (h *Hub) SendCommand(ctx context.Context, cmd *Command) (*CommandResponse, error) {
-	// try local first
 	cp := h.GetLocal(cmd.ChargePointID)
 	if cp != nil {
 		return h.executeCommandDirect(ctx, cp, cmd)
 	}
 
-	// publish to Redis for remote execution
 	return h.sendRemoteCommand(ctx, cmd)
 }
 
+func (h *Hub) publish(ctx context.Context, typ string, data any) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	env, err := json.Marshal(envelope{
+		Type: typ,
+		Data: raw,
+	})
+	if err != nil {
+		return err
+	}
+
+	return h.broker.Publish(ctx, env)
+}
+
 func (h *Hub) sendRemoteCommand(ctx context.Context, cmd *Command) (*CommandResponse, error) {
-	// register response channel
 	respCh := make(chan []byte, 1)
 	h.handlersMu.Lock()
 	h.handlers[cmd.RequestID] = respCh
@@ -151,17 +167,10 @@ func (h *Hub) sendRemoteCommand(ctx context.Context, cmd *Command) (*CommandResp
 		h.handlersMu.Unlock()
 	}()
 
-	// publish command
-	data, err := json.Marshal(cmd)
-	if err != nil {
+	if err := h.publish(ctx, "cmd", cmd); err != nil {
 		return nil, err
 	}
 
-	if err := h.redis.Publish(ctx, "ocpp:cmd:"+cmd.ChargePointID, data).Err(); err != nil {
-		return nil, err
-	}
-
-	// wait for response
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -183,8 +192,7 @@ func (h *Hub) executeCommand(ctx context.Context, cp *ChargePoint, cmd *Command)
 		}
 	}
 
-	data, _ := json.Marshal(resp)
-	h.redis.Publish(ctx, "ocpp:resp:"+cmd.RequestID, data)
+	h.publish(ctx, "resp", resp)
 }
 
 func (h *Hub) executeCommandDirect(ctx context.Context, cp *ChargePoint, cmd *Command) (*CommandResponse, error) {

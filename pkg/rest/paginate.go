@@ -1,4 +1,4 @@
-package restful
+package rest
 
 import (
 	"encoding/json"

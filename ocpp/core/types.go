@@ -1,4 +1,4 @@
-package ocpp
+package core
 
 const (
 	ActionRemoteStart    = "RemoteStartTransaction"

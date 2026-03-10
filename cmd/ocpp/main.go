@@ -15,7 +15,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/anertic/anertic/ocpp"
+	ocpp "github.com/anertic/anertic/ocpp/core"
 	"github.com/anertic/anertic/pkg/wsredis"
 )
 

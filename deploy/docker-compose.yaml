@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: anertic
+      POSTGRES_USER: anertic
+      POSTGRES_PASSWORD: anertic
+    volumes:
+      - pgdata:/home/postgres/pgdata/data
+      - ../migration:/docker-entrypoint-initdb.d
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+volumes:
+  pgdata:

@@ -112,8 +112,7 @@ func handleCall(ctx context.Context, hub *Hub, cp *ChargePoint, msgID string, ac
 		})
 
 	case "StatusNotification":
-		// TODO: update charger status in DB
-		cp.Reply(ctx, msgID, map[string]any{})
+		handleStatusNotification(ctx, hub, cp, msgID, payload)
 
 	case "MeterValues":
 		// TODO: parse meter values, insert into readings via Redis publish

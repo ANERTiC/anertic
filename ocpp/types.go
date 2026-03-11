@@ -1,29 +1,12 @@
-package ocppv16
+package ocpp
 
 import "encoding/json"
 
-// OCPP message types
+// OCPP message types (same across 1.6 and 2.0.1)
 const (
 	MessageTypeCall       = 2
 	MessageTypeCallResult = 3
 	MessageTypeCallError  = 4
-)
-
-// Outbound command actions (server → charger)
-const (
-	ActionRemoteStart        = "RemoteStartTransaction"
-	ActionRemoteStop         = "RemoteStopTransaction"
-	ActionReset              = "Reset"
-	ActionGetConfiguration   = "GetConfiguration"
-	ActionChangeConfiguration = "ChangeConfiguration"
-	ActionClearCache         = "ClearCache"
-	ActionUnlockConnector    = "UnlockConnector"
-	ActionChangeAvailability = "ChangeAvailability"
-	ActionSetChargingProfile = "SetChargingProfile"
-	ActionTriggerMessage     = "TriggerMessage"
-	ActionGetDiagnostics     = "GetDiagnostics"
-	ActionUpdateFirmware     = "UpdateFirmware"
-	ActionDataTransfer       = "DataTransfer"
 )
 
 // Command represents a command to send to a charge point via Redis PubSub.

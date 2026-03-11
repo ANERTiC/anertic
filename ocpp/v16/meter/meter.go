@@ -3,7 +3,7 @@ package meter
 import (
 	"context"
 
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // Params matches OCPP 1.6 MeterValues.req
@@ -32,7 +32,7 @@ type SampledValue struct {
 type Result struct{}
 
 func MeterValues(ctx context.Context, p *Params) (*Result, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: parse meter values, extract power/energy/voltage/current
 	// TODO: insert into readings table

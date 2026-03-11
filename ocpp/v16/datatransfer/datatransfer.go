@@ -3,7 +3,7 @@ package datatransfer
 import (
 	"context"
 
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // Params matches OCPP 1.6 DataTransfer.req
@@ -20,7 +20,7 @@ type Result struct {
 }
 
 func DataTransfer(ctx context.Context, p *Params) (*Result, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: handle vendor-specific data transfer
 

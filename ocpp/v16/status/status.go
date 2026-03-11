@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // Params matches OCPP 1.6 StatusNotification.req
@@ -23,7 +23,7 @@ type Params struct {
 type Result struct{}
 
 func StatusNotification(ctx context.Context, p *Params) (*Result, error) {
-	chargePointID := chargepoint.ID(ctx)
+	chargePointID := ocpp.ChargePointID(ctx)
 
 	ts := time.Now()
 	if p.Timestamp != "" {

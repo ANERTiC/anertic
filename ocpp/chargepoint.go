@@ -1,4 +1,4 @@
-package ocppv16
+package ocpp
 
 import (
 	"context"

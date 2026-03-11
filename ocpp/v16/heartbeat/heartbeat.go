@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // Params matches OCPP 1.6 Heartbeat.req (empty)
@@ -16,7 +16,7 @@ type Result struct {
 }
 
 func Heartbeat(ctx context.Context, p *Params) (*Result, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: update ev_chargers.last_heartbeat_at
 

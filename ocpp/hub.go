@@ -1,4 +1,4 @@
-package ocppv16
+package ocpp
 
 import (
 	"context"
@@ -10,12 +10,14 @@ import (
 )
 
 // Hub manages OCPP charge point connections with wsredis Broker
-// for cross-replica command routing.
+// for cross-replica command routing. Supports multiple OCPP versions.
 type Hub struct {
 	mu          sync.RWMutex
 	connections map[string]*ChargePoint // chargePointID → connection
 
 	broker wsredis.Broker
+
+	routers map[string]Router // ocpp version → router
 
 	handlers   map[string]chan []byte // requestID → response channel
 	handlersMu sync.RWMutex
@@ -25,26 +27,37 @@ func NewHub(broker wsredis.Broker) *Hub {
 	return &Hub{
 		connections: make(map[string]*ChargePoint),
 		broker:      broker,
+		routers:     make(map[string]Router),
 		handlers:    make(map[string]chan []byte),
 	}
 }
 
+// RegisterRouter registers a version-specific router.
+func (h *Hub) RegisterRouter(version string, router Router) {
+	h.routers[version] = router
+}
+
+// RouterFor returns the router for the given OCPP version.
+func (h *Hub) RouterFor(version string) Router {
+	return h.routers[version]
+}
+
 // Register adds a charge point connection to this replica.
-func (h *Hub) Register(cp *ChargePoint) {
+func (h *Hub) Register(ctx context.Context, cp *ChargePoint) {
 	h.mu.Lock()
 	h.connections[cp.Identity] = cp
 	h.mu.Unlock()
 
-	slog.Info("charger registered", "chargePointID", cp.Identity)
+	slog.InfoContext(ctx, "charger registered", "chargePointID", cp.Identity)
 }
 
 // Unregister removes a charge point connection from this replica.
-func (h *Hub) Unregister(chargePointID string) {
+func (h *Hub) Unregister(ctx context.Context, chargePointID string) {
 	h.mu.Lock()
 	delete(h.connections, chargePointID)
 	h.mu.Unlock()
 
-	slog.Info("charger unregistered", "chargePointID", chargePointID)
+	slog.InfoContext(ctx, "charger unregistered", "chargePointID", chargePointID)
 }
 
 // GetLocal returns a locally connected charge point, or nil.
@@ -74,7 +87,7 @@ func (h *Hub) Subscribe(ctx context.Context) {
 	for msg := range sub.Channel() {
 		var env envelope
 		if err := json.Unmarshal([]byte(msg), &env); err != nil {
-			slog.Error("failed to parse ocpp envelope", "error", err)
+			slog.ErrorContext(ctx, "failed to parse ocpp envelope", "error", err)
 			continue
 		}
 
@@ -82,7 +95,7 @@ func (h *Hub) Subscribe(ctx context.Context) {
 		case "cmd":
 			var cmd Command
 			if err := json.Unmarshal(env.Data, &cmd); err != nil {
-				slog.Error("failed to parse ocpp command", "error", err)
+				slog.ErrorContext(ctx, "failed to parse ocpp command", "error", err)
 				continue
 			}
 
@@ -96,7 +109,7 @@ func (h *Hub) Subscribe(ctx context.Context) {
 		case "resp":
 			var resp CommandResponse
 			if err := json.Unmarshal(env.Data, &resp); err != nil {
-				slog.Error("failed to parse ocpp response", "error", err)
+				slog.ErrorContext(ctx, "failed to parse ocpp response", "error", err)
 				continue
 			}
 
@@ -117,7 +130,14 @@ func (h *Hub) Subscribe(ctx context.Context) {
 func (h *Hub) SendCommand(ctx context.Context, cmd *Command) (*CommandResponse, error) {
 	cp := h.GetLocal(cmd.ChargePointID)
 	if cp != nil {
-		return executeRemoteCommand(ctx, cp, cmd)
+		router := h.RouterFor(cp.OCPPVersion)
+		if router == nil {
+			return &CommandResponse{
+				RequestID: cmd.RequestID,
+				Error:     "unsupported ocpp version: " + cp.OCPPVersion,
+			}, nil
+		}
+		return router.ExecuteRemoteCommand(ctx, cp, cmd)
 	}
 
 	return h.sendRemoteCommand(ctx, cmd)
@@ -169,7 +189,16 @@ func (h *Hub) sendRemoteCommand(ctx context.Context, cmd *Command) (*CommandResp
 }
 
 func (h *Hub) executeCommand(ctx context.Context, cp *ChargePoint, cmd *Command) {
-	resp, err := executeRemoteCommand(ctx, cp, cmd)
+	router := h.RouterFor(cp.OCPPVersion)
+	if router == nil {
+		h.publish(ctx, "resp", &CommandResponse{
+			RequestID: cmd.RequestID,
+			Error:     "unsupported ocpp version: " + cp.OCPPVersion,
+		})
+		return
+	}
+
+	resp, err := router.ExecuteRemoteCommand(ctx, cp, cmd)
 	if err != nil {
 		resp = &CommandResponse{
 			RequestID: cmd.RequestID,

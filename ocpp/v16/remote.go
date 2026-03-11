@@ -1,12 +1,30 @@
-package ocppv16
+package v16
 
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/anertic/anertic/ocpp"
 )
 
-// executeRemoteCommand dispatches an outbound command to the charger and returns the response.
-func executeRemoteCommand(ctx context.Context, cp *ChargePoint, cmd *Command) (*CommandResponse, error) {
+// Outbound command actions (server → charger)
+const (
+	ActionRemoteStart         = "RemoteStartTransaction"
+	ActionRemoteStop          = "RemoteStopTransaction"
+	ActionReset               = "Reset"
+	ActionGetConfiguration    = "GetConfiguration"
+	ActionChangeConfiguration = "ChangeConfiguration"
+	ActionClearCache          = "ClearCache"
+	ActionUnlockConnector     = "UnlockConnector"
+	ActionChangeAvailability  = "ChangeAvailability"
+	ActionSetChargingProfile  = "SetChargingProfile"
+	ActionTriggerMessage      = "TriggerMessage"
+	ActionGetDiagnostics      = "GetDiagnostics"
+	ActionUpdateFirmware      = "UpdateFirmware"
+	ActionDataTransfer        = "DataTransfer"
+)
+
+func executeRemoteCommand(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command) (*ocpp.CommandResponse, error) {
 	switch cmd.Action {
 	case ActionRemoteStart:
 		return remoteStartTransaction(ctx, cp, cmd)
@@ -35,15 +53,14 @@ func executeRemoteCommand(ctx context.Context, cp *ChargePoint, cmd *Command) (*
 	case ActionDataTransfer:
 		return sendSimpleCommand(ctx, cp, cmd, "DataTransfer")
 	default:
-		return &CommandResponse{
+		return &ocpp.CommandResponse{
 			RequestID: cmd.RequestID,
 			Error:     "unsupported action: " + cmd.Action,
 		}, nil
 	}
 }
 
-// sendSimpleCommand sends any OCPP action with the command payload directly.
-func sendSimpleCommand(ctx context.Context, cp *ChargePoint, cmd *Command, action string) (*CommandResponse, error) {
+func sendSimpleCommand(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command, action string) (*ocpp.CommandResponse, error) {
 	raw, err := cp.Call(ctx, action, cmd.Payload)
 	if err != nil {
 		return nil, err
@@ -53,14 +70,14 @@ func sendSimpleCommand(ctx context.Context, cp *ChargePoint, cmd *Command, actio
 	json.Unmarshal(raw, &result)
 
 	status, _ := result["status"].(string)
-	return &CommandResponse{
+	return &ocpp.CommandResponse{
 		RequestID: cmd.RequestID,
 		Status:    status,
 		Payload:   result,
 	}, nil
 }
 
-func remoteStartTransaction(ctx context.Context, cp *ChargePoint, cmd *Command) (*CommandResponse, error) {
+func remoteStartTransaction(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command) (*ocpp.CommandResponse, error) {
 	idTag, _ := cmd.Payload["idTag"].(string)
 	if idTag == "" {
 		idTag = "default"
@@ -87,14 +104,14 @@ func remoteStartTransaction(ctx context.Context, cp *ChargePoint, cmd *Command) 
 	json.Unmarshal(raw, &result)
 
 	status, _ := result["status"].(string)
-	return &CommandResponse{
+	return &ocpp.CommandResponse{
 		RequestID: cmd.RequestID,
 		Status:    status,
 		Payload:   result,
 	}, nil
 }
 
-func remoteStopTransaction(ctx context.Context, cp *ChargePoint, cmd *Command) (*CommandResponse, error) {
+func remoteStopTransaction(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command) (*ocpp.CommandResponse, error) {
 	txID, _ := cmd.Payload["transactionId"].(float64)
 
 	raw, err := cp.Call(ctx, "RemoteStopTransaction", map[string]any{
@@ -108,7 +125,7 @@ func remoteStopTransaction(ctx context.Context, cp *ChargePoint, cmd *Command) (
 	json.Unmarshal(raw, &result)
 
 	status, _ := result["status"].(string)
-	return &CommandResponse{
+	return &ocpp.CommandResponse{
 		RequestID: cmd.RequestID,
 		Status:    status,
 		Payload:   result,

@@ -3,7 +3,7 @@ package diagnostics
 import (
 	"context"
 
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // StatusParams matches OCPP 1.6 DiagnosticsStatusNotification.req
@@ -15,7 +15,7 @@ type StatusParams struct {
 type StatusResult struct{}
 
 func StatusNotification(ctx context.Context, p *StatusParams) (*StatusResult, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: update diagnostics upload status
 

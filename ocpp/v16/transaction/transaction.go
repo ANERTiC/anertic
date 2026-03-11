@@ -3,7 +3,7 @@ package transaction
 import (
 	"context"
 
-	"github.com/anertic/anertic/ocppv16/chargepoint"
+	"github.com/anertic/anertic/ocpp"
 )
 
 // IdTagInfo is a common OCPP 1.6 type.
@@ -45,7 +45,7 @@ type StartResult struct {
 }
 
 func Start(ctx context.Context, p *StartParams) (*StartResult, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: create charging_sessions record
 	// TODO: generate transactionId from DB sequence or session ID
@@ -74,7 +74,7 @@ type StopResult struct {
 }
 
 func Stop(ctx context.Context, p *StopParams) (*StopResult, error) {
-	_ = chargepoint.ID(ctx)
+	_ = ocpp.ChargePointID(ctx)
 
 	// TODO: close charging_sessions (set end_time, energy_kwh, stop_reason)
 	// TODO: calculate energy from meterStop - meterStart

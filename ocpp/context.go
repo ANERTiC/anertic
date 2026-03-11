@@ -1,4 +1,4 @@
-package chargepoint
+package ocpp
 
 import "context"
 
@@ -9,8 +9,8 @@ func NewContext(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
-// ID returns the charge point ID from the context.
-func ID(ctx context.Context) string {
+// ChargePointID returns the charge point ID from the context.
+func ChargePointID(ctx context.Context) string {
 	v, _ := ctx.Value(ctxKey{}).(string)
 	return v
 }

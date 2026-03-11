@@ -2,22 +2,28 @@ package ocpp
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"sync"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Hub manages OCPP charge point connections and inbound message routing.
-// Supports multiple OCPP versions via registered routers.
+// Each charge point subscribes to its own Redis pub/sub channel for external commands.
 type Hub struct {
 	mu          sync.RWMutex
 	connections map[string]*ChargePoint // chargePointID → connection
 
+	rdb *redis.Client
+
 	routers map[string]Router // ocpp version → router
 }
 
-func NewHub() *Hub {
+func NewHub(rdb *redis.Client) *Hub {
 	return &Hub{
 		connections: make(map[string]*ChargePoint),
+		rdb:         rdb,
 		routers:     make(map[string]Router),
 	}
 }
@@ -67,4 +73,43 @@ func (h *Hub) ListLocal() []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// ChannelFor returns the Redis pub/sub channel name for a charge point.
+func ChannelFor(chargePointID string) string {
+	return "ocpp:cp:" + chargePointID
+}
+
+// command is a message received from Redis pub/sub to execute on a charge point.
+type command struct {
+	Action  string         `json:"action"`
+	Payload map[string]any `json:"payload"`
+}
+
+// SubscribeChargePoint subscribes to the Redis channel for a specific charge point
+// and forwards incoming commands to the charger via ChargePoint.Call.
+// Blocks until ctx is cancelled.
+func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
+	channel := ChannelFor(cp.Identity)
+	sub := h.rdb.Subscribe(ctx, channel)
+	defer sub.Close()
+
+	slog.InfoContext(ctx, "subscribed to chargepoint channel", "chargePointID", cp.Identity, "channel", channel)
+
+	for msg := range sub.Channel() {
+		var cmd command
+		if err := json.Unmarshal([]byte(msg.Payload), &cmd); err != nil {
+			slog.ErrorContext(ctx, "invalid command on chargepoint channel", "error", err, "chargePointID", cp.Identity)
+			continue
+		}
+
+		go func() {
+			raw, err := cp.Call(ctx, cmd.Action, cmd.Payload)
+			if err != nil {
+				slog.ErrorContext(ctx, "command failed", "error", err, "chargePointID", cp.Identity, "action", cmd.Action)
+				return
+			}
+			slog.InfoContext(ctx, "command executed", "chargePointID", cp.Identity, "action", cmd.Action, "response", string(raw))
+		}()
+	}
 }

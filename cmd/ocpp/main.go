@@ -13,6 +13,7 @@ import (
 	"github.com/acoshift/configfile"
 	"github.com/acoshift/pgsql/pgctx"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/ocpp"
 	"github.com/anertic/anertic/ocpp/v16"
@@ -39,7 +40,14 @@ func run() error {
 	}
 	defer db.Close()
 
-	hub := ocpp.NewHub()
+	opt, err := redis.ParseURL(cfg.StringDefault("REDIS_URL", "redis://localhost:6379"))
+	if err != nil {
+		return err
+	}
+	rdb := redis.NewClient(opt)
+	defer rdb.Close()
+
+	hub := ocpp.NewHub(rdb)
 	hub.RegisterRouter("ocpp1.6", v16.NewRouter())
 	hub.RegisterRouter("ocpp2.0.1", v201.NewRouter())
 

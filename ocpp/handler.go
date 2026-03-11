@@ -46,6 +46,11 @@ func Handler(hub *Hub) http.Handler {
 		hub.Register(ctx, cp)
 		defer hub.Unregister(ctx, chargePointID)
 
+		// subscribe to per-chargepoint Redis channel for external commands
+		subCtx, subCancel := context.WithCancel(ctx)
+		defer subCancel()
+		go hub.SubscribeChargePoint(subCtx, cp)
+
 		slog.InfoContext(ctx, "charger connected", "chargePointID", chargePointID, "protocol", version)
 
 		for {

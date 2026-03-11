@@ -44,6 +44,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	opt.PoolSize = 20
+	opt.MinIdleConns = 5
+	opt.ReadTimeout = 35 * time.Second  // > OCPP Call timeout (30s)
+	opt.WriteTimeout = 10 * time.Second
+	opt.DialTimeout = 5 * time.Second
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 

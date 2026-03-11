@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
+	"github.com/rs/xid"
 	"github.com/moonrhythm/session"
 
 	"github.com/anertic/anertic/api/auth/provider"
@@ -215,12 +216,13 @@ func upsertUser(ctx context.Context, provider, providerID, email, name, picture 
 	var id string
 	err := pgctx.QueryRow(ctx, `
 		insert into users (
+			id,
 			email,
 			name,
 			picture,
 			provider,
 			provider_id
-		) values ($1, $2, $3, $4, $5)
+		) values ($1, $2, $3, $4, $5, $6)
 		on conflict (email) do update set
 			name = excluded.name,
 			picture = excluded.picture,
@@ -228,6 +230,7 @@ func upsertUser(ctx context.Context, provider, providerID, email, name, picture 
 			updated_at = now()
 		returning id
 	`,
+		xid.New().String(),
 		email,
 		name,
 		picture,

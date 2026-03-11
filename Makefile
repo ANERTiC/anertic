@@ -39,13 +39,13 @@ run-ocpp:
 GIT_REV := $(shell git rev-parse --short HEAD)
 IMAGE_BASE := ghcr.io/anertic/anertic
 DEPLOY_API := https://console.nortezh.com/api/deployment.deploy
-NT_TOKEN_FILE ?= $(HOME)/secrets/nt_token
-NT_TOKEN := $(shell cat $(NT_TOKEN_FILE) 2>/dev/null)
+NT_USER ?=
+NT_PASS ?=
 
 define deploy
 	curl -X POST $(DEPLOY_API) \
 		-H "Content-Type: application/json" \
-		-H "Authorization: Bearer $(NT_TOKEN)" \
+		-u "$(NT_USER):$(NT_PASS)" \
 		-d '{"image":"$(1)","project":"$(2)","name":"$(3)","location":"$(4)"}'
 endef
 

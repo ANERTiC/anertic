@@ -15,12 +15,12 @@ type Hub struct {
 	mu          sync.RWMutex
 	connections map[string]*ChargePoint // chargePointID → connection
 
-	rdb *redis.Client
+	rdb redis.UniversalClient
 
 	routers map[string]Router // ocpp version → router
 }
 
-func NewHub(rdb *redis.Client) *Hub {
+func NewHub(rdb redis.UniversalClient) *Hub {
 	return &Hub{
 		connections: make(map[string]*ChargePoint),
 		rdb:         rdb,

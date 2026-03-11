@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/anertic/anertic/pkg/rdctx"
 )
 
 type command struct {
@@ -13,7 +13,7 @@ type command struct {
 }
 
 // SendCommand publishes a command to a charge point via its Redis pub/sub channel.
-func SendCommand(ctx context.Context, rdb *redis.Client, chargePointID string, action string, payload map[string]any) error {
+func SendCommand(ctx context.Context, chargePointID string, action string, payload map[string]any) error {
 	data, err := json.Marshal(command{
 		Action:  action,
 		Payload: payload,
@@ -21,5 +21,5 @@ func SendCommand(ctx context.Context, rdb *redis.Client, chargePointID string, a
 	if err != nil {
 		return err
 	}
-	return rdb.Publish(ctx, "ocpp:cp:"+chargePointID, data).Err()
+	return rdctx.From(ctx).Publish(ctx, "ocpp:cp:"+chargePointID, data).Err()
 }

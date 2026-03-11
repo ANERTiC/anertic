@@ -371,9 +371,9 @@ export default function Overview() {
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{data.siteName || "Overview"}</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{data.siteName || "Overview"}</h1>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -389,20 +389,18 @@ export default function Overview() {
           </p>
         </div>
         {data.weatherTemp !== null && (
-          <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-2.5 text-sm">
+          <div className="flex items-center gap-3 self-start rounded-lg border bg-card px-3 py-2 text-xs sm:gap-4 sm:px-4 sm:py-2.5 sm:text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
-              <RiTempColdLine className="size-4" />
+              <RiTempColdLine className="size-3.5 sm:size-4" />
               <span className="font-medium text-foreground">{data.weatherTemp}°C</span>
             </div>
             {data.weatherHumidity !== null && (
               <div className="flex items-center gap-1.5 text-muted-foreground">
-                <RiDropLine className="size-3.5" />
+                <RiDropLine className="size-3 sm:size-3.5" />
                 <span>{data.weatherHumidity}%</span>
               </div>
             )}
-            {data.weatherCondition && (
-              <span className="text-xs text-muted-foreground">{data.weatherCondition}</span>
-            )}
+            <span className="hidden text-xs text-muted-foreground sm:inline">{data.weatherCondition}</span>
           </div>
         )}
       </div>
@@ -410,19 +408,12 @@ export default function Overview() {
       {/* ═══════════════════════════════════════════
           AI HERO — Energy Score + Summary + Actions
           ═══════════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-primary/5">
         {/* Background atmosphere */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-32 -top-32 size-96 rounded-full bg-amber-500/[0.04] blur-3xl" />
-          <div className="absolute -bottom-40 -left-32 size-[30rem] rounded-full bg-blue-500/[0.04] blur-3xl" />
-          <div className="absolute right-1/4 top-1/3 size-64 rounded-full bg-emerald-500/[0.03] blur-3xl" />
-          <div
-            className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-              backgroundSize: "32px 32px",
-            }}
-          />
+          <div className="absolute -right-32 -top-32 size-96 rounded-full bg-amber-500/[0.03] blur-3xl" />
+          <div className="absolute -bottom-40 -left-32 size-[30rem] rounded-full bg-blue-500/[0.03] blur-3xl" />
+          <div className="absolute right-1/4 top-1/3 size-64 rounded-full bg-emerald-500/[0.02] blur-3xl" />
         </div>
 
         <div className="relative p-6 lg:p-8">
@@ -432,7 +423,7 @@ export default function Overview() {
             <div className="flex flex-col items-center lg:shrink-0">
               <div className="flex items-center gap-2">
                 <RiSparklingLine className="size-4 text-amber-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Energy Score
                 </span>
               </div>
@@ -452,7 +443,7 @@ export default function Overview() {
                       ? "text-emerald-400"
                       : data.scoreTrend === "down"
                         ? "text-red-400"
-                        : "text-slate-400",
+                        : "text-muted-foreground",
                   )}
                 >
                   {data.scoreChange > 0 ? "+" : ""}
@@ -467,11 +458,11 @@ export default function Overview() {
                 <div className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-600">
                   <RiSparklingLine className="size-3 text-white" />
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   AI Analysis
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">{data.aiSummary}</p>
+              <p className="mt-3 text-sm leading-relaxed text-foreground/70">{data.aiSummary}</p>
 
               {/* Key metrics row */}
               <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -505,8 +496,8 @@ export default function Overview() {
 
           {/* High-priority actions */}
           {highPriorityInsights.length > 0 && (
-            <div className="mt-6 border-t border-white/[0.06] pt-6">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <div className="mt-6 border-t border-border/50 pt-6">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                 Requires attention
               </span>
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -518,7 +509,7 @@ export default function Overview() {
                     <div
                       key={insight.id}
                       className={cn(
-                        "group cursor-pointer rounded-lg border p-4 transition-all hover:bg-white/[0.03]",
+                        "group cursor-pointer rounded-lg border p-4 transition-all hover:bg-muted/50",
                         accent.border,
                       )}
                     >
@@ -533,7 +524,7 @@ export default function Overview() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-slate-100">{insight.title}</p>
+                            <p className="text-sm font-medium text-foreground">{insight.title}</p>
                             {insight.impact && (
                               <span
                                 className={cn(
@@ -545,11 +536,11 @@ export default function Overview() {
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                             {insight.message}
                           </p>
                           {insight.action && (
-                            <button className="mt-2.5 flex items-center gap-1 text-xs font-semibold text-slate-300 transition-colors group-hover:text-white">
+                            <button className="mt-2.5 flex items-center gap-1 text-xs font-semibold text-foreground/70 transition-colors group-hover:text-foreground">
                               {insight.action}
                               <RiArrowRightLine className="size-3 transition-transform group-hover:translate-x-0.5" />
                             </button>
@@ -626,8 +617,8 @@ export default function Overview() {
           Supporting Data Below
           ═══════════════════════ */}
 
-      {/* Live Power Strip */}
-      <Card className="overflow-hidden py-0">
+      {/* Live Power Strip — Desktop */}
+      <Card className="hidden overflow-hidden py-0 md:block">
         <CardContent className="p-0">
           <div className="grid grid-cols-5 divide-x">
             <PowerCell icon={RiSunLine} label="Solar" kw={data.solarPowerKw} kwh={data.todaySolarKwh} color="amber" />
@@ -641,6 +632,65 @@ export default function Overview() {
               kwh={data.todayChargeKwh}
               color="cyan"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Energy Flow — Mobile */}
+      <Card className="overflow-hidden py-0 md:hidden">
+        <CardContent className="p-0">
+          <div className="flex items-center gap-2 border-b px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Energy Flow
+            </span>
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+            </span>
+          </div>
+          <div className="space-y-1 p-4">
+            <div className="px-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Sources
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FlowNode icon={RiSunLine} label="Solar" value={formatPower(data.solarPowerKw)} sub={`${formatEnergy(data.todaySolarKwh)} today`} color="amber" />
+              <FlowNode icon={RiPlugLine} label="Grid" value={formatPower(data.gridPowerKw)} sub={`${formatEnergy(data.todayGridKwh)} today`} color="blue" />
+            </div>
+
+            <div className="flex justify-center py-0.5">
+              <div className="energy-flow-line h-6" />
+            </div>
+
+            <div className="flex justify-center">
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-2.5">
+                <RiBattery2ChargeLine className="size-5 text-emerald-600" />
+                <div>
+                  <p className="text-base font-bold tabular-nums text-emerald-700">{data.batterySoc}%</p>
+                  <p className="text-[10px] text-emerald-600/70">
+                    {data.batteryPowerKw > 0 ? "+" : ""}
+                    {formatPower(data.batteryPowerKw)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center py-0.5">
+              <div className="energy-flow-line h-6" />
+            </div>
+
+            <div className="px-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Consumption
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FlowNode icon={RiFlashlightLine} label="Load" value={formatPower(data.consumptionPowerKw)} sub={`${formatEnergy(data.todayConsumptionKwh)} today`} color="violet" />
+              <FlowNode
+                icon={RiChargingPile2Line}
+                label="EV"
+                value={formatPower(data.chargers.filter((c) => c.status === "Charging").reduce((s, c) => s + c.currentPowerKw, 0))}
+                sub={`${formatEnergy(data.todayChargeKwh)} today`}
+                color="cyan"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -851,7 +901,7 @@ function ScoreRing({ score, size, strokeWidth }: { score: number; size: number; 
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className={cn("text-4xl font-bold tabular-nums", scoreColor(score))}>{score}</span>
-        <span className="text-[11px] font-medium text-slate-400">{scoreLabel(score)}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{scoreLabel(score)}</span>
       </div>
     </div>
   )
@@ -869,10 +919,10 @@ function MetricPill({
   color: string
 }) {
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+    <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
       <div className="flex items-center gap-1.5">
         <Icon className={cn("size-3", color)} />
-        <span className="text-[10px] text-slate-500">{label}</span>
+        <span className="text-[10px] text-muted-foreground/60">{label}</span>
       </div>
       <p className={cn("mt-1 text-sm font-semibold tabular-nums", color)}>{value}</p>
     </div>
@@ -952,6 +1002,41 @@ function EnergyRing({
         <p className="text-[10px] text-muted-foreground">total today</p>
         <p className="mt-1 text-xs font-medium text-emerald-600">{selfSufficiency.toFixed(0)}% self</p>
       </div>
+    </div>
+  )
+}
+
+function FlowNode({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: typeof RiSunLine
+  label: string
+  value: string
+  sub: string
+  color: string
+}) {
+  const colors: Record<string, { bg: string; text: string; icon: string; border: string }> = {
+    amber: { bg: "bg-amber-50", text: "text-amber-700", icon: "text-amber-500", border: "border-amber-200" },
+    blue: { bg: "bg-blue-50", text: "text-blue-700", icon: "text-blue-500", border: "border-blue-200" },
+    violet: { bg: "bg-violet-50", text: "text-violet-700", icon: "text-violet-500", border: "border-violet-200" },
+    cyan: { bg: "bg-cyan-50", text: "text-cyan-700", icon: "text-cyan-500", border: "border-cyan-200" },
+  }
+  const c = colors[color] || colors.blue
+
+  return (
+    <div className={cn("rounded-lg border p-3", c.bg, c.border)}>
+      <div className="flex items-center gap-1.5">
+        <Icon className={cn("size-3.5", c.icon)} />
+        <span className={cn("text-[10px] font-semibold uppercase tracking-wider opacity-70", c.text)}>
+          {label}
+        </span>
+      </div>
+      <p className={cn("mt-1.5 text-lg font-bold tabular-nums", c.text)}>{value}</p>
+      <p className="text-[10px] text-muted-foreground">{sub}</p>
     </div>
   )
 }

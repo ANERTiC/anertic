@@ -12,7 +12,7 @@ import {
   RiArrowUpDownLine,
   RiAddLine,
   RiLogoutBoxLine,
-  RiHomeLine,
+  RiArrowLeftLine,
 } from "@remixicon/react"
 import { api } from "~/lib/api"
 import { getCookie, setCookie } from "~/lib/cookie"
@@ -159,7 +159,7 @@ function SiteSwitcher({
               onClick={() => navigate("/")}
             >
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <RiHomeLine className="size-4" />
+                <RiArrowLeftLine className="size-4" />
               </div>
               <div className="font-medium text-muted-foreground">Dashboard</div>
             </DropdownMenuItem>
@@ -260,10 +260,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Home">
+            <SidebarMenuButton asChild tooltip="Exit to dashboard">
               <NavLink to="/" end>
-                <RiHomeLine className="size-4" />
-                <span>Home</span>
+                <RiArrowLeftLine className="size-4" />
+                <span>Exit to dashboard</span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

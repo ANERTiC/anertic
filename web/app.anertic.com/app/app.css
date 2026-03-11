@@ -82,6 +82,23 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@keyframes energy-flow {
+  from { background-position: 0 0; }
+  to { background-position: 0 12px; }
+}
+
+.energy-flow-line {
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    oklch(0.65 0.18 277) 0px,
+    oklch(0.65 0.18 277) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  animation: energy-flow 0.8s linear infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

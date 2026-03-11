@@ -1,23 +1,40 @@
 package conf
 
 import (
+	"log/slog"
+	"sync"
+
 	"github.com/acoshift/configfile"
 )
 
-var (
+type Config struct {
 	AppURL string
 
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+}
+
+var (
+	once sync.Once
+	c    Config
 )
 
-func Init() {
-	cfg := configfile.NewEnvReader()
+func Load() Config {
+	once.Do(func() {
+		cfg := configfile.NewEnvReader()
 
-	AppURL = cfg.StringDefault("APP_URL", "http://localhost:5173")
+		c = Config{
+			AppURL:             cfg.StringDefault("APP_URL", "http://localhost:5173"),
+			GoogleClientID:     cfg.String("GOOGLE_CLIENT_ID"),
+			GoogleClientSecret: cfg.String("GOOGLE_CLIENT_SECRET"),
+			GoogleRedirectURL:  cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+		}
 
-	GoogleClientID = cfg.String("GOOGLE_CLIENT_ID")
-	GoogleClientSecret = cfg.String("GOOGLE_CLIENT_SECRET")
-	GoogleRedirectURL = cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback")
+		slog.Info("config: init",
+			"google_client_id", c.GoogleClientID,
+		)
+	})
+
+	return c
 }

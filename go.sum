@@ -40,6 +40,8 @@ github.com/moonrhythm/httpmux v1.2.0 h1:9MxKlpRyolg3GDySJGyf4phogVpaClkhbec5eFEu
 github.com/moonrhythm/httpmux v1.2.0/go.mod h1:h2GSszA6yEUZiksc9kVNiteLrYeXhDKH9zNaN7RglVE=
 github.com/moonrhythm/parapet v0.13.6 h1:xpoXIEI1JiNVTs8F2edmZn75gMV2Dg6KQdpOlUt9rJs=
 github.com/moonrhythm/parapet v0.13.6/go.mod h1:QEhl1pk8viGxC3xz1XLmzU8UZRT5qxHXgUln5hXlRCQ=
+github.com/moonrhythm/session v0.19.0 h1:i3kEC199QVDyosnhehEWucsvbQvfrEJXNicLyYcHSiU=
+github.com/moonrhythm/session v0.19.0/go.mod h1:vTfTB8Nw4mE2o5uPONcAsihMLJJHYM0Bg9zoy+MEmGc=
 github.com/moonrhythm/validator v1.3.0 h1:OzZSW8Xtb66Gz7SA8qzY3ANupgdMojLFC1imDs1utOM=
 github.com/moonrhythm/validator v1.3.0/go.mod h1:gbDyBOwWGzphP8K2Sdrd9+MveRVxzxm+ezecimvu9UU=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
@@ -48,6 +50,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redis/go-redis/v9 v9.18.0 h1:pMkxYPkEbMPwRdenAzUNyFNrDgHx9U+DrBabWNfSRQs=
 github.com/redis/go-redis/v9 v9.18.0/go.mod h1:k3ufPphLU5YXwNTUcCRXGxUoF1fqxnhFQmscfkCoDA0=
+github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
+github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/zeebo/xxh3 v1.0.2 h1:xZmwmqxHZA8AI603jOQ0tMqmBr9lPeFwGg6d+xy9DC0=

@@ -1,15 +1,15 @@
-import { useState } from "react"
-import { useNavigate } from "react-router"
-import { RiAddLine, RiMapPinLine, RiSearchLine } from "@remixicon/react"
-import { toast } from "sonner"
-import useSWR from "swr"
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { RiAddLine, RiMapPinLine, RiSearchLine } from '@remixicon/react'
+import { toast } from 'sonner'
+import useSWR from 'swr'
 
-import { api } from "~/lib/api"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Skeleton } from "~/components/ui/skeleton"
+import { api } from '~/lib/api'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent } from '~/components/ui/card'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import { Skeleton } from '~/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "~/components/ui/dialog"
+} from '~/components/ui/dialog'
 
 interface Site {
   id: string
@@ -36,46 +36,70 @@ interface CreateResult {
   id: string
 }
 
+const timezones = Intl.supportedValuesOf('timeZone')
+
 export default function Sites() {
   const navigate = useNavigate()
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
 
-  const [name, setName] = useState("")
-  const [address, setAddress] = useState("")
-  const [timezone, setTimezone] = useState("Asia/Bangkok")
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [timezone, setTimezone] = useState('Asia/Bangkok')
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [search])
 
   const { data, isLoading, mutate } = useSWR(
-    ["site.list", search],
-    () => api<ListResult>("site.list", { search }),
+    ['site.list', debouncedSearch],
+    () => api<ListResult>('site.list', { search: debouncedSearch }),
     {
       onError(err) {
-        toast.error(err instanceof Error ? err.message : "Failed to load sites")
+        toast.error(err instanceof Error ? err.message : 'Failed to load sites')
       },
-    },
+    }
   )
 
   const sites = data?.items || []
+
+  function resetForm() {
+    setName('')
+    setAddress('')
+    setTimezone('Asia/Bangkok')
+  }
+
+  function handleOpenChange(value: boolean) {
+    setOpen(value)
+    if (!value) {
+      resetForm()
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setCreating(true)
     try {
-      const result = await api<CreateResult>("site.create", {
+      const result = await api<CreateResult>('site.create', {
         name,
         address,
         timezone,
       })
-      toast.success("Site created successfully")
+      toast.success('Site created successfully')
       setOpen(false)
-      setName("")
-      setAddress("")
-      setTimezone("Asia/Bangkok")
+      resetForm()
       mutate()
       navigate(`/sites/${result.id}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create site")
+      toast.error(err instanceof Error ? err.message : 'Failed to create site')
     } finally {
       setCreating(false)
     }
@@ -90,7 +114,7 @@ export default function Sites() {
             Manage your energy monitoring sites
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <RiAddLine className="mr-2 h-4 w-4" />
@@ -127,16 +151,23 @@ export default function Sites() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input
+                  <select
                     id="timezone"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                  />
+                  >
+                    {timezones.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create"}
+                  {creating ? 'Creating...' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
@@ -145,7 +176,7 @@ export default function Sites() {
       </div>
 
       <div className="relative">
-        <RiSearchLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <RiSearchLine className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search sites..."
           className="pl-9"
@@ -164,7 +195,9 @@ export default function Sites() {
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
           <RiMapPinLine className="mb-3 h-10 w-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            {search ? "No sites found" : "No sites yet. Create your first site to get started."}
+            {search
+              ? 'No sites found'
+              : 'No sites yet. Create your first site to get started.'}
           </p>
         </div>
       ) : (
@@ -178,9 +211,13 @@ export default function Sites() {
               <CardContent className="pt-6">
                 <h3 className="font-medium">{site.name}</h3>
                 {site.address && (
-                  <p className="mt-1 text-sm text-muted-foreground">{site.address}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {site.address}
+                  </p>
                 )}
-                <p className="mt-2 text-xs text-muted-foreground">{site.timezone}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {site.timezone}
+                </p>
               </CardContent>
             </Card>
           ))}

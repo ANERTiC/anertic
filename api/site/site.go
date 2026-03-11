@@ -2,6 +2,8 @@ package site
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -35,7 +37,7 @@ type ListResult struct {
 }
 
 func List(ctx context.Context, p *ListParams) (*ListResult, error) {
-	var items []Item
+	items := make([]Item, 0)
 
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
@@ -103,6 +105,9 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	if tz == "" {
 		tz = "Asia/Bangkok"
 	}
+	if _, err := time.LoadLocation(tz); err != nil {
+		return nil, arpc.NewErrorCode("site/invalid-timezone", "invalid timezone")
+	}
 
 	id := xid.New().String()
 	_, err := pgctx.Exec(ctx, `
@@ -164,8 +169,11 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.Timezone,
 		&r.CreatedAt,
 	)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	return &r, nil

@@ -8,7 +8,9 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 ARG VITE_API_URL=https://api.anertic.com
+ARG VITE_APP_URL=https://app.anertic.com
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APP_URL=$VITE_APP_URL
 COPY web/app.anertic.com/ /app/
 COPY --from=dependencies /app/node_modules /app/node_modules
 WORKDIR /app

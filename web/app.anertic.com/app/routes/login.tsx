@@ -4,7 +4,9 @@ import { Button } from '~/components/ui/button'
 export default function Login() {
   function handleGoogleSignIn() {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-    window.location.href = `${apiUrl}/auth/google`
+    const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
+    const redirectUrl = `${appUrl}/login/callback`
+    window.location.href = `${apiUrl}/auth/google?redirect_url=${encodeURIComponent(redirectUrl)}`
   }
 
   return (

@@ -46,11 +46,17 @@ interface Connector {
   connectorType: string
   maxPowerKw: number
   info: string
+  vendorId: string
   lastStatusAt: string | null
 }
 
 interface ConnectorListResult {
   items: Connector[]
+}
+
+interface Site {
+  id: string
+  name: string
 }
 
 function statusColor(status: string) {
@@ -111,8 +117,15 @@ export default function ChargerDetail() {
     },
   )
 
-  // TODO: add connector.list API endpoint
-  // const { data: connectors } = useSWR(...)
+  const { data: connectorData } = useSWR(
+    chargerId ? ["connector.list", chargerId] : null,
+    () => api<ConnectorListResult>("connector.list", { chargerId }),
+  )
+
+  const { data: siteData } = useSWR(
+    charger?.siteId ? ["site.get", charger.siteId] : null,
+    () => api<Site>("site.get", { id: charger!.siteId }),
+  )
 
   if (isLoading) {
     return (
@@ -151,6 +164,9 @@ export default function ChargerDetail() {
             Chargers
           </Button>
           <h1 className="text-2xl font-semibold">{charger.chargePointId}</h1>
+          {siteData && (
+            <p className="text-sm text-muted-foreground">{siteData.name}</p>
+          )}
           <div className="mt-1 flex items-center gap-2">
             <Badge className={statusColor(charger.status)}>
               {charger.status}
@@ -187,7 +203,7 @@ export default function ChargerDetail() {
         </TabsList>
 
         <TabsContent value="connectors" className="mt-4">
-          <ConnectorsTab charger={charger} />
+          <ConnectorsTab charger={charger} connectors={connectorData?.items || []} />
         </TabsContent>
 
         <TabsContent value="sessions" className="mt-4">
@@ -224,12 +240,40 @@ export default function ChargerDetail() {
   )
 }
 
-function ConnectorsTab({ charger }: { charger: Charger }) {
-  // Placeholder connectors based on connector_count until connector.list API exists
-  const connectors = Array.from({ length: charger.connectorCount }, (_, i) => ({
-    id: i + 1,
-    status: i === 0 ? charger.status : "Available",
-  }))
+function ConnectorsTab({ charger, connectors }: { charger: Charger; connectors: Connector[] }) {
+  if (connectors.length === 0) {
+    // Fallback: show placeholder connectors based on connector_count
+    const placeholders = Array.from({ length: charger.connectorCount }, (_, i) => ({
+      connectorId: i + 1,
+      status: "Unavailable",
+      errorCode: "NoError",
+      connectorType: "",
+      maxPowerKw: charger.maxPowerKw,
+    }))
+
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {placeholders.map((conn) => (
+          <Card key={conn.connectorId}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <RiPlugLine className="h-4 w-4" />
+                  Connector {conn.connectorId}
+                </CardTitle>
+                <Badge className={statusColor(conn.status)}>{conn.status}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Waiting for charger to connect...
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -239,14 +283,18 @@ function ConnectorsTab({ charger }: { charger: Charger }) {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <RiPlugLine className="h-4 w-4" />
-                Connector {conn.id}
+                Connector {conn.connectorId}
               </CardTitle>
               <Badge className={statusColor(conn.status)}>{conn.status}</Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-muted-foreground">
-              {charger.maxPowerKw > 0 && <span>Max {charger.maxPowerKw} kW</span>}
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {conn.connectorType && <span>Type: {conn.connectorType}</span>}
+              {conn.maxPowerKw > 0 && <span>Max {conn.maxPowerKw} kW</span>}
+              {conn.errorCode !== "NoError" && (
+                <span className="text-red-600">Error: {conn.errorCode}</span>
+              )}
             </div>
           </CardContent>
         </Card>

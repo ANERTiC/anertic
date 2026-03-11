@@ -10,6 +10,7 @@ import (
 
 	"github.com/anertic/anertic/api/auth"
 	"github.com/anertic/anertic/api/charger"
+	"github.com/anertic/anertic/api/connector"
 	"github.com/anertic/anertic/api/device"
 	"github.com/anertic/anertic/api/insight"
 	"github.com/anertic/anertic/api/reading"
@@ -72,6 +73,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.get", am.Handler(charger.Get))
 	a.Handle("POST /charger.update", am.Handler(charger.Update))
 	a.Handle("POST /charger.delete", am.Handler(charger.Delete))
+
+	// Connectors
+	a.Handle("POST /connector.list", am.Handler(connector.List))
 
 	// Readings
 	a.Handle("POST /reading.query", am.Handler(reading.Query))

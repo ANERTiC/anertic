@@ -68,8 +68,8 @@ func run() error {
 	}
 
 	// OAuth routes (public, raw HTTP)
-	mux.HandleFunc("GET /auth/google", auth.ExternalProviderRedirect)
-	mux.HandleFunc("GET /auth/google/callback", auth.ExternalProviderCallback)
+	mux.HandleFunc("GET /auth/{provider}", auth.ProviderRedirect)
+	mux.HandleFunc("GET /auth/{provider}/callback", auth.ProviderCallback)
 
 	// Public API routes
 	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshToken))

@@ -13,35 +13,20 @@ import (
 	"github.com/acoshift/arpc/v2"
 	"github.com/acoshift/configfile"
 	"github.com/acoshift/pgsql/pgctx"
-	"github.com/coreos/go-oidc/v3/oidc"
-	"golang.org/x/oauth2"
 )
-
-var errUnauthorized = arpc.NewErrorCode("unauthorized", "unauthorized")
 
 var (
-	googleOAuth2 *oauth2.Config
-	googleOIDC   *oidc.Provider
-	appURL       string
+	errUnauthorized = arpc.NewErrorCode("unauthorized", "unauthorized")
+	errAuthFailed   = arpc.NewErrorCode("auth/failed", "authentication failed")
 )
+
+var appURL string
 
 func Init() {
 	cfg := configfile.NewEnvReader()
 	appURL = cfg.StringDefault("APP_URL", "http://localhost:5173")
 
-	provider, err := oidc.NewProvider(context.Background(), "https://accounts.google.com")
-	if err != nil {
-		slog.Error("auth: failed to init google oidc provider", "error", err)
-		return
-	}
-	googleOIDC = provider
-	googleOAuth2 = &oauth2.Config{
-		ClientID:     cfg.String("GOOGLE_CLIENT_ID"),
-		ClientSecret: cfg.String("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:  cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
-		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
-	}
+	initGoogle()
 }
 
 // Middleware validates Bearer token and sets user in context.
@@ -69,16 +54,32 @@ func Middleware(actx *arpc.MiddlewareContext) error {
 	return nil
 }
 
-// ExternalProviderRedirect redirects to Google OAuth consent page.
-func ExternalProviderRedirect(w http.ResponseWriter, r *http.Request) {
+// ProviderRedirect redirects to the OAuth provider's consent page.
+// The provider is determined from the URL path: /auth/{provider}
+func ProviderRedirect(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("provider")
+	p, ok := providers[name]
+	if !ok {
+		http.Error(w, "unknown provider", http.StatusBadRequest)
+		return
+	}
+
 	// TODO: add state param with HMAC for CSRF protection
-	u := googleOAuth2.AuthCodeURL("", oauth2.AccessTypeOffline)
+	u := p.AuthURL("")
 	http.Redirect(w, r, u, http.StatusFound)
 }
 
-// ExternalProviderCallback handles the Google OAuth callback.
-func ExternalProviderCallback(w http.ResponseWriter, r *http.Request) {
+// ProviderCallback handles the OAuth callback from any provider.
+// The provider is determined from the URL path: /auth/{provider}/callback
+func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	name := r.PathValue("provider")
+	p, ok := providers[name]
+	if !ok {
+		http.Error(w, "unknown provider", http.StatusBadRequest)
+		return
+	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
@@ -86,40 +87,14 @@ func ExternalProviderCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tok, err := googleOAuth2.Exchange(ctx, code)
+	info, err := p.Exchange(ctx, code)
 	if err != nil {
-		slog.ErrorContext(ctx, "auth: exchange code", "error", err)
+		slog.ErrorContext(ctx, "auth: provider exchange", "provider", name, "error", err)
 		http.Error(w, "authentication failed", http.StatusInternalServerError)
 		return
 	}
 
-	rawIDToken, ok := tok.Extra("id_token").(string)
-	if !ok {
-		slog.ErrorContext(ctx, "auth: no id_token in response")
-		http.Error(w, "authentication failed", http.StatusInternalServerError)
-		return
-	}
-
-	verifier := googleOIDC.Verifier(&oidc.Config{ClientID: googleOAuth2.ClientID})
-	idToken, err := verifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		slog.ErrorContext(ctx, "auth: verify id_token", "error", err)
-		http.Error(w, "authentication failed", http.StatusInternalServerError)
-		return
-	}
-
-	var claims struct {
-		Email   string `json:"email"`
-		Name    string `json:"name"`
-		Picture string `json:"picture"`
-	}
-	if err := idToken.Claims(&claims); err != nil {
-		slog.ErrorContext(ctx, "auth: parse claims", "error", err)
-		http.Error(w, "authentication failed", http.StatusInternalServerError)
-		return
-	}
-
-	userID, err := upsertUser(ctx, idToken.Subject, claims.Email, claims.Name, claims.Picture)
+	userID, err := upsertUser(ctx, name, info.ProviderID, info.Email, info.Name, info.Picture)
 	if err != nil {
 		slog.ErrorContext(ctx, "auth: upsert user", "error", err)
 		http.Error(w, "authentication failed", http.StatusInternalServerError)
@@ -230,7 +205,7 @@ func RefreshToken(ctx context.Context, p RefreshTokenParams) (*TokenResult, erro
 	}, nil
 }
 
-func upsertUser(ctx context.Context, providerID, email, name, picture string) (string, error) {
+func upsertUser(ctx context.Context, provider, providerID, email, name, picture string) (string, error) {
 	var id string
 	err := pgctx.QueryRow(ctx, `
 		insert into users (
@@ -239,7 +214,7 @@ func upsertUser(ctx context.Context, providerID, email, name, picture string) (s
 			picture,
 			provider,
 			provider_id
-		) values ($1, $2, $3, 'google', $4)
+		) values ($1, $2, $3, $4, $5)
 		on conflict (email) do update set
 			name = excluded.name,
 			picture = excluded.picture,
@@ -250,6 +225,7 @@ func upsertUser(ctx context.Context, providerID, email, name, picture string) (s
 		email,
 		name,
 		picture,
+		provider,
 		providerID,
 	).Scan(&id)
 	if err != nil {

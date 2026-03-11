@@ -23,6 +23,9 @@ import {
   RiBarChartBoxLine,
   RiArrowUpSLine,
   RiArrowDownSLine,
+  RiChargingPile2Line,
+  RiUserLine,
+  RiSpeedLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -33,6 +36,14 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
 
 // --- Types ---
@@ -1397,163 +1408,516 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
       ? (connector.powerKw / connector.maxPowerKw) * 100
       : 0
 
-  return (
-    <Card
-      className={cn(
-        "overflow-hidden",
-        isFaulted && "border-red-200",
-        isActive && "border-blue-200",
-      )}
-    >
-      <CardContent className="p-0">
-        <div className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <RiPlugLine className="size-5 text-muted-foreground" />
-                <span
-                  className={cn(
-                    "absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-white",
-                    statusDot(connector.status),
-                  )}
-                />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">
-                  Connector {connector.id}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {connector.connectorType || "Type 2"} &middot;{" "}
-                  {connector.maxPowerKw} kW max
-                </p>
-              </div>
-            </div>
-            <Badge
-              className={cn("text-[10px]", statusColor(connector.status))}
-            >
-              {connector.status}
-            </Badge>
-          </div>
+  const [startOpen, setStartOpen] = useState(false)
+  const [stopOpen, setStopOpen] = useState(false)
 
-          {/* Active session details */}
-          {isActive && (
-            <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium">
-                  {connector.vehicleId || "Unknown vehicle"}
-                </p>
-                {connector.sessionStartedAt && (
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <RiTimeLine className="size-3" />
-                    {sessionDuration(connector.sessionStartedAt)}
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Power</p>
-                  <p className="text-lg font-bold tabular-nums text-blue-700">
-                    {formatPower(connector.powerKw)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Session Energy
-                  </p>
-                  <p className="text-lg font-bold tabular-nums">
-                    {connector.sessionKwh.toFixed(1)}{" "}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      kWh
-                    </span>
-                  </p>
-                </div>
-              </div>
-              {/* Power bar */}
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Power utilization</span>
-                  <span className="tabular-nums">
-                    {powerPercent.toFixed(0)}%
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100">
-                  <div
-                    className="h-full rounded-full bg-blue-500 transition-all duration-1000"
-                    style={{ width: `${powerPercent}%` }}
+  return (
+    <>
+      <Card
+        className={cn(
+          "overflow-hidden",
+          isFaulted && "border-red-200",
+          isActive && "border-blue-200",
+        )}
+      >
+        <CardContent className="p-0">
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <RiPlugLine className="size-5 text-muted-foreground" />
+                  <span
+                    className={cn(
+                      "absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-white",
+                      statusDot(connector.status),
+                    )}
                   />
                 </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    Connector {connector.id}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {connector.connectorType || "Type 2"} &middot;{" "}
+                    {connector.maxPowerKw} kW max
+                  </p>
+                </div>
               </div>
-              <div className="mt-3 flex justify-end">
+              <Badge
+                className={cn("text-[10px]", statusColor(connector.status))}
+              >
+                {connector.status}
+              </Badge>
+            </div>
+
+            {/* Active session details */}
+            {isActive && (
+              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium">
+                    {connector.vehicleId || "Unknown vehicle"}
+                  </p>
+                  {connector.sessionStartedAt && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <RiTimeLine className="size-3" />
+                      {sessionDuration(connector.sessionStartedAt)}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Power</p>
+                    <p className="text-lg font-bold tabular-nums text-blue-700">
+                      {formatPower(connector.powerKw)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Session Energy
+                    </p>
+                    <p className="text-lg font-bold tabular-nums">
+                      {connector.sessionKwh.toFixed(1)}{" "}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        kWh
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Power utilization</span>
+                    <span className="tabular-nums">
+                      {powerPercent.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100">
+                    <div
+                      className="h-full rounded-full bg-blue-500 transition-all duration-1000"
+                      style={{ width: `${powerPercent}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50"
+                    onClick={() => setStopOpen(true)}
+                  >
+                    <RiShutDownLine className="mr-1 size-3" />
+                    Stop Charging
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Suspended session */}
+            {isSuspended && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/30 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium">
+                    {connector.vehicleId || "Unknown vehicle"}
+                  </p>
+                  <span className="text-[10px] font-medium text-amber-600">
+                    Paused
+                  </span>
+                </div>
+                <p className="mt-1 text-sm tabular-nums">
+                  {connector.sessionKwh.toFixed(1)} kWh delivered
+                </p>
+              </div>
+            )}
+
+            {/* Faulted */}
+            {isFaulted && connector.errorCode !== "NoError" && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50/30 p-3">
+                <div className="flex items-center gap-2">
+                  <RiAlertLine className="size-4 text-red-500" />
+                  <p className="text-xs font-medium text-red-700">
+                    {connector.errorCode}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Available — Start Charging */}
+            {connector.status === "Available" && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RiCheckboxCircleLine className="size-4 text-emerald-500" />
+                  Ready to charge
+                </div>
                 <Button
-                  variant="outline"
                   size="sm"
-                  className="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50"
-                  onClick={() => {
-                    toast.success(
-                      `Remote stop sent to connector ${connector.id}`,
-                    )
-                  }}
+                  className="h-7 text-xs"
+                  onClick={() => setStartOpen(true)}
                 >
-                  <RiShutDownLine className="mr-1 size-3" />
-                  Stop Charging
+                  <RiFlashlightLine className="mr-1 size-3" />
+                  Start Charging
                 </Button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Suspended session */}
-          {isSuspended && (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/30 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium">
-                  {connector.vehicleId || "Unknown vehicle"}
+      {/* Start Charging Dialog */}
+      <StartChargingDialog
+        open={startOpen}
+        onOpenChange={setStartOpen}
+        connectorId={connector.id}
+        maxPowerKw={connector.maxPowerKw}
+        connectorType={connector.connectorType}
+      />
+
+      {/* Stop Charging Dialog */}
+      <StopChargingDialog
+        open={stopOpen}
+        onOpenChange={setStopOpen}
+        connectorId={connector.id}
+        vehicleId={connector.vehicleId}
+        sessionKwh={connector.sessionKwh}
+        sessionStartedAt={connector.sessionStartedAt}
+      />
+    </>
+  )
+}
+
+function StartChargingDialog({
+  open,
+  onOpenChange,
+  connectorId,
+  maxPowerKw,
+  connectorType,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  connectorId: number
+  maxPowerKw: number
+  connectorType: string
+}) {
+  const [step, setStep] = useState<"config" | "sending" | "sent">("config")
+  const [idTag, setIdTag] = useState("")
+  const [powerLimit, setPowerLimit] = useState(String(maxPowerKw))
+  const [wsUrl] = useState(
+    `wss://ocpp.anertic.com/ws/CP-001`,
+  )
+
+  function handleStart() {
+    if (!idTag.trim()) {
+      toast.error("Please enter an ID tag")
+      return
+    }
+    setStep("sending")
+    // Simulate sending command
+    setTimeout(() => {
+      setStep("sent")
+    }, 1500)
+  }
+
+  function handleClose() {
+    onOpenChange(false)
+    // Reset after animation
+    setTimeout(() => {
+      setStep("config")
+      setIdTag("")
+      setPowerLimit(String(maxPowerKw))
+    }, 200)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        {step === "config" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10">
+                  <RiChargingPile2Line className="size-4 text-blue-600" />
+                </div>
+                Start Charging
+              </DialogTitle>
+              <DialogDescription>
+                Send a remote start command to connector #{connectorId}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              {/* Connector info */}
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
+                <RiPlugLine className="size-4 text-muted-foreground" />
+                <div className="flex-1 text-xs">
+                  <span className="font-medium">Connector {connectorId}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    &middot; {connectorType || "Type 2"} &middot; {maxPowerKw}{" "}
+                    kW
+                  </span>
+                </div>
+                <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700">
+                  Available
+                </Badge>
+              </div>
+
+              {/* ID Tag */}
+              <div className="grid gap-2">
+                <Label htmlFor="idTag" className="flex items-center gap-1.5 text-xs">
+                  <RiUserLine className="size-3" />
+                  ID Tag / Identifier
+                </Label>
+                <Input
+                  id="idTag"
+                  placeholder="e.g. TESLA-M3, USER-001"
+                  value={idTag}
+                  onChange={(e) => setIdTag(e.target.value)}
+                  autoFocus
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  The RFID tag or user identifier to authorize the session
                 </p>
-                <span className="text-[10px] font-medium text-amber-600">
-                  Paused
-                </span>
               </div>
-              <p className="mt-1 text-sm tabular-nums">
-                {connector.sessionKwh.toFixed(1)} kWh delivered
-              </p>
-            </div>
-          )}
 
-          {/* Faulted */}
-          {isFaulted && connector.errorCode !== "NoError" && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50/30 p-3">
-              <div className="flex items-center gap-2">
-                <RiAlertLine className="size-4 text-red-500" />
-                <p className="text-xs font-medium text-red-700">
-                  {connector.errorCode}
+              {/* Power Limit */}
+              <div className="grid gap-2">
+                <Label htmlFor="powerLimit" className="flex items-center gap-1.5 text-xs">
+                  <RiSpeedLine className="size-3" />
+                  Power Limit (kW)
+                </Label>
+                <Input
+                  id="powerLimit"
+                  type="number"
+                  min="1"
+                  max={maxPowerKw}
+                  step="0.1"
+                  value={powerLimit}
+                  onChange={(e) => setPowerLimit(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Max: {maxPowerKw} kW. Leave as-is for full power.
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* Available — Start Charging */}
-          {connector.status === "Available" && (
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <RiCheckboxCircleLine className="size-4 text-emerald-500" />
-                Ready to charge
+              {/* WebSocket URL */}
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">
+                  OCPP WebSocket Endpoint
+                </Label>
+                <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+                  <code className="flex-1 truncate text-xs tabular-nums">
+                    {wsUrl}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 shrink-0 px-2 text-[10px]"
+                    onClick={() => {
+                      navigator.clipboard.writeText(wsUrl)
+                      toast.success("Copied to clipboard")
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
               </div>
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  toast.success(
-                    `Remote start sent to connector ${connector.id}`,
-                  )
-                }}
-              >
-                <RiFlashlightLine className="mr-1 size-3" />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleStart}>
+                <RiFlashlightLine className="mr-1.5 size-3.5" />
                 Start Charging
               </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === "sending" && (
+          <div className="flex flex-col items-center py-10">
+            <div className="relative">
+              <div className="size-16 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <RiChargingPile2Line className="size-6 text-blue-500" />
+              </div>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <p className="mt-4 text-sm font-medium">
+              Sending RemoteStartTransaction...
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Connector #{connectorId} &middot; ID Tag: {idTag}
+            </p>
+          </div>
+        )}
+
+        {step === "sent" && (
+          <div className="flex flex-col items-center py-10">
+            <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
+              <RiCheckboxCircleLine className="size-8 text-emerald-500" />
+            </div>
+            <p className="mt-4 text-sm font-medium">Command Sent</p>
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              RemoteStartTransaction sent to connector #{connectorId}.
+              <br />
+              Waiting for the charger to accept and begin charging.
+            </p>
+            <div className="mt-4 w-full rounded-lg border bg-muted/30 px-3 py-2.5">
+              <div className="grid gap-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ID Tag</span>
+                  <span className="font-medium">{idTag}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Power Limit</span>
+                  <span className="font-medium tabular-nums">
+                    {powerLimit} kW
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Connector</span>
+                  <span className="font-medium">#{connectorId}</span>
+                </div>
+              </div>
+            </div>
+            <Button className="mt-4" onClick={handleClose}>
+              Done
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function StopChargingDialog({
+  open,
+  onOpenChange,
+  connectorId,
+  vehicleId,
+  sessionKwh,
+  sessionStartedAt,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  connectorId: number
+  vehicleId?: string
+  sessionKwh: number
+  sessionStartedAt?: string
+}) {
+  const [step, setStep] = useState<"confirm" | "stopping" | "stopped">(
+    "confirm",
+  )
+
+  function handleStop() {
+    setStep("stopping")
+    setTimeout(() => {
+      setStep("stopped")
+    }, 1500)
+  }
+
+  function handleClose() {
+    onOpenChange(false)
+    setTimeout(() => {
+      setStep("confirm")
+    }, 200)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-sm">
+        {step === "confirm" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-red-500/10">
+                  <RiShutDownLine className="size-4 text-red-600" />
+                </div>
+                Stop Charging
+              </DialogTitle>
+              <DialogDescription>
+                This will send a remote stop command to connector #{connectorId}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="rounded-lg border bg-muted/30 px-3 py-3">
+              <div className="grid gap-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Connector</span>
+                  <span className="font-medium">#{connectorId}</span>
+                </div>
+                {vehicleId && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Vehicle</span>
+                    <span className="font-medium">{vehicleId}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Energy Delivered</span>
+                  <span className="font-medium tabular-nums">
+                    {sessionKwh.toFixed(1)} kWh
+                  </span>
+                </div>
+                {sessionStartedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-medium tabular-nums">
+                      {sessionDuration(sessionStartedAt)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleStop}
+              >
+                <RiShutDownLine className="mr-1.5 size-3.5" />
+                Stop Charging
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === "stopping" && (
+          <div className="flex flex-col items-center py-10">
+            <div className="relative">
+              <div className="size-16 animate-spin rounded-full border-4 border-red-100 border-t-red-500" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <RiShutDownLine className="size-6 text-red-500" />
+              </div>
+            </div>
+            <p className="mt-4 text-sm font-medium">
+              Sending RemoteStopTransaction...
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Connector #{connectorId}
+            </p>
+          </div>
+        )}
+
+        {step === "stopped" && (
+          <div className="flex flex-col items-center py-10">
+            <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
+              <RiCheckboxCircleLine className="size-8 text-emerald-500" />
+            </div>
+            <p className="mt-4 text-sm font-medium">Charging Stopped</p>
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              RemoteStopTransaction sent successfully.
+              <br />
+              The charger will finalize the session.
+            </p>
+            <Button className="mt-4" onClick={handleClose}>
+              Done
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

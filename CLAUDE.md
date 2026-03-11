@@ -82,7 +82,7 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
+| `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
 | `REDIS_URL` | `redis://localhost:6379` | Redis |
 | `ADDR` | `:8080` | API server address |
 | `OCPP_ADDR` | `:8081` | OCPP server address |

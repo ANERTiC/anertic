@@ -34,7 +34,7 @@ func run() error {
 
 	cfg := configfile.NewEnvReader()
 
-	db, err := sql.Open("postgres", cfg.StringDefault("DATABASE_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
+	db, err := sql.Open("postgres", cfg.StringDefault("DB_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,7 @@ func main() {
 	env := configfile.NewEnvReader()
 
 	cfg := pipeline.Config{
-		DatabaseURL: env.MustString("DATABASE_URL"),
+		DatabaseURL: env.MustString("DB_URL"),
 		RedisURL:    env.MustString("REDIS_URL"),
 		MQTTBroker:  env.MustString("MQTT_BROKER"),
 		MQTTTopic:   env.StringDefault("MQTT_TOPIC", "anertic/+/readings"),

@@ -20,6 +20,7 @@ import (
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/api/auth/provider"
+	"github.com/anertic/anertic/schema"
 	"github.com/anertic/anertic/api/conf"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
@@ -43,11 +44,16 @@ func run() error {
 	defer cancel()
 
 	// Connect to PostgreSQL and inject into context
-	db, err := sql.Open("postgres", cfg.StringDefault("DATABASE_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
+	db, err := sql.Open("postgres", cfg.StringDefault("DB_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	if err := schema.Migrate(ctx, db); err != nil {
+		return err
+	}
+
 	ctx = pgctx.NewContext(ctx, db)
 
 	opt, err := redis.ParseURL(cfg.StringDefault("REDIS_URL", "redis://localhost:6379"))

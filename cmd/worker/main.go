@@ -20,7 +20,7 @@ func main() {
 	env := configfile.NewEnvReader()
 
 	cfg := insight.WorkerConfig{
-		DatabaseURL:      env.MustString("DATABASE_URL"),
+		DatabaseURL:      env.MustString("DB_URL"),
 		RedisURL:         env.MustString("REDIS_URL"),
 		SupermemoryURL:   env.StringDefault("SUPERMEMORY_URL", ""),
 		SupermemoryToken: env.StringDefault("SUPERMEMORY_TOKEN", ""),

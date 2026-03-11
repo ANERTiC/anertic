@@ -10,6 +10,11 @@ import {
 import type { Route } from "./+types/root"
 import "./app.css"
 
+export const meta: Route.MetaFunction = () => [
+  { title: "ANERTiC — AI-Powered Energy Monitoring" },
+  { name: "description", content: "AI-powered energy monitoring platform" },
+]
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">

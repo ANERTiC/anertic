@@ -1,44 +1,41 @@
-import { useNavigate } from "react-router"
-import { RiGoogleFill } from "@remixicon/react"
+import { RiGoogleFill, RiFlashlightLine } from "@remixicon/react"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { setAuth } from "~/lib/auth"
 
 export default function Login() {
-  const navigate = useNavigate()
-
   function handleGoogleSignIn() {
-    // TODO: Replace with real Google OAuth flow
-    // For now, redirect to backend OAuth endpoint
     const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080"
     window.location.href = `${apiUrl}/auth/google`
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground text-xl font-bold">
-          A
+    <div className="flex w-full max-w-sm flex-col items-center gap-8 px-4">
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
+          <RiFlashlightLine className="size-7" />
         </div>
-        <CardTitle className="text-xl">Welcome to ANERTiC</CardTitle>
-        <CardDescription>
+        <h1 className="text-2xl font-bold tracking-tight">
+          ANERTiC
+        </h1>
+        <p className="text-center text-sm text-muted-foreground">
           AI-powered energy monitoring platform
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </p>
+      </div>
+
+      <div className="w-full space-y-4">
         <Button
           variant="outline"
-          className="w-full gap-2"
           size="lg"
+          className="w-full gap-2.5"
           onClick={handleGoogleSignIn}
         >
           <RiGoogleFill className="size-4" />
-          Sign in with Google
+          Continue with Google
         </Button>
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
-        </p>
-      </CardContent>
-    </Card>
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground">
+        By continuing, you agree to our Terms of Service and Privacy Policy.
+      </p>
+    </div>
   )
 }

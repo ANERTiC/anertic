@@ -629,17 +629,17 @@ export default function ChargerDetail() {
             <RiHistoryLine className="mr-1.5 size-3.5" />
             Sessions
           </TabsTrigger>
-          <TabsTrigger value="settings">
-            <RiSettings3Line className="mr-1.5 size-3.5" />
-            Settings
-          </TabsTrigger>
           <TabsTrigger value="info">
             <RiInformationLine className="mr-1.5 size-3.5" />
             Device Info
           </TabsTrigger>
+          <TabsTrigger value="settings">
+            <RiSettings3Line className="mr-1.5 size-3.5" />
+            Settings
+          </TabsTrigger>
           <TabsTrigger value="log">
             <RiHistoryLine className="mr-1.5 size-3.5" />
-            OCPP Log
+            OCPP Logs
           </TabsTrigger>
         </TabsList>
 
@@ -692,11 +692,6 @@ export default function ChargerDetail() {
           </div>
         </TabsContent>
 
-        {/* Settings */}
-        <TabsContent value="settings" className="mt-4">
-          <SettingsTab charger={charger} />
-        </TabsContent>
-
         {/* Device Info */}
         <TabsContent value="info" className="mt-4">
           <Card>
@@ -745,7 +740,12 @@ export default function ChargerDetail() {
           </Card>
         </TabsContent>
 
-        {/* OCPP Log */}
+        {/* Settings */}
+        <TabsContent value="settings" className="mt-4">
+          <SettingsTab charger={charger} />
+        </TabsContent>
+
+        {/* OCPP Logs */}
         <TabsContent value="log" className="mt-4">
           <Card>
             <CardContent className="p-0">

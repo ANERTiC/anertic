@@ -31,3 +31,68 @@ run-worker:
 
 run-ingester:
 	go run ./cmd/ingester
+
+run-ocpp:
+	go run ./cmd/ocpp
+
+# Deployment
+GIT_REV := $(shell git rev-parse --short HEAD)
+IMAGE_BASE := ghcr.io/anertic/anertic
+DEPLOY_API := https://console.nortezh.com/api/deployment.deploy
+NT_TOKEN_FILE ?= $(HOME)/secrets/nt_token
+NT_TOKEN := $(shell cat $(NT_TOKEN_FILE) 2>/dev/null)
+
+define deploy
+	curl -X POST $(DEPLOY_API) \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $(NT_TOKEN)" \
+		-d '{"image":"$(1)","project":"$(2)","name":"$(3)","location":"$(4)"}'
+endef
+
+deploy-api:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/api:$(GIT_REV) \
+		-f build/api/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/api:$(GIT_REV),anertic,staging-api,olufy-0)
+
+deploy-ocpp:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/ocpp:$(GIT_REV) \
+		-f build/ocpp/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/ocpp:$(GIT_REV),anertic,staging-ocpp,olufy-0)
+
+deploy-worker:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/worker:$(GIT_REV) \
+		-f build/worker/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/worker:$(GIT_REV),anertic,staging-worker,olufy-0)
+
+deploy-ingester:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/ingester:$(GIT_REV) \
+		-f build/ingester/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,staging-ingester,olufy-0)
+
+release-api:
+	$(call deploy,$(IMAGE_BASE)/api:$(GIT_REV),anertic,api,olufy-0)
+
+release-ocpp:
+	$(call deploy,$(IMAGE_BASE)/ocpp:$(GIT_REV),anertic,ocpp,olufy-0)
+
+release-worker:
+	$(call deploy,$(IMAGE_BASE)/worker:$(GIT_REV),anertic,worker,olufy-0)
+
+release-ingester:
+	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,ingester,olufy-0)

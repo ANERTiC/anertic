@@ -1,9 +1,9 @@
-import { RiGoogleFill, RiFlashlightLine } from "@remixicon/react"
-import { Button } from "~/components/ui/button"
+import { RiGoogleFill, RiFlashlightLine } from '@remixicon/react'
+import { Button } from '~/components/ui/button'
 
 export default function Login() {
   function handleGoogleSignIn() {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080"
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
     window.location.href = `${apiUrl}/auth/google`
   }
 
@@ -13,9 +13,7 @@ export default function Login() {
         <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
           <RiFlashlightLine className="size-7" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          ANERTiC
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">ANERTiC</h1>
         <p className="text-center text-sm text-muted-foreground">
           AI-powered energy monitoring platform
         </p>

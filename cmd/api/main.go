@@ -16,6 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/api"
+	"github.com/anertic/anertic/api/auth"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
 
@@ -62,8 +63,23 @@ func run() error {
 		}{true, v})
 	}
 
+	// Auth routes (no auth middleware — public)
+	auth.Mount(mux, auth.Config{
+		GoogleClientID:     cfg.String("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: cfg.String("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURL:  cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+		AppURL:             cfg.StringDefault("APP_URL", "http://localhost:5173"),
+	})
+
+	// Public API routes (no auth)
+	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshTokenHandler))
+
+	// Protected API routes (auth middleware)
+	authed := mux.Group("", am.Middleware(auth.Middleware))
+	authed.Handle("POST /api/v1/auth.me", am.Handler(auth.Me))
+	api.Mount(authed, am)
+
 	mux.Handle("/", am.NotFoundHandler())
-	api.Mount(mux, am)
 
 	srv.Handler = mux
 	srv.Use(cors.New())

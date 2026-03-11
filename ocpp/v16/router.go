@@ -67,8 +67,3 @@ func (rt *Router) HandleCall(ctx context.Context, cp *ocpp.ChargePoint, msgID st
 		cp.Reply(ctx, msgID, map[string]any{})
 	}
 }
-
-// ExecuteRemoteCommand dispatches an outbound command to the charger.
-func (rt *Router) ExecuteRemoteCommand(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command) (*ocpp.CommandResponse, error) {
-	return executeRemoteCommand(ctx, cp, cmd)
-}

@@ -34,14 +34,3 @@ func (rt *Router) HandleCall(ctx context.Context, cp *ocpp.ChargePoint, msgID st
 		cp.Reply(ctx, msgID, map[string]any{})
 	}
 }
-
-// ExecuteRemoteCommand dispatches an outbound command to the charger.
-func (rt *Router) ExecuteRemoteCommand(ctx context.Context, cp *ocpp.ChargePoint, cmd *ocpp.Command) (*ocpp.CommandResponse, error) {
-	// TODO: implement OCPP 2.0.1 remote commands
-	// OCPP 2.0.1 uses RequestStartTransaction, RequestStopTransaction, etc.
-
-	return &ocpp.CommandResponse{
-		RequestID: cmd.RequestID,
-		Error:     "ocpp 2.0.1 remote commands not yet implemented",
-	}, nil
-}

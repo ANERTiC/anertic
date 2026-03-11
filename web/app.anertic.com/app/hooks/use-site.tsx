@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "react-router"
 import { api } from "~/lib/api"
+import { getCookie, setCookie } from "~/lib/cookie"
 
 export interface Site {
   id: string
@@ -16,7 +18,7 @@ interface SiteContextValue {
   loading: boolean
 }
 
-const SITE_KEY = "anertic_current_site"
+const SITE_COOKIE = "anertic_current_site"
 
 const SiteContext = createContext<SiteContextValue>({
   sites: [],
@@ -29,14 +31,26 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [sites, setSites] = useState<Site[]>([])
   const [currentSite, setCurrentSite] = useState<Site | null>(null)
   const [loading, setLoading] = useState(true)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
     api<{ items: Site[] }>("site.list")
       .then((data) => {
-        setSites(data.items || [])
-        const savedId = localStorage.getItem(SITE_KEY)
-        const saved = data.items?.find((s) => s.id === savedId)
-        setCurrentSite(saved || data.items?.[0] || null)
+        const items = data.items || []
+        setSites(items)
+
+        // Priority: URL ?site= > cookie > first site
+        const urlSiteId = searchParams.get("site")
+        const cookieSiteId = getCookie(SITE_COOKIE)
+        const targetId = urlSiteId || cookieSiteId
+
+        const found = items.find((s) => s.id === targetId)
+        const selected = found || items[0] || null
+
+        setCurrentSite(selected)
+        if (selected) {
+          setCookie(SITE_COOKIE, selected.id)
+        }
       })
       .catch(() => {
         setSites([])
@@ -44,10 +58,19 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const setSite = useCallback((site: Site) => {
-    setCurrentSite(site)
-    localStorage.setItem(SITE_KEY, site.id)
-  }, [])
+  const setSite = useCallback(
+    (site: Site) => {
+      setCurrentSite(site)
+      setCookie(SITE_COOKIE, site.id)
+      // Update URL search param
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set("site", site.id)
+        return next
+      })
+    },
+    [setSearchParams],
+  )
 
   return (
     <SiteContext.Provider value={{ sites, currentSite, setSite, loading }}>
@@ -58,4 +81,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
 export function useSite() {
   return useContext(SiteContext)
+}
+
+export function getSiteCookie(): string | undefined {
+  return getCookie(SITE_COOKIE)
 }

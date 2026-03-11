@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -106,6 +106,8 @@ function timeAgo(dateStr: string | null): string {
 export default function ChargerDetail() {
   const { chargerId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const siteId = searchParams.get("site")
 
   const { data: charger, isLoading } = useSWR(
     chargerId ? ["charger.get", chargerId] : null,
@@ -140,7 +142,7 @@ export default function ChargerDetail() {
   if (!charger) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/chargers")}>
+        <Button variant="ghost" onClick={() => navigate(`/chargers${siteId ? `?site=${siteId}` : ""}`)}>
           <RiArrowLeftLine className="mr-2 h-4 w-4" />
           Back to Chargers
         </Button>
@@ -158,7 +160,7 @@ export default function ChargerDetail() {
             variant="ghost"
             size="sm"
             className="mb-2 -ml-2"
-            onClick={() => navigate("/chargers")}
+            onClick={() => navigate(`/chargers${siteId ? `?site=${siteId}` : ""}`)}
           >
             <RiArrowLeftLine className="mr-1 h-4 w-4" />
             Chargers

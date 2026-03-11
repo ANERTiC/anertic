@@ -18,11 +18,14 @@ export default [
   layout("layouts/console.tsx", [
     index("routes/dashboard.tsx"),
     route("sites", "routes/sites.tsx"),
-    route("sites/:siteId", "routes/site-detail.tsx"),
-    route("devices", "routes/devices.tsx"),
-    route("chargers", "routes/chargers.tsx"),
-    route("chargers/:chargerId", "routes/charger-detail.tsx"),
-    route("insights", "routes/insights.tsx"),
     route("settings", "routes/settings.tsx"),
+
+    // Site-scoped pages (require ?site= param)
+    layout("layouts/site.tsx", [
+      route("chargers", "routes/chargers.tsx"),
+      route("chargers/:chargerId", "routes/charger-detail.tsx"),
+      route("devices", "routes/devices.tsx"),
+      route("insights", "routes/insights.tsx"),
+    ]),
   ]),
 ] satisfies RouteConfig

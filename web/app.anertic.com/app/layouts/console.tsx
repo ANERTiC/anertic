@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router"
+import { NavLink, Outlet, useNavigate, useSearchParams } from "react-router"
 import {
   RiDashboardLine,
   RiBuilding2Line,
@@ -35,17 +35,44 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { TooltipProvider } from "~/components/ui/tooltip"
 import { SiteProvider, useSite } from "~/hooks/use-site"
 
-const navItems = [
+interface NavItem {
+  to: string
+  icon: typeof RiDashboardLine
+  label: string
+  siteScoped?: boolean
+}
+
+const navItems: NavItem[] = [
   { to: "/", icon: RiDashboardLine, label: "Dashboard" },
   { to: "/sites", icon: RiBuilding2Line, label: "Sites" },
-  { to: "/devices", icon: RiCpuLine, label: "Devices" },
-  { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers" },
-  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
+  { to: "/devices", icon: RiCpuLine, label: "Devices", siteScoped: true },
+  { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers", siteScoped: true },
+  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights", siteScoped: true },
 ]
 
 export function clientLoader({}: Route.ClientLoaderArgs) {
   requireAuth()
   return { user: getUser() }
+}
+
+function NavItemLink({ item }: { item: NavItem }) {
+  const { currentSite } = useSite()
+  const to = item.siteScoped && currentSite ? `${item.to}?site=${currentSite.id}` : item.to
+
+  return (
+    <SidebarMenuButton asChild>
+      <NavLink
+        to={to}
+        end={item.to === "/"}
+        className={({ isActive }) =>
+          isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+        }
+      >
+        <item.icon className="size-4" />
+        <span>{item.label}</span>
+      </NavLink>
+    </SidebarMenuButton>
+  )
 }
 
 function SiteSwitcher() {
@@ -110,18 +137,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
                 <SidebarMenu>
                   {navItems.map((item) => (
                     <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.to}
-                          end={item.to === "/"}
-                          className={({ isActive }) =>
-                            isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
-                          }
-                        >
-                          <item.icon className="size-4" />
-                          <span>{item.label}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
+                      <NavItemLink item={item} />
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>

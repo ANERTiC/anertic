@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import {
   RiAddLine,
   RiChargingPileLine,
@@ -52,15 +52,6 @@ interface CreateResult {
   id: string
 }
 
-interface Site {
-  id: string
-  name: string
-}
-
-interface SiteListResult {
-  items: Site[]
-}
-
 function statusColor(status: string) {
   switch (status) {
     case "Available":
@@ -94,42 +85,29 @@ function timeAgo(dateStr: string | null): string {
 
 export default function Chargers() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const siteId = searchParams.get("site")!
   const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
 
-  const [siteId, setSiteId] = useState("")
   const [chargePointId, setChargePointId] = useState("")
   const [ocppVersion, setOcppVersion] = useState("1.6")
   const [connectorCount, setConnectorCount] = useState("1")
   const [maxPowerKw, setMaxPowerKw] = useState("")
 
-  const { data: sitesData } = useSWR(
-    "site.list",
-    () => api<SiteListResult>("site.list", {}),
-  )
-  const sites = sitesData?.items || []
-
-  // Fetch chargers for all sites
-  const { data: allChargers, isLoading, mutate } = useSWR(
-    sites.length > 0 ? ["chargers.all", sites.map((s) => s.id).join(",")] : null,
-    async () => {
-      const results = await Promise.all(
-        sites.map((s) => api<ListResult>("charger.list", { siteId: s.id })),
-      )
-      return results.flatMap((r) => r.items || [])
-    },
+  const { data, isLoading, mutate } = useSWR(
+    siteId ? ["charger.list", siteId] : null,
+    () => api<ListResult>("charger.list", { siteId }),
   )
 
-  const chargers = (allChargers || []).filter(
+  const chargers = (data?.items || []).filter(
     (c) =>
       !search ||
       c.chargePointId.toLowerCase().includes(search.toLowerCase()) ||
       c.vendor.toLowerCase().includes(search.toLowerCase()) ||
       c.model.toLowerCase().includes(search.toLowerCase()),
   )
-
-  const siteMap = new Map(sites.map((s) => [s.id, s.name]))
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -144,13 +122,12 @@ export default function Chargers() {
       })
       toast.success("Charger registered successfully")
       setOpen(false)
-      setSiteId("")
       setChargePointId("")
       setOcppVersion("1.6")
       setConnectorCount("1")
       setMaxPowerKw("")
       mutate()
-      navigate(`/chargers/${result.id}`)
+      navigate(`/chargers/${result.id}?site=${siteId}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to register charger")
     } finally {
@@ -179,27 +156,10 @@ export default function Chargers() {
               <DialogHeader>
                 <DialogTitle>Register Charger</DialogTitle>
                 <DialogDescription>
-                  Add a new EV charger to your network.
+                  Add a new EV charger to this site.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="siteId">Site</Label>
-                  <select
-                    id="siteId"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={siteId}
-                    onChange={(e) => setSiteId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a site</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="chargePointId">Charge Point ID</Label>
                   <Input
@@ -266,7 +226,7 @@ export default function Chargers() {
         />
       </div>
 
-      {isLoading || (sites.length > 0 && !allChargers) ? (
+      {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-40 rounded-lg" />
@@ -287,7 +247,7 @@ export default function Chargers() {
             <Card
               key={charger.id}
               className="cursor-pointer transition-colors hover:bg-muted/50"
-              onClick={() => navigate(`/chargers/${charger.id}`)}
+              onClick={() => navigate(`/chargers/${charger.id}?site=${siteId}`)}
             >
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -316,8 +276,7 @@ export default function Chargers() {
                   <span>OCPP {charger.ocppVersion}</span>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{siteMap.get(charger.siteId) || "Unknown site"}</span>
+                <div className="mt-3 flex items-center justify-end text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     {charger.lastHeartbeatAt ? (
                       <RiSignalWifiLine className="h-3 w-3" />

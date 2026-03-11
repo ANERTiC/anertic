@@ -7,21 +7,31 @@ import {
   RiSignalWifiLine,
   RiSignalWifiOffLine,
   RiTimeLine,
-  RiLoopLeftLine,
   RiAlertLine,
   RiCheckboxCircleLine,
-  RiBattery2ChargeLine,
   RiSettings3Line,
   RiHistoryLine,
   RiInformationLine,
   RiRestartLine,
   RiShutDownLine,
+  RiEditLine,
+  RiDeleteBinLine,
+  RiUploadLine,
+  RiShieldKeyholeLine,
+  RiAddLine,
+  RiSaveLine,
+  RiBarChartBoxLine,
+  RiArrowUpSLine,
+  RiArrowDownSLine,
 } from "@remixicon/react"
+import { toast } from "sonner"
 
 import { useSiteId } from "~/layouts/site"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { cn } from "~/lib/utils"
 
@@ -86,6 +96,35 @@ interface OcppEvent {
   direction: "in" | "out"
   timestamp: string
   payload?: string
+}
+
+interface DailyEnergy {
+  date: string
+  label: string
+  energyKwh: number
+  sessions: number
+  peakPowerKw: number
+  avgSessionKwh: number
+  connector1Kwh: number
+  connector2Kwh: number
+}
+
+interface HourlyPower {
+  hour: number
+  powerKw: number
+  energyKwh: number
+}
+
+interface AnalyticsSummary {
+  last7DaysKwh: number
+  last7DaysSessions: number
+  last7DaysAvgDaily: number
+  last7DaysAvgSession: number
+  last7DaysPeakPower: number
+  changePercent: number
+  changeDirection: "up" | "down" | "stable"
+  bussiestDay: string
+  bussiestHour: string
 }
 
 // --- Mock Data ---
@@ -226,6 +265,81 @@ function generateMockEvents(): OcppEvent[] {
   ]
 }
 
+function generateMockAnalytics(): {
+  daily: DailyEnergy[]
+  hourly: HourlyPower[]
+  summary: AnalyticsSummary
+} {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const now = new Date()
+  const currentHour = now.getHours()
+
+  const daily: DailyEnergy[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() - (6 - i))
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6
+    const base = isWeekend ? 25 : 42
+    const energy = base + Math.random() * 20 - 5
+    const sessions = Math.floor((isWeekend ? 2 : 4) + Math.random() * 3)
+    const peak = 11 + Math.random() * 11
+    const c1 = energy * (0.45 + Math.random() * 0.15)
+    return {
+      date: d.toISOString().split("T")[0],
+      label: i === 6 ? "Today" : days[d.getDay()],
+      energyKwh: parseFloat(energy.toFixed(1)),
+      sessions,
+      peakPowerKw: parseFloat(peak.toFixed(1)),
+      avgSessionKwh: parseFloat((energy / sessions).toFixed(1)),
+      connector1Kwh: parseFloat(c1.toFixed(1)),
+      connector2Kwh: parseFloat((energy - c1).toFixed(1)),
+    }
+  })
+
+  const hourly: HourlyPower[] = Array.from({ length: 24 }, (_, hour) => {
+    if (hour > currentHour) return { hour, powerKw: 0, energyKwh: 0 }
+    // Simulate typical EV charging pattern: morning commuters + afternoon + evening
+    const morningPeak = Math.exp(-((hour - 9) ** 2) / 6)
+    const afternoonPeak = Math.exp(-((hour - 14) ** 2) / 8)
+    const eveningPeak = Math.exp(-((hour - 19) ** 2) / 6)
+    const base = 1.5
+    const power =
+      base +
+      morningPeak * 15 +
+      afternoonPeak * 10 +
+      eveningPeak * 18 +
+      Math.random() * 2
+    return {
+      hour,
+      powerKw: parseFloat(Math.min(power, 22).toFixed(1)),
+      energyKwh: parseFloat((Math.min(power, 22) * 0.85).toFixed(2)),
+    }
+  })
+
+  const totalKwh = daily.reduce((s, d) => s + d.energyKwh, 0)
+  const totalSessions = daily.reduce((s, d) => s + d.sessions, 0)
+  const peakPower = Math.max(...daily.map((d) => d.peakPowerKw))
+  const busiestDay = [...daily].sort((a, b) => b.energyKwh - a.energyKwh)[0]
+  const busiestHour = [...hourly].sort((a, b) => b.powerKw - a.powerKw)[0]
+
+  return {
+    daily,
+    hourly,
+    summary: {
+      last7DaysKwh: parseFloat(totalKwh.toFixed(1)),
+      last7DaysSessions: totalSessions,
+      last7DaysAvgDaily: parseFloat((totalKwh / 7).toFixed(1)),
+      last7DaysAvgSession: parseFloat(
+        (totalKwh / Math.max(totalSessions, 1)).toFixed(1),
+      ),
+      last7DaysPeakPower: peakPower,
+      changePercent: 12.4,
+      changeDirection: "up",
+      bussiestDay: busiestDay.label,
+      bussiestHour: `${busiestHour.hour.toString().padStart(2, "0")}:00`,
+    },
+  }
+}
+
 // --- Helpers ---
 
 function statusColor(status: string) {
@@ -351,6 +465,7 @@ export default function ChargerDetail() {
   )
   const [sessions] = useState<Session[]>(() => generateMockSessions())
   const [events] = useState<OcppEvent[]>(() => generateMockEvents())
+  const [analytics] = useState(() => generateMockAnalytics())
 
   useEffect(() => {
     setMounted(true)
@@ -441,56 +556,6 @@ export default function ChargerDetail() {
         </div>
       </div>
 
-      {/* Stats Strip */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-3 divide-x lg:grid-cols-6">
-            <StatCell
-              icon={RiFlashlightLine}
-              label="Live Power"
-              value={formatPower(charger.currentPowerKw)}
-              sub={`of ${formatPower(charger.maxPowerKw)}`}
-              color="cyan"
-            />
-            <StatCell
-              icon={RiBattery2ChargeLine}
-              label="Today"
-              value={formatEnergy(charger.todayEnergyKwh)}
-              sub={`${charger.todaySessions} sessions`}
-              color="amber"
-            />
-            <StatCell
-              icon={RiLoopLeftLine}
-              label="Uptime"
-              value={`${charger.uptimePercent}%`}
-              sub="last 30 days"
-              color={charger.uptimePercent >= 95 ? "emerald" : "red"}
-            />
-            <StatCell
-              icon={RiHistoryLine}
-              label="Total Energy"
-              value={formatEnergy(charger.totalEnergyKwh)}
-              sub={`${charger.totalSessions} sessions`}
-              color="violet"
-            />
-            <StatCell
-              icon={RiPlugLine}
-              label="Connectors"
-              value={`${charger.connectors.filter((c) => c.status === "Charging").length}/${charger.connectorCount}`}
-              sub="active"
-              color="blue"
-            />
-            <StatCell
-              icon={RiTimeLine}
-              label="Heartbeat"
-              value={`${charger.heartbeatInterval}s`}
-              sub={timeAgo(charger.lastHeartbeatAt)}
-              color="emerald"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Connectors */}
       <div className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">
@@ -503,23 +568,37 @@ export default function ChargerDetail() {
         </div>
       </div>
 
-      {/* Tabs: Sessions / Info / OCPP Log */}
-      <Tabs defaultValue="sessions">
+      {/* Tabs */}
+      <Tabs defaultValue="analytics">
         <TabsList>
+          <TabsTrigger value="analytics">
+            <RiBarChartBoxLine className="mr-1.5 size-3.5" />
+            Analytics
+          </TabsTrigger>
           <TabsTrigger value="sessions">
             <RiHistoryLine className="mr-1.5 size-3.5" />
             Sessions
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <RiSettings3Line className="mr-1.5 size-3.5" />
+            Settings
           </TabsTrigger>
           <TabsTrigger value="info">
             <RiInformationLine className="mr-1.5 size-3.5" />
             Device Info
           </TabsTrigger>
           <TabsTrigger value="log">
-            <RiSettings3Line className="mr-1.5 size-3.5" />
+            <RiHistoryLine className="mr-1.5 size-3.5" />
             OCPP Log
           </TabsTrigger>
         </TabsList>
 
+        {/* Analytics */}
+        <TabsContent value="analytics" className="mt-4">
+          <AnalyticsTab analytics={analytics} charger={charger} />
+        </TabsContent>
+
+        {/* Sessions */}
         <TabsContent value="sessions" className="mt-4">
           <div className="space-y-4">
             {activeSessions.length > 0 && (
@@ -545,6 +624,12 @@ export default function ChargerDetail() {
           </div>
         </TabsContent>
 
+        {/* Settings */}
+        <TabsContent value="settings" className="mt-4">
+          <SettingsTab charger={charger} />
+        </TabsContent>
+
+        {/* Device Info */}
         <TabsContent value="info" className="mt-4">
           <Card>
             <CardContent className="p-5">
@@ -592,6 +677,7 @@ export default function ChargerDetail() {
           </Card>
         </TabsContent>
 
+        {/* OCPP Log */}
         <TabsContent value="log" className="mt-4">
           <Card>
             <CardContent className="p-0">
@@ -635,57 +721,667 @@ export default function ChargerDetail() {
 
 // --- Sub-components ---
 
-function StatCell({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color,
+function AnalyticsTab({
+  analytics,
+  charger,
 }: {
-  icon: typeof RiFlashlightLine
-  label: string
-  value: string
-  sub: string
-  color: string
+  analytics: ReturnType<typeof generateMockAnalytics>
+  charger: Charger
 }) {
-  const colorMap: Record<string, { text: string; bg: string }> = {
-    amber: { text: "text-amber-700", bg: "from-amber-50" },
-    emerald: { text: "text-emerald-700", bg: "from-emerald-50" },
-    violet: { text: "text-violet-700", bg: "from-violet-50" },
-    blue: { text: "text-blue-700", bg: "from-blue-50" },
-    cyan: { text: "text-cyan-700", bg: "from-cyan-50" },
-    red: { text: "text-red-700", bg: "from-red-50" },
-  }
-  const c = colorMap[color] || colorMap.blue
+  const { daily, hourly, summary } = analytics
+  const maxDailyKwh = Math.max(...daily.map((d) => d.energyKwh), 0.1)
+  const maxHourlyPower = Math.max(...hourly.map((h) => h.powerKw), 0.1)
+  const currentHour = new Date().getHours()
 
   return (
-    <div className="relative px-4 py-3.5">
-      <div
-        className={cn(
-          "absolute inset-0 bg-gradient-to-br to-transparent",
-          c.bg,
-        )}
-      />
-      <div className="relative">
-        <div
-          className={cn(
-            "flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider opacity-70",
-            c.text,
-          )}
-        >
-          <Icon className="size-3" />
-          {label}
-        </div>
-        <p
-          className={cn(
-            "mt-1.5 text-lg font-bold tabular-nums tracking-tight",
-            c.text,
-          )}
-        >
-          {value}
-        </p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">{sub}</p>
+    <div className="space-y-5">
+      {/* Summary Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              7-Day Total
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {summary.last7DaysKwh}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                kWh
+              </span>
+            </p>
+            <div className="mt-1 flex items-center gap-1">
+              {summary.changeDirection === "up" ? (
+                <RiArrowUpSLine className="size-4 text-emerald-500" />
+              ) : (
+                <RiArrowDownSLine className="size-4 text-red-500" />
+              )}
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  summary.changeDirection === "up"
+                    ? "text-emerald-600"
+                    : "text-red-600",
+                )}
+              >
+                {summary.changePercent}% vs prev week
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Sessions
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {summary.last7DaysSessions}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              avg {summary.last7DaysAvgSession} kWh/session
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Daily Average
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {summary.last7DaysAvgDaily}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                kWh
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Busiest: {summary.bussiestDay}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Peak Power
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {summary.last7DaysPeakPower}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                kW
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              of {charger.maxPowerKw} kW capacity
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Daily Energy Chart (7 days) */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Energy Delivered — Last 7 Days</h3>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-blue-500" />
+                Connector 1
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-cyan-400" />
+                Connector 2
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 flex h-48 items-end gap-2">
+            {daily.map((day) => {
+              const totalH =
+                maxDailyKwh > 0
+                  ? (day.energyKwh / maxDailyKwh) * 100
+                  : 0
+              const c1Pct =
+                day.energyKwh > 0
+                  ? (day.connector1Kwh / day.energyKwh) * 100
+                  : 0
+
+              return (
+                <div
+                  key={day.date}
+                  className="group relative flex flex-1 flex-col items-center justify-end"
+                >
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute -top-20 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg border bg-card px-3 py-2 text-[11px] shadow-lg group-hover:block">
+                    <p className="font-semibold">{day.label}</p>
+                    <p className="tabular-nums">
+                      {day.energyKwh} kWh &middot; {day.sessions} sessions
+                    </p>
+                    <p className="text-muted-foreground tabular-nums">
+                      Peak: {day.peakPowerKw} kW
+                    </p>
+                  </div>
+                  {/* Stacked bar */}
+                  <div
+                    className="flex w-full flex-col overflow-hidden rounded-t-md"
+                    style={{ height: `${Math.max(totalH, 2)}%` }}
+                  >
+                    <div
+                      className="w-full bg-blue-500 transition-all duration-500"
+                      style={{ height: `${c1Pct}%` }}
+                    />
+                    <div
+                      className="w-full flex-1 bg-cyan-400 transition-all duration-500"
+                    />
+                  </div>
+                  {/* Label */}
+                  <span className="mt-2 text-[10px] text-muted-foreground">
+                    {day.label}
+                  </span>
+                  <span className="text-[10px] font-medium tabular-nums">
+                    {day.energyKwh}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Hourly Power Profile (Today) */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Power Profile — Today</h3>
+            <span className="text-xs text-muted-foreground">
+              Average kW per hour
+            </span>
+          </div>
+          <div className="mt-4 flex h-36 items-end gap-px">
+            {hourly.map((h) => {
+              const barH =
+                maxHourlyPower > 0
+                  ? (h.powerKw / maxHourlyPower) * 100
+                  : 0
+              const isCurrent = h.hour === currentHour
+              const isFuture = h.hour > currentHour
+
+              return (
+                <div
+                  key={h.hour}
+                  className="group relative flex flex-1 flex-col items-center justify-end"
+                >
+                  <div className="pointer-events-none absolute -top-14 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] text-background shadow-lg group-hover:block">
+                    <div className="font-medium">
+                      {h.hour.toString().padStart(2, "0")}:00
+                    </div>
+                    <div>{h.powerKw} kW</div>
+                    <div>{h.energyKwh} kWh</div>
+                  </div>
+                  <div
+                    className={cn(
+                      "w-full rounded-t-sm transition-all duration-300",
+                      isFuture
+                        ? "bg-blue-100"
+                        : isCurrent
+                          ? "bg-blue-600"
+                          : "bg-blue-400",
+                    )}
+                    style={{ height: `${Math.max(barH, 1)}%` }}
+                  />
+                  {h.hour % 4 === 0 && (
+                    <span className="mt-1.5 text-[10px] tabular-nums text-muted-foreground">
+                      {h.hour.toString().padStart(2, "0")}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-connector breakdown */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[1, 2].map((connId) => {
+          const connDailyKwh = daily.map((d) =>
+            connId === 1 ? d.connector1Kwh : d.connector2Kwh,
+          )
+          const total = connDailyKwh.reduce((s, v) => s + v, 0)
+          const max = Math.max(...connDailyKwh, 0.1)
+
+          return (
+            <Card key={connId}>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RiPlugLine className="size-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium">
+                      Connector {connId}
+                    </h3>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums">
+                    {total.toFixed(1)} kWh
+                  </span>
+                </div>
+                <div className="mt-3 flex h-16 items-end gap-1.5">
+                  {connDailyKwh.map((kwh, i) => {
+                    const h = max > 0 ? (kwh / max) * 100 : 0
+                    return (
+                      <div
+                        key={i}
+                        className="group relative flex flex-1 flex-col items-center justify-end"
+                      >
+                        <div className="pointer-events-none absolute -top-8 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] text-background group-hover:block">
+                          {kwh.toFixed(1)}
+                        </div>
+                        <div
+                          className={cn(
+                            "w-full rounded-t-sm",
+                            connId === 1 ? "bg-blue-400" : "bg-cyan-400",
+                          )}
+                          style={{ height: `${Math.max(h, 3)}%` }}
+                        />
+                        <span className="mt-1 text-[9px] text-muted-foreground">
+                          {daily[i].label.slice(0, 3)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Mock OCPP configuration keys
+const MOCK_CONFIG_KEYS = [
+  { key: "HeartbeatInterval", value: "60", readonly: false },
+  { key: "MeterValueSampleInterval", value: "30", readonly: false },
+  { key: "ClockAlignedDataInterval", value: "0", readonly: false },
+  { key: "ConnectionTimeOut", value: "120", readonly: false },
+  { key: "MeterValuesAlignedData", value: "Energy.Active.Import.Register", readonly: false },
+  { key: "MeterValuesSampledData", value: "Energy.Active.Import.Register,Power.Active.Import", readonly: false },
+  { key: "NumberOfConnectors", value: "2", readonly: true },
+  { key: "ChargePointModel", value: "Terra AC W22-T-RD-M-0", readonly: true },
+  { key: "ChargePointVendor", value: "ABB", readonly: true },
+  { key: "SupportedFeatureProfiles", value: "Core,FirmwareManagement,LocalAuthListManagement,SmartCharging", readonly: true },
+  { key: "AuthorizeRemoteTxRequests", value: "true", readonly: false },
+  { key: "LocalAuthListEnabled", value: "true", readonly: false },
+  { key: "LocalPreAuthorize", value: "false", readonly: false },
+  { key: "StopTransactionOnEVSideDisconnect", value: "true", readonly: false },
+  { key: "UnlockConnectorOnEVSideDisconnect", value: "true", readonly: false },
+]
+
+const MOCK_AUTH_LIST = [
+  { idTag: "TESLA-M3", status: "Accepted", expiryDate: "2026-12-31" },
+  { idTag: "BYD-ATTO3", status: "Accepted", expiryDate: "2026-12-31" },
+  { idTag: "MG-ZS-EV", status: "Accepted", expiryDate: "2026-06-30" },
+  { idTag: "NISSAN-LEAF", status: "Accepted", expiryDate: "2026-12-31" },
+]
+
+function SettingsTab({ charger }: { charger: Charger }) {
+  const navigate = useNavigate()
+  const siteId = useSiteId()
+  const [configKeys, setConfigKeys] = useState(
+    MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value })),
+  )
+  const [authList] = useState(MOCK_AUTH_LIST)
+  const [newIdTag, setNewIdTag] = useState("")
+  const [firmwareUrl, setFirmwareUrl] = useState("")
+  const [displayName, setDisplayName] = useState(charger.chargePointId)
+  const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
+
+  function handleEditConfig(key: string) {
+    setConfigKeys((prev) =>
+      prev.map((k) =>
+        k.key === key ? { ...k, editing: true, editValue: k.value } : k,
+      ),
+    )
+  }
+
+  function handleSaveConfig(key: string) {
+    setConfigKeys((prev) =>
+      prev.map((k) =>
+        k.key === key ? { ...k, editing: false, value: k.editValue } : k,
+      ),
+    )
+    toast.success(`Configuration "${key}" updated`)
+  }
+
+  function handleCancelConfig(key: string) {
+    setConfigKeys((prev) =>
+      prev.map((k) => (k.key === key ? { ...k, editing: false } : k)),
+    )
+  }
+
+  function handleAddIdTag() {
+    if (!newIdTag.trim()) return
+    toast.success(`ID tag "${newIdTag}" added to local auth list`)
+    setNewIdTag("")
+  }
+
+  function handleFirmwareUpdate() {
+    if (!firmwareUrl.trim()) return
+    toast.success("Firmware update requested")
+    setFirmwareUrl("")
+  }
+
+  function handleRequestDiagnostics() {
+    toast.success("Diagnostics upload requested")
+  }
+
+  function handleSaveGeneral() {
+    toast.success("Charger settings saved")
+  }
+
+  function handleDeleteCharger() {
+    if (confirm("Are you sure you want to delete this charger? This action cannot be undone.")) {
+      toast.success("Charger deleted")
+      navigate(`/chargers?site=${siteId}`)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* General Settings */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">General</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Basic charger configuration
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="displayName" className="text-xs">
+                Display Name
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="maxPower" className="text-xs">
+                Max Power (kW)
+              </Label>
+              <Input
+                id="maxPower"
+                type="number"
+                value={maxPower}
+                onChange={(e) => setMaxPower(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button size="sm" onClick={handleSaveGeneral}>
+              <RiSaveLine className="mr-1.5 size-3.5" />
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* OCPP Configuration */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">OCPP Configuration</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Read and modify charge point configuration keys
+          </p>
+          <div className="mt-4">
+            <div className="rounded-lg border">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Key</span>
+                <span>Value</span>
+                <span className="w-16" />
+              </div>
+              <div className="divide-y">
+                {configKeys.map((config) => (
+                  <div
+                    key={config.key}
+                    className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2"
+                  >
+                    <div>
+                      <span className="text-xs font-medium">{config.key}</span>
+                      {config.readonly && (
+                        <span className="ml-1.5 text-[10px] text-muted-foreground">
+                          (read-only)
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      {config.editing ? (
+                        <Input
+                          className="h-7 text-xs"
+                          value={config.editValue}
+                          onChange={(e) =>
+                            setConfigKeys((prev) =>
+                              prev.map((k) =>
+                                k.key === config.key
+                                  ? { ...k, editValue: e.target.value }
+                                  : k,
+                              ),
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveConfig(config.key)
+                            if (e.key === "Escape")
+                              handleCancelConfig(config.key)
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="truncate text-xs tabular-nums text-muted-foreground">
+                          {config.value}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex w-16 justify-end">
+                      {config.editing ? (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => handleSaveConfig(config.key)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => handleCancelConfig(config.key)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : !config.readonly ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleEditConfig(config.key)}
+                        >
+                          <RiEditLine className="size-3" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Charging Profiles */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">Charging Profiles</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Set power limits and time-based charging schedules
+          </p>
+          <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
+            <RiFlashlightLine className="mx-auto size-8 text-muted-foreground/40" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              No charging profiles configured
+            </p>
+            <Button variant="outline" size="sm" className="mt-3">
+              <RiAddLine className="mr-1.5 size-3.5" />
+              Create Profile
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Authorization */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">Authorization</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Local authorization list management
+          </p>
+          <div className="mt-4 rounded-lg border">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>ID Tag</span>
+              <span>Status</span>
+              <span>Expiry</span>
+            </div>
+            <div className="divide-y">
+              {authList.map((auth) => (
+                <div
+                  key={auth.idTag}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-2"
+                >
+                  <span className="flex items-center gap-2 text-xs font-medium">
+                    <RiShieldKeyholeLine className="size-3.5 text-muted-foreground" />
+                    {auth.idTag}
+                  </span>
+                  <Badge
+                    className={cn(
+                      "text-[10px]",
+                      auth.status === "Accepted"
+                        ? "bg-emerald-500/15 text-emerald-700"
+                        : "bg-red-500/15 text-red-700",
+                    )}
+                  >
+                    {auth.status}
+                  </Badge>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {auth.expiryDate}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input
+              className="h-8 text-xs"
+              placeholder="Add ID tag..."
+              value={newIdTag}
+              onChange={(e) => setNewIdTag(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddIdTag()
+              }}
+            />
+            <Button size="sm" className="h-8" onClick={handleAddIdTag}>
+              <RiAddLine className="mr-1 size-3.5" />
+              Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Firmware */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">Firmware &amp; Diagnostics</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Update firmware and request diagnostic uploads
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center gap-2">
+                <RiUploadLine className="size-4 text-muted-foreground" />
+                <p className="text-xs font-medium">Firmware Update</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Current:</span>
+                <span className="font-medium text-foreground">
+                  {charger.firmwareVersion}
+                </span>
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700">
+                  {charger.firmwareStatus}
+                </Badge>
+              </div>
+              <Input
+                className="h-8 text-xs"
+                placeholder="Firmware download URL..."
+                value={firmwareUrl}
+                onChange={(e) => setFirmwareUrl(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={handleFirmwareUpdate}
+              >
+                <RiUploadLine className="mr-1.5 size-3.5" />
+                Update Firmware
+              </Button>
+            </div>
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center gap-2">
+                <RiSettings3Line className="size-4 text-muted-foreground" />
+                <p className="text-xs font-medium">Diagnostics</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Status:</span>
+                <span className="font-medium text-foreground">
+                  {charger.diagnosticsStatus}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={handleRequestDiagnostics}
+              >
+                Request Diagnostics Upload
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="border-red-200">
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Irreversible actions
+          </p>
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50/30 p-4">
+            <div>
+              <p className="text-sm font-medium">Delete this charger</p>
+              <p className="text-xs text-muted-foreground">
+                Remove this charger and all its data permanently.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-300 text-red-700 hover:bg-red-50"
+              onClick={handleDeleteCharger}
+            >
+              <RiDeleteBinLine className="mr-1.5 size-3.5" />
+              Delete
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -710,17 +1406,6 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
       )}
     >
       <CardContent className="p-0">
-        {/* Power usage bar */}
-        {isActive && (
-          <div className="h-1 bg-blue-100">
-            <div
-              className="h-full bg-blue-500 transition-all duration-1000"
-              style={{ width: `${powerPercent}%` }}
-            />
-          </div>
-        )}
-        {isFaulted && <div className="h-1 bg-red-500" />}
-
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
@@ -798,6 +1483,21 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   />
                 </div>
               </div>
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    toast.success(
+                      `Remote stop sent to connector ${connector.id}`,
+                    )
+                  }}
+                >
+                  <RiShutDownLine className="mr-1 size-3" />
+                  Stop Charging
+                </Button>
+              </div>
             </div>
           )}
 
@@ -830,11 +1530,25 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             </div>
           )}
 
-          {/* Available */}
+          {/* Available — Start Charging */}
           {connector.status === "Available" && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <RiCheckboxCircleLine className="size-4 text-emerald-500" />
-              Ready to charge
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <RiCheckboxCircleLine className="size-4 text-emerald-500" />
+                Ready to charge
+              </div>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  toast.success(
+                    `Remote start sent to connector ${connector.id}`,
+                  )
+                }}
+              >
+                <RiFlashlightLine className="mr-1 size-3" />
+                Start Charging
+              </Button>
             </div>
           )}
         </div>

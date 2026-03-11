@@ -9,6 +9,7 @@ import (
 	"github.com/moonrhythm/httpmux"
 
 	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/charger"
 	"github.com/anertic/anertic/api/device"
 	"github.com/anertic/anertic/api/insight"
 	"github.com/anertic/anertic/api/reading"
@@ -64,6 +65,13 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /device.create", am.Handler(device.Create))
 	a.Handle("POST /device.get", am.Handler(device.Get))
 	a.Handle("POST /device.update", am.Handler(device.Update))
+
+	// Chargers
+	a.Handle("POST /charger.list", am.Handler(charger.List))
+	a.Handle("POST /charger.create", am.Handler(charger.Create))
+	a.Handle("POST /charger.get", am.Handler(charger.Get))
+	a.Handle("POST /charger.update", am.Handler(charger.Update))
+	a.Handle("POST /charger.delete", am.Handler(charger.Delete))
 
 	// Readings
 	a.Handle("POST /reading.query", am.Handler(reading.Query))

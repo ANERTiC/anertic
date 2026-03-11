@@ -21,6 +21,7 @@ export default [
     route("sites/:siteId", "routes/site-detail.tsx"),
     route("devices", "routes/devices.tsx"),
     route("chargers", "routes/chargers.tsx"),
+    route("chargers/:chargerId", "routes/charger-detail.tsx"),
     route("insights", "routes/insights.tsx"),
     route("settings", "routes/settings.tsx"),
   ]),

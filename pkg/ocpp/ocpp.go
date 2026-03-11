@@ -8,12 +8,12 @@ import (
 )
 
 type command struct {
-	Action  string         `json:"action"`
-	Payload map[string]any `json:"payload"`
+	Action  string          `json:"action"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 // SendCommand publishes a command to a charge point via its Redis pub/sub channel.
-func SendCommand(ctx context.Context, chargePointID string, action string, payload map[string]any) error {
+func SendCommand(ctx context.Context, chargePointID string, action string, payload json.RawMessage) error {
 	data, err := json.Marshal(command{
 		Action:  action,
 		Payload: payload,

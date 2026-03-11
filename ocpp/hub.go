@@ -82,8 +82,8 @@ func ChannelFor(chargePointID string) string {
 
 // command is a message received from Redis pub/sub to execute on a charge point.
 type command struct {
-	Action  string         `json:"action"`
-	Payload map[string]any `json:"payload"`
+	Action  string          `json:"action"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 // SubscribeChargePoint subscribes to the Redis channel for a specific charge point

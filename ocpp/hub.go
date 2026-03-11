@@ -75,10 +75,6 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
-// ChannelFor returns the Redis pub/sub channel name for a charge point.
-func ChannelFor(chargePointID string) string {
-	return "ocpp:cp:" + chargePointID
-}
 
 // command is a message received from Redis pub/sub to execute on a charge point.
 type command struct {
@@ -90,7 +86,7 @@ type command struct {
 // and forwards incoming commands to the charger via ChargePoint.Call.
 // Blocks until ctx is cancelled.
 func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
-	channel := ChannelFor(cp.Identity)
+	channel := "ocpp:cp:" + cp.Identity
 	sub := h.rdb.Subscribe(ctx, channel)
 	defer sub.Close()
 

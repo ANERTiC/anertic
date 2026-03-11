@@ -39,40 +39,49 @@ interface NavItem {
   to: string
   icon: typeof RiDashboardLine
   label: string
-  siteScoped?: boolean
 }
 
-const navItems: NavItem[] = [
+const globalNavItems: NavItem[] = [
   { to: "/", icon: RiDashboardLine, label: "Dashboard" },
   { to: "/sites", icon: RiBuilding2Line, label: "Sites" },
-  { to: "/devices", icon: RiCpuLine, label: "Devices", siteScoped: true },
-  { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers", siteScoped: true },
-  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights", siteScoped: true },
 ]
+
+const siteNavItems: NavItem[] = [
+  { to: "/devices", icon: RiCpuLine, label: "Devices" },
+  { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers" },
+  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
+]
+
+function SiteNavGroup() {
+  const { currentSite } = useSite()
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Site</SidebarGroupLabel>
+      <SidebarMenu>
+        {siteNavItems.map((item) => (
+          <SidebarMenuItem key={item.to}>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to={currentSite ? `${item.to}?site=${currentSite.id}` : item.to}
+                className={({ isActive }) =>
+                  isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                }
+              >
+                <item.icon className="size-4" />
+                <span>{item.label}</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
 
 export function clientLoader({}: Route.ClientLoaderArgs) {
   requireAuth()
   return { user: getUser() }
-}
-
-function NavItemLink({ item }: { item: NavItem }) {
-  const { currentSite } = useSite()
-  const to = item.siteScoped && currentSite ? `${item.to}?site=${currentSite.id}` : item.to
-
-  return (
-    <SidebarMenuButton asChild>
-      <NavLink
-        to={to}
-        end={item.to === "/"}
-        className={({ isActive }) =>
-          isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
-        }
-      >
-        <item.icon className="size-4" />
-        <span>{item.label}</span>
-      </NavLink>
-    </SidebarMenuButton>
-  )
 }
 
 function SiteSwitcher() {
@@ -135,13 +144,25 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
               <SidebarGroup>
                 <SidebarGroupLabel>Menu</SidebarGroupLabel>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {globalNavItems.map((item) => (
                     <SidebarMenuItem key={item.to}>
-                      <NavItemLink item={item} />
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.to}
+                          end={item.to === "/"}
+                          className={({ isActive }) =>
+                            isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                          }
+                        >
+                          <item.icon className="size-4" />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
               </SidebarGroup>
+              <SiteNavGroup />
               <SidebarGroup>
                 <SidebarGroupLabel>System</SidebarGroupLabel>
                 <SidebarMenu>

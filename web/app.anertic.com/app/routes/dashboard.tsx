@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import {
   RiChargingPile2Line,
@@ -11,8 +11,6 @@ import {
   RiPlugLine,
   RiBattery2ChargeLine,
   RiSparklingLine,
-  RiArrowUpSLine,
-  RiArrowDownSLine,
   RiLeafLine,
   RiFlashlightLine,
   RiTimeLine,
@@ -105,10 +103,6 @@ export default function Dashboard() {
     setCookie("anertic_current_site", site.id)
     navigate(`/overview?site=${site.id}`)
   }
-
-  const selfSufficiency = summary
-    ? Math.round(((summary.todaySolarKwh) / Math.max(summary.todayEnergyKwh, 1)) * 100)
-    : 0
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -250,45 +244,6 @@ export default function Dashboard() {
             <MobileFlowNode icon={RiLightbulbFlashLine} label="Load" value={power.consumption} unit="kW" color="rose" status="consuming" />
           </div>
         </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={RiSunLine}
-          title="Solar Today"
-          value={summary?.todaySolarKwh}
-          unit="kWh"
-          loading={summaryLoading}
-          accent="amber"
-          trend={12}
-        />
-        <StatCard
-          icon={RiPlugLine}
-          title="Grid Today"
-          value={summary?.todayGridKwh}
-          unit="kWh"
-          loading={summaryLoading}
-          accent="cyan"
-          trend={-5}
-        />
-        <StatCard
-          icon={RiChargingPile2Line}
-          title="EV Charging"
-          value={summary?.activeChargers}
-          subtitle={summary ? `of ${summary.totalChargers} chargers` : undefined}
-          loading={summaryLoading}
-          accent="emerald"
-        />
-        <StatCard
-          icon={RiLeafLine}
-          title="Self-Sufficiency"
-          value={selfSufficiency}
-          unit="%"
-          loading={summaryLoading}
-          accent="teal"
-          trend={3}
-        />
       </div>
 
       {/* Two columns: Total Energy + AI Insight */}
@@ -540,73 +495,6 @@ function FlowBar({
       </div>
       <span className="text-[10px] text-muted-foreground/60">{label}</span>
     </div>
-  )
-}
-
-function StatCard({
-  icon: Icon,
-  title,
-  value,
-  unit,
-  subtitle,
-  loading,
-  accent,
-  trend,
-}: {
-  icon: typeof RiSunLine
-  title: string
-  value?: number
-  unit?: string
-  subtitle?: string
-  loading: boolean
-  accent: string
-  trend?: number
-}) {
-  const accentMap: Record<string, { bg: string; text: string; trendUp: string; trendDown: string }> = {
-    amber: { bg: "bg-amber-500/10", text: "text-amber-600", trendUp: "text-amber-600", trendDown: "text-amber-600" },
-    cyan: { bg: "bg-cyan-500/10", text: "text-cyan-600", trendUp: "text-cyan-600", trendDown: "text-cyan-600" },
-    emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", trendUp: "text-emerald-600", trendDown: "text-emerald-600" },
-    teal: { bg: "bg-teal-500/10", text: "text-teal-600", trendUp: "text-teal-600", trendDown: "text-teal-600" },
-  }
-  const c = accentMap[accent] || accentMap.amber
-
-  return (
-    <Card className="border-border/50 transition-shadow hover:shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className={cn("flex size-8 items-center justify-center rounded-lg", c.bg)}>
-            <Icon className={cn("size-4", c.text)} />
-          </div>
-          {trend !== undefined && !loading && (
-            <div
-              className={cn(
-                "flex items-center gap-0.5 text-xs font-medium",
-                trend >= 0 ? "text-emerald-600" : "text-red-500",
-              )}
-            >
-              {trend >= 0 ? (
-                <RiArrowUpSLine className="size-3.5" />
-              ) : (
-                <RiArrowDownSLine className="size-3.5" />
-              )}
-              {Math.abs(trend)}%
-            </div>
-          )}
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">{title}</p>
-        {loading ? (
-          <Skeleton className="mt-1 h-7 w-20" />
-        ) : (
-          <>
-            <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight">
-              {value ?? 0}
-              {unit && <span className="ml-1 text-sm font-normal text-muted-foreground">{unit}</span>}
-            </p>
-            {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
-          </>
-        )}
-      </CardContent>
-    </Card>
   )
 }
 

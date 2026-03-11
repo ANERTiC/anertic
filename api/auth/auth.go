@@ -3,59 +3,22 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
-	"github.com/acoshift/arpc/v2"
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/session"
 
 	"github.com/anertic/anertic/api/auth/provider"
+	"github.com/anertic/anertic/api/conf"
 )
 
 const sessionName = "auth"
 
-var (
-	errUnauthorized = arpc.NewErrorCode("unauthorized", "unauthorized")
-
-	appURL string
-)
-
-func SetAppURL(u string) {
-	appURL = u
-}
-
-// Middleware validates Bearer token and sets user in context.
-func Middleware(actx *arpc.MiddlewareContext) error {
-	h := actx.Request().Header.Get("Authorization")
-	if !strings.HasPrefix(h, "Bearer ") {
-		return errUnauthorized
-	}
-	token := h[7:]
-	if token == "" {
-		return errUnauthorized
-	}
-	ctx := actx.Request().Context()
-
-	userID, err := ValidateToken(ctx, HashToken(token))
-	if errors.Is(err, sql.ErrNoRows) {
-		return errUnauthorized
-	}
-	if err != nil {
-		return err
-	}
-
-	ctx = WithAccountID(ctx, userID)
-	actx.SetRequest(actx.Request().WithContext(ctx))
-	return nil
-}
 
 func generateState() string {
 	var b [16]byte
@@ -154,7 +117,7 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if redirectURL == "" {
-		redirectURL = appURL + "/login/callback"
+		redirectURL = conf.Load().AppURL + "/login/callback"
 	}
 
 	redirectURL += "?" + url.Values{

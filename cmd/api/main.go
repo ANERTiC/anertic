@@ -19,7 +19,6 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/api"
-	"github.com/anertic/anertic/api/auth"
 	"github.com/anertic/anertic/api/auth/provider"
 	"github.com/anertic/anertic/api/conf"
 	"github.com/anertic/anertic/pkg/rdctx"
@@ -59,7 +58,6 @@ func run() error {
 	defer rdb.Close()
 
 	appCfg := conf.Load()
-	auth.SetAppURL(appCfg.AppURL)
 	provider.Register(provider.NewGoogle(appCfg.GoogleClientID, appCfg.GoogleClientSecret, appCfg.GoogleRedirectURL))
 
 	mux := httpmux.New()
@@ -74,17 +72,7 @@ func run() error {
 		}{true, v})
 	}
 
-	// OAuth routes (public, raw HTTP)
-	mux.HandleFunc("GET /auth/{provider}", auth.ProviderRedirect)
-	mux.HandleFunc("GET /auth/{provider}/callback", auth.ProviderCallback)
-
-	// Public API routes
-	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshToken))
-
-	// Protected API routes
-	a := mux.Group("", am.Middleware(auth.Middleware))
-	a.Handle("POST /api/v1/auth.me", am.Handler(auth.Me))
-	api.Mount(a, am)
+	api.Mount(mux, am)
 
 	mux.Handle("/", am.NotFoundHandler())
 

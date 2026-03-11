@@ -44,7 +44,7 @@ func authMiddleware(actx *arpc.MiddlewareContext) error {
 func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	// OAuth routes (public, raw HTTP)
 	mux.HandleFunc("GET /auth/{provider}", auth.ProviderRedirect)
-	mux.HandleFunc("GET /auth/{provider}/callback", auth.ProviderCallback)
+	mux.HandleFunc("GET /auth/callback", auth.ProviderCallback)
 
 	// Public API routes
 	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshToken))

@@ -19,7 +19,6 @@ import (
 
 const sessionName = "auth"
 
-
 func generateState() string {
 	var b [16]byte
 	_, err := io.ReadFull(rand.Reader, b[:])
@@ -32,6 +31,7 @@ func generateState() string {
 // ProviderRedirect redirects to the OAuth provider's consent page.
 func ProviderRedirect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("provider")
+	slog.InfoContext(r.Context(), "auth: provider redirect", "provider", name)
 	p, ok := provider.Get(name)
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)
@@ -74,6 +74,7 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := s.PopString("provider")
+	slog.Info("auth: provider callback", "provider", name)
 	p, ok := provider.Get(name)
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)

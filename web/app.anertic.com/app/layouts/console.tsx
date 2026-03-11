@@ -10,8 +10,11 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from "@remixicon/react"
+import useSWR from "swr"
 import type { Route } from "./+types/console"
 import { clearAuth, getUser, requireAuth } from "~/lib/auth"
+import { api } from "~/lib/api"
+import { setCookie } from "~/lib/cookie"
 import {
   Sidebar,
   SidebarContent,
@@ -33,7 +36,14 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { TooltipProvider } from "~/components/ui/tooltip"
-import { SiteProvider, useSite } from "~/hooks/use-site"
+
+interface Site {
+  id: string
+  name: string
+  address: string
+  timezone: string
+  createdAt: string
+}
 
 interface NavItem {
   to: string
@@ -52,9 +62,7 @@ const siteNavItems: NavItem[] = [
   { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
 ]
 
-function SiteNavGroup() {
-  const { currentSite } = useSite()
-
+function SiteNavGroup({ currentSite }: { currentSite: Site | null }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Site</SidebarGroupLabel>
@@ -84,9 +92,17 @@ export function clientLoader({}: Route.ClientLoaderArgs) {
   return { user: getUser() }
 }
 
-function SiteSwitcher() {
-  const { sites, currentSite, setSite, loading } = useSite()
-
+function SiteSwitcher({
+  sites,
+  currentSite,
+  onSelect,
+  loading,
+}: {
+  sites: Site[]
+  currentSite: Site | null
+  onSelect: (site: Site) => void
+  loading: boolean
+}) {
   if (loading) {
     return <span className="text-sm text-muted-foreground">Loading...</span>
   }
@@ -104,7 +120,7 @@ function SiteSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {sites.map((site) => (
-          <DropdownMenuItem key={site.id} onClick={() => setSite(site)}>
+          <DropdownMenuItem key={site.id} onClick={() => onSelect(site)}>
             {site.id === currentSite?.id && (
               <RiCheckLine className="mr-2 size-4" />
             )}
@@ -121,6 +137,23 @@ function SiteSwitcher() {
 export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const { data, isLoading } = useSWR("site.list", () =>
+    api<{ items: Site[] }>("site.list"),
+  )
+  const sites = data?.items || []
+  const siteId = searchParams.get("site")
+  const currentSite = sites.find((s) => s.id === siteId) || null
+
+  function handleSelectSite(site: Site) {
+    setCookie("anertic_current_site", site.id)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set("site", site.id)
+      return next
+    })
+  }
 
   function handleSignOut() {
     clearAuth()
@@ -130,8 +163,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <SiteProvider>
-          <Sidebar>
+        <Sidebar>
             <SidebarHeader>
               <div className="flex items-center gap-2 px-2 py-1">
                 <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
@@ -162,7 +194,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
                   ))}
                 </SidebarMenu>
               </SidebarGroup>
-              <SiteNavGroup />
+              <SiteNavGroup currentSite={currentSite} />
               <SidebarGroup>
                 <SidebarGroupLabel>System</SidebarGroupLabel>
                 <SidebarMenu>
@@ -209,13 +241,17 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
           <main className="flex flex-1 flex-col">
             <header className="flex h-12 items-center gap-2 border-b px-4">
               <SidebarTrigger />
-              <SiteSwitcher />
+              <SiteSwitcher
+                sites={sites}
+                currentSite={currentSite}
+                onSelect={handleSelectSite}
+                loading={isLoading}
+              />
             </header>
             <div className="flex-1 p-6">
               <Outlet />
             </div>
           </main>
-        </SiteProvider>
       </SidebarProvider>
     </TooltipProvider>
   )

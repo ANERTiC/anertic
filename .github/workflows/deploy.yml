@@ -16,6 +16,10 @@ on:
           - worker
           - ingester
           - web
+      api_url:
+        description: "VITE_API_URL for web build"
+        required: false
+        default: "https://api.anertic.com"
 
 env:
   GIT_REV: ${{ github.sha }}
@@ -232,6 +236,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_BASE }}/web:${{ env.GIT_REV }}
+          build-args: |
+            VITE_API_URL=${{ inputs.api_url || 'https://api.anertic.com' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Deploy to staging

@@ -14,25 +14,13 @@ import {
   RiAlertLine,
   RiArrowRightSLine,
 } from "@remixicon/react"
-import { toast } from "sonner"
 
 import { useSiteId } from "~/layouts/site"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
 import { Badge } from "~/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
-import { api } from "~/lib/api"
 
 // --- Types ---
 
@@ -83,9 +71,6 @@ interface FleetSummary {
   utilizationPercent: number
 }
 
-interface CreateResult {
-  id: string
-}
 
 // --- Mock Data ---
 
@@ -386,14 +371,7 @@ export default function Chargers() {
   const siteId = useSiteId()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [mounted, setMounted] = useState(false)
-
-  const [chargePointId, setChargePointId] = useState("")
-  const [ocppVersion, setOcppVersion] = useState("1.6")
-  const [connectorCount, setConnectorCount] = useState("1")
-  const [maxPowerKw, setMaxPowerKw] = useState("")
 
   // TODO: Replace with API call when backend is ready
   // const { data, isLoading, mutate } = useSWR(
@@ -427,32 +405,6 @@ export default function Chargers() {
 
   const fleet = computeFleetSummary(chargers)
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    setCreating(true)
-    try {
-      const result = await api<CreateResult>("charger.create", {
-        siteId,
-        chargePointId,
-        ocppVersion,
-        connectorCount: parseInt(connectorCount) || 1,
-        maxPowerKw: parseFloat(maxPowerKw) || 0,
-      })
-      toast.success("Charger registered successfully")
-      setOpen(false)
-      setChargePointId("")
-      setOcppVersion("1.6")
-      setConnectorCount("1")
-      setMaxPowerKw("")
-      navigate(`/chargers/${result.id}?site=${siteId}`)
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to register charger",
-      )
-    } finally {
-      setCreating(false)
-    }
-  }
 
   return (
     <div
@@ -469,76 +421,10 @@ export default function Chargers() {
             Fleet management and monitoring
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <RiAddLine className="mr-1.5 size-4" />
-              Register
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>Register Charger</DialogTitle>
-                <DialogDescription>
-                  Add a new EV charger to this site.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="chargePointId">Charge Point ID</Label>
-                  <Input
-                    id="chargePointId"
-                    placeholder="CP001"
-                    value={chargePointId}
-                    onChange={(e) => setChargePointId(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="ocppVersion">OCPP Version</Label>
-                    <select
-                      id="ocppVersion"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      value={ocppVersion}
-                      onChange={(e) => setOcppVersion(e.target.value)}
-                    >
-                      <option value="1.6">1.6</option>
-                      <option value="2.0.1">2.0.1</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="connectorCount">Connectors</Label>
-                    <Input
-                      id="connectorCount"
-                      type="number"
-                      min="1"
-                      value={connectorCount}
-                      onChange={(e) => setConnectorCount(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="maxPowerKw">Max Power (kW)</Label>
-                  <Input
-                    id="maxPowerKw"
-                    type="number"
-                    step="0.01"
-                    placeholder="22"
-                    value={maxPowerKw}
-                    onChange={(e) => setMaxPowerKw(e.target.value)}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Registering..." : "Register"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
+          <RiAddLine className="mr-1.5 size-4" />
+          Add Charger
+        </Button>
       </div>
 
       {/* Fleet Summary Strip */}

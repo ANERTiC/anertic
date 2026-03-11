@@ -27,6 +27,7 @@ export default [
     layout("layouts/site.tsx", [
       route("overview", "routes/overview.tsx"),
       route("chargers", "routes/chargers.tsx"),
+      route("chargers/new", "routes/charger-new.tsx"),
       route("chargers/:chargerId", "routes/charger-detail.tsx"),
       route("devices", "routes/devices.tsx"),
       route("insights", "routes/insights.tsx"),

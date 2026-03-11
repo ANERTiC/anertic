@@ -26,6 +26,7 @@ func main() {
 	}
 }
 
+// run initializes all dependencies and starts the API server.
 func run() error {
 	if err := configfile.LoadDotEnv("./.env"); err != nil {
 		slog.Warn("load .env", "error", err)
@@ -37,6 +38,7 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Connect to PostgreSQL and inject into context
 	db, err := sql.Open("postgres", cfg.StringDefault("DATABASE_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
 	if err != nil {
 		return err

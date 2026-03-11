@@ -36,11 +36,10 @@ run-ocpp:
 	go run ./cmd/ocpp
 
 # Deployment
+-include .env
 GIT_REV := $(shell git rev-parse --short HEAD)
 IMAGE_BASE := ghcr.io/anertic/anertic
 DEPLOY_API := https://console.nortezh.com/api/deployment.deploy
-NT_USER ?=
-NT_PASS ?=
 
 define deploy
 	curl -X POST $(DEPLOY_API) \
@@ -97,9 +96,12 @@ release-worker:
 release-ingester:
 	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,ingester,olufy-0)
 
+VITE_API_URL ?= https://api.anertic.com
+
 deploy-web:
 	docker buildx build \
 		--platform linux/amd64 \
+		--build-arg VITE_API_URL=$(VITE_API_URL) \
 		-t $(IMAGE_BASE)/web:$(GIT_REV) \
 		-f web/app.anertic.com/Dockerfile \
 		--push \

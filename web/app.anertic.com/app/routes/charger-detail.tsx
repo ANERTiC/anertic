@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useSearchParams } from "react-router"
+import { useNavigate, useParams } from "react-router"
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import useSWR from "swr"
 
 import { api } from "~/lib/api"
+import { useSiteId } from "~/layouts/site"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -106,8 +107,7 @@ function timeAgo(dateStr: string | null): string {
 export default function ChargerDetail() {
   const { chargerId } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const siteId = searchParams.get("site")
+  const siteId = useSiteId()
 
   const { data: charger, isLoading } = useSWR(
     chargerId ? ["charger.get", chargerId] : null,

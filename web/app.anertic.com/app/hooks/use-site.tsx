@@ -83,6 +83,3 @@ export function useSite() {
   return useContext(SiteContext)
 }
 
-export function getSiteCookie(): string | undefined {
-  return getCookie(SITE_COOKIE)
-}

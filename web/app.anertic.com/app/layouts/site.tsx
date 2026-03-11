@@ -1,33 +1,33 @@
-import { Outlet, useSearchParams, useNavigate } from "react-router"
-import { useEffect } from "react"
-import { toast } from "sonner"
-import { getSiteCookie } from "~/hooks/use-site"
+import { Outlet, redirect, useOutletContext } from "react-router"
+import type { Route } from "./+types/site"
+import { getCookie } from "~/lib/cookie"
 
-export default function SiteLayout() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const siteId = searchParams.get("site")
+interface SiteContext {
+  siteId: string
+}
 
-  useEffect(() => {
-    if (siteId) return
+export function useSiteId(): string {
+  return useOutletContext<SiteContext>().siteId
+}
 
-    const cookieSiteId = getSiteCookie()
+export function clientLoader({ request }: Route.ClientLoaderArgs) {
+  const url = new URL(request.url)
+  let siteId = url.searchParams.get("site")
+
+  if (!siteId) {
+    const cookieSiteId = getCookie("anertic_current_site")
     if (cookieSiteId) {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev)
-          next.set("site", cookieSiteId)
-          return next
-        },
-        { replace: true },
-      )
-    } else {
-      toast.info("Please select a site first")
-      navigate("/sites", { replace: true })
+      url.searchParams.set("site", cookieSiteId)
+      throw redirect(url.pathname + url.search)
     }
-  }, [siteId, setSearchParams, navigate])
+    throw redirect("/sites")
+  }
 
-  if (!siteId) return null
+  return { siteId }
+}
 
-  return <Outlet />
+export default function SiteLayout({ loaderData }: Route.ComponentProps) {
+  const { siteId } = loaderData
+
+  return <Outlet context={{ siteId } satisfies SiteContext} />
 }

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { useNavigate } from "react-router"
 import {
   RiAddLine,
   RiChargingPileLine,
@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import useSWR from "swr"
 
 import { api } from "~/lib/api"
+import { useSiteId } from "~/layouts/site"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
@@ -85,8 +86,7 @@ function timeAgo(dateStr: string | null): string {
 
 export default function Chargers() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const siteId = searchParams.get("site")!
+  const siteId = useSiteId()
   const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)

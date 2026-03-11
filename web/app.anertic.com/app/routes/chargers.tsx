@@ -729,13 +729,13 @@ function ChargerCard({
   return (
     <Card
       className={cn(
-        "group cursor-pointer overflow-hidden transition-all hover:shadow-md",
+        "group h-full cursor-pointer overflow-hidden transition-all hover:shadow-md",
         isFaulted && "border-red-200",
       )}
       onClick={onClick}
     >
-      <CardContent className="p-0">
-        <div className="p-4">
+      <CardContent className="flex h-full flex-col p-0">
+        <div className="flex flex-1 flex-col p-4">
           {/* Top row */}
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
@@ -783,7 +783,7 @@ function ChargerCard({
           </div>
 
           {/* Connectors */}
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 flex-1 space-y-2">
             {charger.connectors.map((conn) => (
               <ConnectorRow key={conn.id} connector={conn} />
             ))}

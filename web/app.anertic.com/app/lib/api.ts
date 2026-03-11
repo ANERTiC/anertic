@@ -10,7 +10,7 @@ interface APIResponse<T> {
 
 export async function api<T>(method: string, body?: unknown): Promise<T> {
   const token = getToken()
-  const res = await fetch(`${API_BASE}/api/v1/${method}`, {
+  const res = await fetch(`${API_BASE}/${method}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

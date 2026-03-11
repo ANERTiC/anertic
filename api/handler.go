@@ -47,29 +47,29 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	mux.HandleFunc("GET /auth/callback", auth.ProviderCallback)
 
 	// Public API routes
-	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshToken))
+	mux.Handle("POST /auth.refreshToken", am.Handler(auth.RefreshToken))
 
 	// Protected API routes
 	a := mux.Group("", am.Middleware(authMiddleware))
-	a.Handle("POST /api/v1/auth.me", am.Handler(auth.Me))
+	a.Handle("POST /auth.me", am.Handler(auth.Me))
 
 	// Sites
-	a.Handle("POST /api/v1/site.list", am.Handler(site.List))
-	a.Handle("POST /api/v1/site.create", am.Handler(site.Create))
-	a.Handle("POST /api/v1/site.get", am.Handler(site.Get))
-	a.Handle("POST /api/v1/site.update", am.Handler(site.Update))
+	a.Handle("POST /site.list", am.Handler(site.List))
+	a.Handle("POST /site.create", am.Handler(site.Create))
+	a.Handle("POST /site.get", am.Handler(site.Get))
+	a.Handle("POST /site.update", am.Handler(site.Update))
 
 	// Devices
-	a.Handle("POST /api/v1/device.list", am.Handler(device.List))
-	a.Handle("POST /api/v1/device.create", am.Handler(device.Create))
-	a.Handle("POST /api/v1/device.get", am.Handler(device.Get))
-	a.Handle("POST /api/v1/device.update", am.Handler(device.Update))
+	a.Handle("POST /device.list", am.Handler(device.List))
+	a.Handle("POST /device.create", am.Handler(device.Create))
+	a.Handle("POST /device.get", am.Handler(device.Get))
+	a.Handle("POST /device.update", am.Handler(device.Update))
 
 	// Readings
-	a.Handle("POST /api/v1/reading.query", am.Handler(reading.Query))
-	a.Handle("POST /api/v1/reading.latest", am.Handler(reading.Latest))
+	a.Handle("POST /reading.query", am.Handler(reading.Query))
+	a.Handle("POST /reading.latest", am.Handler(reading.Latest))
 
 	// Insights
-	a.Handle("POST /api/v1/insight.list", am.Handler(insight.List))
-	a.Handle("POST /api/v1/insight.get", am.Handler(insight.Get))
+	a.Handle("POST /insight.list", am.Handler(insight.List))
+	a.Handle("POST /insight.get", am.Handler(insight.Get))
 }

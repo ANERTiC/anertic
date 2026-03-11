@@ -111,12 +111,12 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 
 	id := xid.New().String()
 	_, err := pgctx.Exec(ctx, `
-		INSERT INTO sites (
+		insert into sites (
 			id,
 			name,
 			address,
 			timezone
-		) VALUES ($1, $2, $3, $4)
+		) values ($1, $2, $3, $4)
 	`,
 		id,
 		p.Name,
@@ -154,14 +154,14 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 
 	var r GetResult
 	err := pgctx.QueryRow(ctx, `
-		SELECT
+		select
 			id,
 			name,
 			address,
 			timezone,
 			created_at
-		FROM sites
-		WHERE id = $1
+		from sites
+		where id = $1
 	`, p.ID).Scan(
 		&r.ID,
 		&r.Name,

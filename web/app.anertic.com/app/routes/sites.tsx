@@ -96,7 +96,6 @@ export default function Sites() {
       toast.success('Site created successfully')
       setOpen(false)
       resetForm()
-      mutate()
       navigate(`/sites/${result.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create site')

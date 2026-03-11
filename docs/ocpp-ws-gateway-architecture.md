@@ -4,7 +4,7 @@
 
 The OCPP WebSocket Gateway handles the **full OCPP protocol** end-to-end — parsing messages, business logic, and writing directly to PostgreSQL.
 
-The REST API's only role is to **initiate outbound commands** to chargers (RemoteStart, SetChargingProfile, GetVariables, etc.).
+The REST API's only role is to **initiate outbound commands** to chargers (RemoteStart, SetChargingProfile, etc.).
 
 ---
 
@@ -12,19 +12,50 @@ The REST API's only role is to **initiate outbound commands** to chargers (Remot
 
 ```
 EV Charger
-    │  wss://
-    ▼
+    |  wss://host/ocpp/{chargePointID}
+    |  subprotocol: ocpp1.6 | ocpp2.0.1
+    v
 [ OCPP WS Gateway Pod ] (K8s, multiple replicas)
-    │
-    ├── handles all inbound OCPP messages
-    ├── writes directly to PostgreSQL
-    │
-    └── listens Redis Pub/Sub for outbound commands
-            ▲
-            │ PUBLISH ocpp:cmd:{chargerID}
-            │
+    |
+    |-- ocpp.Handler          accepts WebSocket, negotiates version
+    |-- ocpp.Hub              manages connections, routes commands
+    |-- v16.Router            dispatches OCPP 1.6 actions
+    |-- v201.Router           dispatches OCPP 2.0.1 actions
+    |-- pgctx                 writes directly to PostgreSQL
+    |
+    +-- listens Redis Pub/Sub for outbound commands
+            ^
+            | PUBLISH ocpp:cp:{chargePointID}
+            |
         REST API
         (only initiates outbound commands)
+```
+
+---
+
+## Package Structure
+
+```
+ocpp/
+    handler.go         HTTP handler, WebSocket accept, version negotiation, message loop
+    hub.go             Hub: connection registry, Redis pub/sub per-charger
+    chargepoint.go     ChargePoint: WebSocket conn, Call/Reply, pending response tracking
+    router.go          Router interface
+    context.go         ChargePointID context helpers
+    types.go           Message type constants (Call=2, CallResult=3, CallError=4)
+    v16/
+        router.go      OCPP 1.6 action dispatcher
+        authorize/     Authorize handler
+        boot/          BootNotification handler
+        datatransfer/  DataTransfer handler
+        diagnostics/   DiagnosticsStatusNotification handler
+        firmware/      FirmwareStatusNotification handler
+        heartbeat/     Heartbeat handler
+        meter/         MeterValues handler
+        status/        StatusNotification handler
+        transaction/   StartTransaction / StopTransaction handlers
+    v201/
+        router.go      OCPP 2.0.1 action dispatcher (stub)
 ```
 
 ---
@@ -33,173 +64,165 @@ EV Charger
 
 | Layer | Responsibility |
 |---|---|
-| **WS Gateway** | Full OCPP protocol, inbound message handling, direct DB writes |
-| **REST API** | Initiate outbound commands only (RemoteStart, SetChargingProfile...) |
-| **Redis** | Pub/Sub for command delivery, List for CALLRESULT reply |
-| **PostgreSQL** | Persistent storage, written directly by gateway |
+| **WS Gateway** (`cmd/ocpp`) | Full OCPP protocol, inbound message handling, direct DB writes |
+| **REST API** (`cmd/api`) | Initiate outbound commands only (RemoteStart, SetChargingProfile...) |
+| **Redis** | Pub/Sub for command delivery to per-charger channels |
+| **PostgreSQL** | Persistent storage, written directly by gateway via `pgctx` |
 
 ---
 
-## Two Concurrent Loops Per Pod
+## Core Components
 
-| Loop | Direction | Transport |
-|---|---|---|
-| WS listener | Charger → Gateway | WebSocket |
-| Redis subscriber | REST API → Gateway | Redis Pub/Sub |
+### Hub (`ocpp/hub.go`)
 
-Both share the same in-memory `Hub` (connection map + mutex).
-
----
-
-## Inbound Message Handling (Gateway → DB directly)
+Manages charge point connections and version-specific routers.
 
 ```go
-func (c *ChargerConn) handleMessage(raw []byte) {
-    msg := parseOCPP(raw)
-
-    switch msg.Action {
-    case "BootNotification":
-        db.UpsertCharger(c.ChargerID, msg.Payload)
-        c.Send(bootNotificationResponse())
-
-    case "Heartbeat":
-        db.UpdateLastSeen(c.ChargerID)
-        c.Send(heartbeatResponse())
-
-    case "StatusNotification":
-        db.UpdateChargerStatus(c.ChargerID, msg.Payload)
-        c.Send(statusNotificationResponse())
-
-    case "MeterValues":
-        db.InsertMeterValues(c.ChargerID, msg.Payload)
-
-    case "TransactionEvent":
-        db.UpsertTransaction(c.ChargerID, msg.Payload)
-        c.Send(transactionEventResponse())
-    }
+type Hub struct {
+    connections map[string]*ChargePoint // chargePointID -> connection
+    rdb         redis.UniversalClient
+    routers     map[string]Router       // "ocpp1.6" -> v16.Router
 }
 ```
 
-No REST hop. Gateway owns the full OCPP logic.
+- `Register(ctx, cp)` — adds a charge point to the connection map
+- `Unregister(ctx, chargePointID)` — removes on disconnect
+- `RegisterRouter(version, router)` — registers version-specific router
+- `RouterFor(version)` — returns the router for a given OCPP version
+- `SubscribeChargePoint(ctx, cp)` — subscribes to Redis channel, forwards commands
 
----
+### ChargePoint (`ocpp/chargepoint.go`)
 
-## Outbound Commands: REST API → Charger
-
-REST API's only job — publish a command and wait for the result.
+Represents a single connected charge point.
 
 ```go
-func (s *Server) RemoteStart(w http.ResponseWriter, r *http.Request) {
-    chargerID := chi.URLParam(r, "chargerID")
-    uniqueID  := uuid.New().String()
-
-    cmd := OCPPCommand{
-        UniqueID: uniqueID,
-        Action:   "RequestStartTransaction",
-        ReplyTo:  "ocpp:reply:" + uniqueID,
-        Payload:  payload,
-    }
-
-    // 1. publish command
-    s.rdb.Publish(ctx, "ocpp:cmd:"+chargerID, marshal(cmd))
-
-    // 2. block and wait for CALLRESULT (30s OCPP default timeout)
-    result, err := s.rdb.BRPop(ctx, 30*time.Second, "ocpp:reply:"+uniqueID).Result()
-    if err != nil {
-        http.Error(w, "timeout", http.StatusGatewayTimeout)
-        return
-    }
-
-    w.Write(result[1])
+type ChargePoint struct {
+    Identity    string
+    Conn        *websocket.Conn
+    OCPPVersion string
+    pending     map[string]chan json.RawMessage // messageID -> response channel
 }
 ```
 
----
+- `Call(ctx, action, payload)` — sends OCPP Call, blocks up to 30s for response
+- `Reply(ctx, msgID, payload)` — sends CallResult back to charger
+- `HandleResponse(msgID, payload)` — routes CallResult/CallError to waiting caller
 
-## Per-Charger Pub/Sub Subscription
-
-Each pod subscribes to **exact channels** for its own connected chargers only.
-Zero noise — other pods never wake up for commands they don't own.
+### Router (`ocpp/router.go`)
 
 ```go
-func (h *Hub) OnConnect(chargerID string, conn *ChargerConn) {
-    h.mu.Lock()
-    h.conns[chargerID] = conn
-    h.mu.Unlock()
-
-    go h.subscribeCharger(ctx, chargerID, conn)
-}
-
-func (h *Hub) subscribeCharger(ctx context.Context, chargerID string, conn *ChargerConn) {
-    pubsub := rdb.Subscribe(ctx, "ocpp:cmd:"+chargerID)
-    defer pubsub.Close() // auto-unsubscribes on disconnect
-
-    for msg := range pubsub.Channel() {
-        cmd := unmarshal(msg.Payload)
-
-        // write OCPP CALL to charger
-        conn.Send(buildOCPPCall(cmd))
-
-        // store pending so we can match CALLRESULT
-        h.pending[cmd.UniqueID] = cmd.ReplyTo
-    }
-}
-
-func (h *Hub) OnDisconnect(chargerID string) {
-    h.mu.Lock()
-    delete(h.conns, chargerID)
-    h.mu.Unlock()
-    // pubsub.Close() in subscribeCharger handles unsubscribe
+type Router interface {
+    HandleCall(ctx context.Context, cp *ChargePoint, msgID string, action string, payload json.RawMessage)
 }
 ```
 
----
+Each OCPP version implements this interface. The router dispatches to typed handler functions via `CallAction`.
 
-## CALLRESULT: Charger → REST API Reply
+### CallAction (`ocpp/handler.go`)
 
-When charger responds to a CALL, gateway matches UniqueID and unblocks the REST API via Redis List.
+Generic helper that unmarshals payload, calls handler, and replies:
 
 ```go
-func (h *Hub) handleCallResult(msg OCPPMessage) {
-    replyTo, ok := h.pending[msg.UniqueID]
-    if !ok { return }
+func CallAction[P any, R any](ctx context.Context, cp *ChargePoint, msgID string, payload json.RawMessage, fn func(context.Context, *P) (*R, error))
+```
 
-    delete(h.pending, msg.UniqueID)
+Handlers follow the pattern: `func ActionName(ctx context.Context, p *Params) (*Result, error)`
 
-    // unblock the waiting REST API
-    rdb.LPush(ctx, replyTo, marshal(msg))
-    rdb.Expire(ctx, replyTo, 35*time.Second) // safety cleanup
-}
+---
+
+## Handler Registration (cmd/ocpp/main.go)
+
+```go
+hub := ocpp.NewHub(rdb)
+hub.RegisterRouter("ocpp1.6", v16.NewRouter())
+hub.RegisterRouter("ocpp2.0.1", v201.NewRouter())
+
+mux.Handle("GET /ocpp/{chargePointID}", pgctx.Middleware(db)(ocpp.Handler(hub)))
+```
+
+The `pgctx.Middleware` injects the database connection into the request context so handlers can use `pgctx.Exec`/`pgctx.QueryRow` directly.
+
+---
+
+## OCPP 1.6 Supported Actions
+
+| Profile | Action | Handler | DB Table |
+|---|---|---|---|
+| Core | Authorize | `authorize.Authorize` | `ev_authorization_tags` |
+| Core | BootNotification | `boot.BootNotification` | `ev_chargers` |
+| Core | DataTransfer | `datatransfer.DataTransfer` | `ev_message_log` |
+| Core | Heartbeat | `heartbeat.Heartbeat` | `ev_chargers` |
+| Core | MeterValues | `meter.MeterValues` | `ev_meter_values` |
+| Core | StartTransaction | `transaction.Start` | `ev_charging_sessions` |
+| Core | StatusNotification | `status.StatusNotification` | `ev_chargers`, `ev_connectors` |
+| Core | StopTransaction | `transaction.Stop` | `ev_charging_sessions`, `ev_meter_values` |
+| Firmware | DiagnosticsStatusNotification | `diagnostics.StatusNotification` | `ev_chargers` |
+| Firmware | FirmwareStatusNotification | `firmware.StatusNotification` | `ev_chargers` |
+
+CS-initiated actions (ChangeConfiguration, RemoteStartTransaction, etc.) are sent via `Hub.SubscribeChargePoint` → `ChargePoint.Call`.
+
+---
+
+## Connection Lifecycle
+
+```
+1. Charger connects: GET /ocpp/{chargePointID}
+                     subprotocol: ocpp1.6
+
+2. Handler:
+   - websocket.Accept (negotiates subprotocol)
+   - Resolves Router for version
+   - Creates ChargePoint
+   - hub.Register(cp)
+   - Starts hub.SubscribeChargePoint(cp) in goroutine
+   - Enters read loop
+
+3. Read loop:
+   - conn.Read() -> raw bytes
+   - handleOCPPMessage() in goroutine:
+     - Parse [msgType, msgID, action, payload]
+     - msgType 2 (Call)       -> router.HandleCall()
+     - msgType 3 (CallResult) -> cp.HandleResponse()
+     - msgType 4 (CallError)  -> cp.HandleResponse()
+
+4. Disconnect:
+   - conn.Read() returns error
+   - defer hub.Unregister(chargePointID)
+   - defer subCancel() (closes Redis subscription)
 ```
 
 ---
 
-## Full Request-Response Flow
+## Outbound Commands: REST API -> Charger
 
+REST API publishes a command to the charger's Redis channel:
+
+```go
+cmd := command{
+    Action:  "RemoteStartTransaction",
+    Payload: json.RawMessage(`{"idTag":"ABC123","connectorId":1}`),
+}
+rdb.Publish(ctx, "ocpp:cp:"+chargerID, marshal(cmd))
 ```
-REST API
-  │  1. PUBLISH ocpp:cmd:cp-001 { action, uniqueID, replyTo: "ocpp:reply:xyz" }
-  │  2. BRPOP ocpp:reply:xyz  ← blocks (30s timeout)
-  │
-  ▼
-Redis Pub/Sub
-  │
-  ▼
-Pod N (subscribed to ocpp:cmd:cp-001)
-  │  3. write OCPP CALL to charger WS
-  │  4. store pending[uniqueID] = "ocpp:reply:xyz"
-  │
-  ▼
-Charger cp-001
-  │  5. send CALLRESULT back over WS
-  │
-  ▼
-Pod N
-  │  6. match UniqueID → find replyTo
-  │  7. LPUSH ocpp:reply:xyz { result }
-  │
-  ▼
-REST API unblocks ← gets CALLRESULT ✓
+
+The gateway pod holding the connection receives it via `SubscribeChargePoint`:
+
+```go
+func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
+    channel := "ocpp:cp:" + cp.Identity
+    sub := h.rdb.Subscribe(ctx, channel)
+    defer sub.Close()
+
+    for msg := range sub.Channel() {
+        var cmd command
+        json.Unmarshal([]byte(msg.Payload), &cmd)
+
+        go func() {
+            raw, err := cp.Call(ctx, cmd.Action, cmd.Payload)
+            // Call blocks up to 30s waiting for charger response
+        }()
+    }
+}
 ```
 
 ---
@@ -208,31 +231,66 @@ REST API unblocks ← gets CALLRESULT ✓
 
 ```
 Charger cp-001
-  │  MeterValues / BootNotification / StatusNotification...
-  ▼
+  |  [2, "msg1", "MeterValues", {...}]
+  v
 Pod N (WS Gateway)
-  │  parse OCPP
-  │  write to PostgreSQL directly
-  │  send CALLRESULT back to charger
-  ▼
-Done ✓  (REST API never involved)
+  |  handleOCPPMessage -> router.HandleCall
+  |  -> CallAction[meter.Params, meter.Result](ctx, cp, msgID, payload, meter.MeterValues)
+  |  -> meter.MeterValues(ctx, &params) writes to PostgreSQL via pgctx
+  |  -> cp.Reply(ctx, msgID, &result)
+  v
+Done  (REST API never involved)
 ```
 
 ---
 
-## Redis Data Structures
+## Database Schema
 
-| Key | Type | Purpose |
+All EV-related tables use the `ev_` prefix. Schema defined in `schema/0004_ev.sql`.
+
+| Table | Purpose |
+|---|---|
+| `ev_chargers` | Charge point registry (belongs to `sites`) |
+| `ev_connectors` | Per-connector status |
+| `ev_charging_sessions` | Transaction lifecycle (StartTransaction -> StopTransaction) |
+| `ev_meter_values` | Time-series sampled values |
+| `ev_authorization_tags` | IdTag management and local list |
+| `ev_configurations` | Per-charger key/value config |
+| `ev_reservations` | Reservation lifecycle |
+| `ev_charging_profiles` | Smart charging profiles |
+| `ev_message_log` | OCPP message audit trail |
+
+---
+
+## Redis Channels
+
+| Key Pattern | Type | Purpose |
 |---|---|---|
-| `ocpp:cmd:{chargerID}` | Pub/Sub channel | REST → Gateway command delivery |
-| `ocpp:reply:{uniqueID}` | List (LPUSH/BRPOP) | Gateway → REST CALLRESULT reply |
+| `ocpp:cp:{chargePointID}` | Pub/Sub channel | REST -> Gateway command delivery |
 
 ---
 
 ## K8s Properties
 
-- **Pods are stateless from REST's perspective** — just PUBLISH, no pod awareness needed
-- **Per-charger subscription** — Redis tracks which pod owns which charger implicitly
-- **Pod restarts are transparent** — charger reconnects to any pod, re-subscribes automatically
+- **Pods are stateless from REST's perspective** — just PUBLISH to Redis, no pod awareness needed
+- **Per-charger subscription** — each connected charger gets its own Redis channel
+- **Pod restarts are transparent** — charger reconnects to any pod, resubscribes automatically
 - **Zero noise** — only the pod holding the connection receives the command
 - **No registry to maintain** — no stale IPs, no cleanup on pod death
+
+---
+
+## Configuration
+
+| Env Var | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL connection |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection (pool: 20, min idle: 5) |
+| `OCPP_ADDR` | `:8081` | Gateway listen address |
+
+## Dependencies
+
+- `github.com/coder/websocket` — WebSocket library (subprotocol negotiation)
+- `github.com/acoshift/pgsql/pgctx` — PostgreSQL context middleware
+- `github.com/redis/go-redis/v9` — Redis client
+- `github.com/acoshift/configfile` — Environment variable reader

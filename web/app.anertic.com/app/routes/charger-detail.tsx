@@ -97,8 +97,14 @@ interface Session {
   endedAt: string | null
   energyKwh: number
   maxPowerKw: number
+  avgPowerKw: number
   vehicleId?: string
+  idTag?: string
   status: string
+  meterStart: number
+  meterStop: number | null
+  stopReason?: string
+  transactionId: number
 }
 
 interface OcppEvent {
@@ -203,8 +209,13 @@ function generateMockSessions(): Session[] {
       endedAt: null,
       energyKwh: 9.8,
       maxPowerKw: 11.2,
+      avgPowerKw: 9.8,
       vehicleId: "Tesla Model 3",
+      idTag: "TESLA-M3",
       status: "Active",
+      meterStart: 124500,
+      meterStop: null,
+      transactionId: 317,
     },
     {
       id: "ses-2",
@@ -213,8 +224,13 @@ function generateMockSessions(): Session[] {
       endedAt: null,
       energyKwh: 4.5,
       maxPowerKw: 7.2,
+      avgPowerKw: 6.1,
       vehicleId: "BYD Atto 3",
+      idTag: "BYD-ATTO3",
       status: "Active",
+      meterStart: 88200,
+      meterStop: null,
+      transactionId: 318,
     },
     {
       id: "ses-3",
@@ -223,8 +239,14 @@ function generateMockSessions(): Session[] {
       endedAt: new Date(now - 10800000).toISOString(),
       energyKwh: 18.6,
       maxPowerKw: 22.0,
+      avgPowerKw: 18.6,
       vehicleId: "Hyundai Ioniq 5",
+      idTag: "USER-001",
       status: "Completed",
+      meterStart: 105900,
+      meterStop: 124500,
+      stopReason: "EVDisconnected",
+      transactionId: 316,
     },
     {
       id: "ses-4",
@@ -233,7 +255,13 @@ function generateMockSessions(): Session[] {
       endedAt: new Date(now - 18000000).toISOString(),
       energyKwh: 12.3,
       maxPowerKw: 11.0,
+      avgPowerKw: 10.2,
+      idTag: "ADMIN-001",
       status: "Completed",
+      meterStart: 75900,
+      meterStop: 88200,
+      stopReason: "Local",
+      transactionId: 315,
     },
     {
       id: "ses-5",
@@ -242,8 +270,14 @@ function generateMockSessions(): Session[] {
       endedAt: new Date(now - 82800000).toISOString(),
       energyKwh: 7.1,
       maxPowerKw: 7.4,
+      avgPowerKw: 7.1,
       vehicleId: "Nissan Leaf",
+      idTag: "USER-002",
       status: "Completed",
+      meterStart: 98800,
+      meterStop: 105900,
+      stopReason: "EVDisconnected",
+      transactionId: 314,
     },
     {
       id: "ses-6",
@@ -252,8 +286,14 @@ function generateMockSessions(): Session[] {
       endedAt: new Date(now - 86400000).toISOString(),
       energyKwh: 22.0,
       maxPowerKw: 22.0,
+      avgPowerKw: 19.8,
       vehicleId: "MG ZS EV",
+      idTag: "GUEST",
       status: "Completed",
+      meterStart: 53900,
+      meterStop: 75900,
+      stopReason: "Remote",
+      transactionId: 313,
     },
   ]
 }
@@ -475,6 +515,7 @@ export default function ChargerDetail() {
   const [sessions] = useState<Session[]>(() => generateMockSessions())
   const [events] = useState<OcppEvent[]>(() => generateMockEvents())
   const [analytics] = useState(() => generateMockAnalytics())
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -616,7 +657,16 @@ export default function ChargerDetail() {
                   Active
                 </p>
                 {activeSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} />
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    selected={selectedSession?.id === session.id}
+                    onClick={() =>
+                      setSelectedSession(
+                        selectedSession?.id === session.id ? null : session,
+                      )
+                    }
+                  />
                 ))}
               </div>
             )}
@@ -626,7 +676,16 @@ export default function ChargerDetail() {
                   Recent
                 </p>
                 {completedSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} />
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    selected={selectedSession?.id === session.id}
+                    onClick={() =>
+                      setSelectedSession(
+                        selectedSession?.id === session.id ? null : session,
+                      )
+                    }
+                  />
                 ))}
               </div>
             )}
@@ -1597,10 +1656,6 @@ function StartChargingDialog({
   const [step, setStep] = useState<"config" | "sending" | "sent">("config")
   const [idTag, setIdTag] = useState("")
   const [powerLimit, setPowerLimit] = useState(String(maxPowerKw))
-  const [wsUrl] = useState(
-    `wss://ocpp.anertic.com/ws/CP-001`,
-  )
-
   function handleStart() {
     if (!idTag.trim()) {
       toast.error("Please enter an ID tag")
@@ -1663,15 +1718,22 @@ function StartChargingDialog({
                   <RiUserLine className="size-3" />
                   ID Tag / Identifier
                 </Label>
-                <Input
+                <select
                   id="idTag"
-                  placeholder="e.g. TESLA-M3, USER-001"
                   value={idTag}
                   onChange={(e) => setIdTag(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   autoFocus
-                />
+                >
+                  <option value="">Select an ID tag...</option>
+                  <option value="ADMIN-001">ADMIN-001</option>
+                  <option value="USER-001">USER-001</option>
+                  <option value="USER-002">USER-002</option>
+                  <option value="TESLA-M3">TESLA-M3</option>
+                  <option value="GUEST">GUEST</option>
+                </select>
                 <p className="text-[10px] text-muted-foreground">
-                  The RFID tag or user identifier to authorize the session
+                  Select an authorized ID tag from the local auth list
                 </p>
               </div>
 
@@ -1695,28 +1757,6 @@ function StartChargingDialog({
                 </p>
               </div>
 
-              {/* WebSocket URL */}
-              <div className="grid gap-2">
-                <Label className="text-xs text-muted-foreground">
-                  OCPP WebSocket Endpoint
-                </Label>
-                <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
-                  <code className="flex-1 truncate text-xs tabular-nums">
-                    {wsUrl}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 shrink-0 px-2 text-[10px]"
-                    onClick={() => {
-                      navigator.clipboard.writeText(wsUrl)
-                      toast.success("Copied to clipboard")
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
             </div>
 
             <DialogFooter>
@@ -1919,59 +1959,229 @@ function StopChargingDialog({
   )
 }
 
-function SessionRow({ session }: { session: Session }) {
+function SessionRow({
+  session,
+  selected,
+  onClick,
+}: {
+  session: Session
+  selected: boolean
+  onClick: () => void
+}) {
+  const isActive = session.status === "Active"
+
+  return (
+    <div className="space-y-0">
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-all",
+          isActive && "border-blue-200 bg-blue-50/30",
+          !isActive && "hover:bg-muted/50",
+          selected && !isActive && "border-foreground/20 bg-muted/30",
+          selected && "rounded-b-none",
+        )}
+      >
+        {/* Status dot */}
+        <span className="relative flex size-2.5">
+          {isActive && (
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+          )}
+          <span
+            className={cn(
+              "relative inline-flex size-2.5 rounded-full",
+              isActive ? "bg-blue-500" : "bg-gray-300",
+            )}
+          />
+        </span>
+
+        {/* Connector */}
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <RiPlugLine className="size-3" />#{session.connectorId}
+        </span>
+
+        {/* Vehicle */}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {session.vehicleId || "Unknown vehicle"}
+        </span>
+
+        {/* Energy */}
+        <span className="text-sm font-semibold tabular-nums">
+          {session.energyKwh.toFixed(1)} kWh
+        </span>
+
+        {/* Max power */}
+        <span className="hidden text-xs tabular-nums text-muted-foreground sm:block">
+          {formatPower(session.maxPowerKw)} peak
+        </span>
+
+        {/* Duration */}
+        <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+          <RiTimeLine className="size-3" />
+          {sessionDuration(session.startedAt, session.endedAt)}
+        </span>
+
+        {/* Time */}
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {formatTime(session.startedAt)}
+        </span>
+
+        {/* Expand indicator */}
+        <RiArrowDownSLine
+          className={cn(
+            "size-4 text-muted-foreground transition-transform",
+            selected && "rotate-180",
+          )}
+        />
+      </button>
+
+      {/* Expanded detail panel */}
+      {selected && <SessionDetail session={session} />}
+    </div>
+  )
+}
+
+function SessionDetail({ session }: { session: Session }) {
   const isActive = session.status === "Active"
 
   return (
     <div
       className={cn(
-        "flex items-center gap-4 rounded-lg border px-4 py-3",
-        isActive && "border-blue-200 bg-blue-50/30",
+        "rounded-b-lg border border-t-0 px-5 py-4",
+        isActive ? "border-blue-200 bg-blue-50/20" : "border-foreground/20 bg-muted/20",
       )}
     >
-      {/* Status dot */}
-      <span className="relative flex size-2.5">
-        {isActive && (
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+      <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Transaction ID
+          </p>
+          <p className="mt-0.5 font-mono text-sm font-semibold">
+            #{session.transactionId}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            ID Tag
+          </p>
+          <p className="mt-0.5 font-mono text-sm">{session.idTag || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Vehicle
+          </p>
+          <p className="mt-0.5 text-sm">{session.vehicleId || "Unknown"}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Connector
+          </p>
+          <p className="mt-0.5 text-sm">#{session.connectorId}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Energy Delivered
+          </p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums">
+            {session.energyKwh.toFixed(2)} kWh
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Duration
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums">
+            {sessionDuration(session.startedAt, session.endedAt)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Peak Power
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums">
+            {formatPower(session.maxPowerKw)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Avg Power
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums">
+            {formatPower(session.avgPowerKw)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Status
+          </p>
+          <Badge
+            className={cn(
+              "mt-0.5 text-[10px]",
+              isActive
+                ? "bg-blue-500/15 text-blue-700"
+                : "bg-emerald-500/15 text-emerald-700",
+            )}
+          >
+            {session.status}
+          </Badge>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Started
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums">
+            {new Date(session.startedAt).toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Ended
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums">
+            {session.endedAt
+              ? new Date(session.endedAt).toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "In progress"}
+          </p>
+        </div>
+        {session.stopReason && (
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Stop Reason
+            </p>
+            <p className="mt-0.5 text-sm">{session.stopReason}</p>
+          </div>
         )}
-        <span
-          className={cn(
-            "relative inline-flex size-2.5 rounded-full",
-            isActive ? "bg-blue-500" : "bg-gray-300",
-          )}
-        />
-      </span>
+      </div>
 
-      {/* Connector */}
-      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-        <RiPlugLine className="size-3" />#{session.connectorId}
-      </span>
-
-      {/* Vehicle */}
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-        {session.vehicleId || "Unknown"}
-      </span>
-
-      {/* Energy */}
-      <span className="text-sm font-semibold tabular-nums">
-        {session.energyKwh.toFixed(1)} kWh
-      </span>
-
-      {/* Max power */}
-      <span className="hidden text-xs tabular-nums text-muted-foreground sm:block">
-        {formatPower(session.maxPowerKw)} peak
-      </span>
-
-      {/* Duration */}
-      <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
-        <RiTimeLine className="size-3" />
-        {sessionDuration(session.startedAt, session.endedAt)}
-      </span>
-
-      {/* Time */}
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {formatTime(session.startedAt)}
-      </span>
+      {/* Meter values */}
+      <div className="mt-4 flex items-center gap-4 rounded-md border bg-background/60 px-4 py-2.5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Meter Start:</span>
+          <span className="font-mono tabular-nums">
+            {session.meterStart.toLocaleString()} Wh
+          </span>
+        </div>
+        <span className="text-muted-foreground">&rarr;</span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Meter Stop:</span>
+          <span className="font-mono tabular-nums">
+            {session.meterStop !== null
+              ? `${session.meterStop.toLocaleString()} Wh`
+              : "—"}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

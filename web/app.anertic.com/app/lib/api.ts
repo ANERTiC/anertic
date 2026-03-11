@@ -15,7 +15,7 @@ async function tryRefreshToken(): Promise<boolean> {
   if (!refreshToken) return false
 
   try {
-    const res = await fetch(`${API_BASE}/api/v1/auth.refreshToken`, {
+    const res = await fetch(`${API_BASE}/auth.refreshToken`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -34,7 +34,7 @@ async function tryRefreshToken(): Promise<boolean> {
 
 async function fetchWithAuth(method: string, body?: unknown): Promise<Response> {
   const token = getToken()
-  return fetch(`${API_BASE}/api/v1/${method}`, {
+  return fetch(`${API_BASE}/${method}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,4 +1,5 @@
-import { Outlet, redirect, useOutletContext } from "react-router"
+import { Outlet, redirect, useNavigate, useOutletContext } from "react-router"
+import { RiArrowLeftSLine } from "@remixicon/react"
 import { Separator } from "~/components/ui/separator"
 import {
   SidebarInset,
@@ -35,6 +36,7 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 export default function SiteLayout({ loaderData }: Route.ComponentProps) {
   const { siteId } = loaderData
+  const navigate = useNavigate()
 
   return (
     <SidebarProvider>
@@ -47,6 +49,13 @@ export default function SiteLayout({ loaderData }: Route.ComponentProps) {
               orientation="vertical"
               className="mr-2 data-vertical:h-4 data-vertical:self-auto"
             />
+            <button
+              onClick={() => navigate(-1)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Go back"
+            >
+              <RiArrowLeftSLine className="size-4" />
+            </button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-6">

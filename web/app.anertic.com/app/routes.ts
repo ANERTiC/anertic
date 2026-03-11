@@ -20,7 +20,6 @@ export default [
     layout("layouts/global.tsx", [
       index("routes/dashboard.tsx"),
       route("sites", "routes/sites.tsx"),
-      route("settings", "routes/settings.tsx"),
     ]),
 
     // Site-scoped pages (sidebar)
@@ -30,7 +29,11 @@ export default [
       route("chargers/new", "routes/charger-new.tsx"),
       route("chargers/:chargerId", "routes/charger-detail.tsx"),
       route("devices", "routes/devices.tsx"),
+      route("devices/new", "routes/device-new.tsx"),
+      route("devices/:deviceId", "routes/device-detail.tsx"),
+      route("rooms", "routes/rooms.tsx"),
       route("insights", "routes/insights.tsx"),
+      route("settings", "routes/settings.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig

@@ -1,12 +1,703 @@
-export default function Settings() {
+import { useState, useEffect } from "react"
+import {
+  RiSettings3Line,
+  RiMapPinLine,
+  RiTimeLine,
+  RiNotification3Line,
+  RiMoneyDollarCircleLine,
+  RiShieldLine,
+  RiDeleteBinLine,
+  RiCheckLine,
+  RiEditLine,
+  RiAlertLine,
+  RiSunLine,
+  RiMoonLine,
+  RiGlobalLine,
+  RiMailLine,
+  RiSmartphoneLine,
+  RiKeyLine,
+  RiFileCopyLine,
+  RiRefreshLine,
+  RiEyeLine,
+  RiEyeOffLine,
+} from "@remixicon/react"
+import { useSiteId } from "~/layouts/site"
+import { Card, CardContent } from "~/components/ui/card"
+import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
+import { Badge } from "~/components/ui/badge"
+import { Separator } from "~/components/ui/separator"
+import { cn } from "~/lib/utils"
+
+// --- Types ---
+
+interface SiteSettings {
+  name: string
+  address: string
+  timezone: string
+  currency: string
+  // Tariffs
+  gridImportRate: number
+  gridExportRate: number
+  peakStartHour: number
+  peakEndHour: number
+  peakRate: number
+  offPeakRate: number
+  // Notifications
+  emailAlerts: boolean
+  pushAlerts: boolean
+  alertOffline: boolean
+  alertFault: boolean
+  alertHighConsumption: boolean
+  alertLowSolar: boolean
+  offlineThresholdMinutes: number
+  consumptionThresholdKwh: number
+  // API
+  apiKey: string
+  webhookUrl: string
+  // Meta
+  createdAt: string
+  updatedAt: string
+}
+
+// --- Mock Data ---
+
+function generateMockSettings(): SiteSettings {
+  return {
+    name: "Bangkok HQ",
+    address: "123 Sukhumvit Rd, Klongtoey, Bangkok 10110",
+    timezone: "Asia/Bangkok",
+    currency: "THB",
+    gridImportRate: 4.15,
+    gridExportRate: 2.2,
+    peakStartHour: 9,
+    peakEndHour: 22,
+    peakRate: 5.28,
+    offPeakRate: 2.63,
+    emailAlerts: true,
+    pushAlerts: true,
+    alertOffline: true,
+    alertFault: true,
+    alertHighConsumption: true,
+    alertLowSolar: false,
+    offlineThresholdMinutes: 30,
+    consumptionThresholdKwh: 50,
+    apiKey: "anertic_test_0000000000000000",
+    webhookUrl: "",
+    createdAt: "2025-11-15T08:00:00Z",
+    updatedAt: "2026-03-10T14:30:00Z",
+  }
+}
+
+// --- Toggle Switch ---
+
+function Toggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
   return (
-    <div className="space-y-6">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200",
+        checked ? "bg-primary" : "bg-muted-foreground/25",
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none block size-3.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200",
+          checked ? "translate-x-[1.125rem]" : "translate-x-[0.175rem]",
+        )}
+      />
+    </button>
+  )
+}
+
+// --- Section Header ---
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof RiSettings3Line
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <Icon className="size-4 text-muted-foreground" />
+      </div>
       <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Account and application settings
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+// --- Main Component ---
+
+export default function Settings() {
+  const siteId = useSiteId()
+  const [mounted, setMounted] = useState(false)
+  const [settings, setSettings] = useState<SiteSettings>(() =>
+    generateMockSettings(),
+  )
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [copiedKey, setCopiedKey] = useState(false)
+  const [editingGeneral, setEditingGeneral] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  function update<K extends keyof SiteSettings>(
+    key: K,
+    value: SiteSettings[K],
+  ) {
+    setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleCopyApiKey() {
+    navigator.clipboard.writeText(settings.apiKey)
+    setCopiedKey(true)
+    setTimeout(() => setCopiedKey(false), 2000)
+  }
+
+  const maskedKey =
+    settings.apiKey.slice(0, 8) +
+    "..." +
+    settings.apiKey.slice(-4)
+
+  return (
+    <div
+      className={cn(
+        "mx-auto max-w-3xl space-y-8 pb-16 transition-opacity duration-500",
+        mounted ? "opacity-100" : "opacity-0",
+      )}
+    >
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Site Settings
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Configure your site preferences, energy tariffs, and integrations.
         </p>
       </div>
+
+      {/* ──────────────────────────────
+          GENERAL
+          ────────────────────────────── */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <SectionHeader
+              icon={RiMapPinLine}
+              title="General"
+              description="Site identity and location"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => setEditingGeneral(!editingGeneral)}
+            >
+              <RiEditLine className="size-3.5" />
+              {editingGeneral ? "Done" : "Edit"}
+            </Button>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Site Name
+              </Label>
+              {editingGeneral ? (
+                <Input
+                  value={settings.name}
+                  onChange={(e) => update("name", e.target.value)}
+                />
+              ) : (
+                <p className="text-sm font-medium">{settings.name}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Timezone
+              </Label>
+              {editingGeneral ? (
+                <Input
+                  value={settings.timezone}
+                  onChange={(e) => update("timezone", e.target.value)}
+                />
+              ) : (
+                <p className="flex items-center gap-1.5 text-sm font-medium">
+                  <RiGlobalLine className="size-3.5 text-muted-foreground" />
+                  {settings.timezone}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs text-muted-foreground">
+                Address
+              </Label>
+              {editingGeneral ? (
+                <Input
+                  value={settings.address}
+                  onChange={(e) => update("address", e.target.value)}
+                />
+              ) : (
+                <p className="text-sm font-medium">{settings.address}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Currency
+              </Label>
+              {editingGeneral ? (
+                <Input
+                  value={settings.currency}
+                  onChange={(e) => update("currency", e.target.value)}
+                />
+              ) : (
+                <p className="text-sm font-medium">{settings.currency}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Site ID
+              </Label>
+              <p className="font-mono text-xs text-muted-foreground">
+                {siteId}
+              </p>
+            </div>
+          </div>
+
+          {editingGeneral && (
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingGeneral(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={() => setEditingGeneral(false)}>
+                <RiCheckLine className="size-3.5" />
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────
+          ENERGY TARIFFS
+          ────────────────────────────── */}
+      <Card>
+        <CardContent className="p-6">
+          <SectionHeader
+            icon={RiMoneyDollarCircleLine}
+            title="Energy Tariffs"
+            description="Configure electricity rates for cost calculations"
+          />
+
+          <div className="mt-6 space-y-5">
+            {/* Base Rates */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Grid Import Rate ({settings.currency}/kWh)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={settings.gridImportRate}
+                  onChange={(e) =>
+                    update("gridImportRate", parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Grid Export Rate ({settings.currency}/kWh)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={settings.gridExportRate}
+                  onChange={(e) =>
+                    update("gridExportRate", parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* TOU Rates */}
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Time-of-Use Rates
+                </h4>
+                <Badge variant="outline" className="text-[10px]">
+                  TOU
+                </Badge>
+              </div>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border bg-amber-500/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <RiSunLine className="size-4 text-amber-500" />
+                    <span className="text-xs font-medium">Peak</span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Hours</span>
+                      <span className="font-medium tabular-nums">
+                        {String(settings.peakStartHour).padStart(2, "0")}:00 –{" "}
+                        {String(settings.peakEndHour).padStart(2, "0")}:00
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">
+                        Rate ({settings.currency}/kWh)
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settings.peakRate}
+                        onChange={(e) =>
+                          update("peakRate", parseFloat(e.target.value) || 0)
+                        }
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-blue-500/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <RiMoonLine className="size-4 text-blue-500" />
+                    <span className="text-xs font-medium">Off-Peak</span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Hours</span>
+                      <span className="font-medium tabular-nums">
+                        {String(settings.peakEndHour).padStart(2, "0")}:00 –{" "}
+                        {String(settings.peakStartHour).padStart(2, "0")}:00
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">
+                        Rate ({settings.currency}/kWh)
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={settings.offPeakRate}
+                        onChange={(e) =>
+                          update("offPeakRate", parseFloat(e.target.value) || 0)
+                        }
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button size="sm" className="gap-1.5">
+                <RiCheckLine className="size-3.5" />
+                Save Tariffs
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────
+          NOTIFICATIONS
+          ────────────────────────────── */}
+      <Card>
+        <CardContent className="p-6">
+          <SectionHeader
+            icon={RiNotification3Line}
+            title="Notifications"
+            description="Choose how and when you want to be alerted"
+          />
+
+          <div className="mt-6 space-y-5">
+            {/* Channels */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Channels
+              </h4>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <RiMailLine className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Email</p>
+                      <p className="text-xs text-muted-foreground">
+                        Receive alerts via email
+                      </p>
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={settings.emailAlerts}
+                    onChange={(v) => update("emailAlerts", v)}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <RiSmartphoneLine className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Push</p>
+                      <p className="text-xs text-muted-foreground">
+                        Browser and mobile push notifications
+                      </p>
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={settings.pushAlerts}
+                    onChange={(v) => update("pushAlerts", v)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Alert Types */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Alert Types
+              </h4>
+              <div className="mt-3 space-y-1">
+                <AlertToggle
+                  label="Device Offline"
+                  description={`Alert when a device is unreachable for ${settings.offlineThresholdMinutes} min`}
+                  checked={settings.alertOffline}
+                  onChange={(v) => update("alertOffline", v)}
+                />
+                <AlertToggle
+                  label="Charger Fault"
+                  description="Alert when a charger reports a fault status"
+                  checked={settings.alertFault}
+                  onChange={(v) => update("alertFault", v)}
+                />
+                <AlertToggle
+                  label="High Consumption"
+                  description={`Alert when daily consumption exceeds ${settings.consumptionThresholdKwh} kWh`}
+                  checked={settings.alertHighConsumption}
+                  onChange={(v) => update("alertHighConsumption", v)}
+                />
+                <AlertToggle
+                  label="Low Solar Output"
+                  description="Alert when solar production drops below expected levels"
+                  checked={settings.alertLowSolar}
+                  onChange={(v) => update("alertLowSolar", v)}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────
+          API & INTEGRATIONS
+          ────────────────────────────── */}
+      <Card>
+        <CardContent className="p-6">
+          <SectionHeader
+            icon={RiKeyLine}
+            title="API & Integrations"
+            description="Manage API access and webhook endpoints"
+          />
+
+          <div className="mt-6 space-y-5">
+            {/* API Key */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">API Key</Label>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 items-center rounded-md border bg-muted/30 px-3 py-2">
+                  <code className="flex-1 text-xs">
+                    {showApiKey ? settings.apiKey : maskedKey}
+                  </code>
+                  <button
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showApiKey ? (
+                      <RiEyeOffLine className="size-3.5" />
+                    ) : (
+                      <RiEyeLine className="size-3.5" />
+                    )}
+                  </button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={handleCopyApiKey}
+                >
+                  {copiedKey ? (
+                    <RiCheckLine className="size-3.5 text-emerald-500" />
+                  ) : (
+                    <RiFileCopyLine className="size-3.5" />
+                  )}
+                  {copiedKey ? "Copied" : "Copy"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                >
+                  <RiRefreshLine className="size-3.5" />
+                  Regenerate
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Use this key to authenticate API requests for this site.
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Webhook */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Webhook URL
+              </Label>
+              <Input
+                placeholder="https://example.com/webhooks/anertic"
+                value={settings.webhookUrl}
+                onChange={(e) => update("webhookUrl", e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                We'll send POST requests with event payloads to this URL.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button size="sm" className="gap-1.5">
+                <RiCheckLine className="size-3.5" />
+                Save Integration
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────
+          METADATA
+          ────────────────────────────── */}
+      <div className="flex items-center justify-between rounded-lg border border-dashed px-4 py-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <RiTimeLine className="size-3.5" />
+            Created{" "}
+            {new Date(settings.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+          <span>
+            Last updated{" "}
+            {new Date(settings.updatedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+
+      {/* ──────────────────────────────
+          DANGER ZONE
+          ────────────────────────────── */}
+      <Card className="border-red-200/50">
+        <CardContent className="p-6">
+          <SectionHeader
+            icon={RiShieldLine}
+            title="Danger Zone"
+            description="Irreversible actions that affect your site"
+          />
+
+          <div className="mt-6 flex items-center justify-between rounded-lg border border-red-200/50 bg-red-500/5 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Delete this site</p>
+              <p className="text-xs text-muted-foreground">
+                Permanently remove this site, all devices, and historical data.
+                This cannot be undone.
+              </p>
+            </div>
+            {showDeleteConfirm ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button variant="destructive" size="sm" className="gap-1.5">
+                  <RiDeleteBinLine className="size-3.5" />
+                  Confirm Delete
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <RiAlertLine className="size-3.5" />
+                Delete Site
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// --- Sub-components ---
+
+function AlertToggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-muted/30">
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
     </div>
   )
 }

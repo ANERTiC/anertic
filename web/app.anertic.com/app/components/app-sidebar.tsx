@@ -8,9 +8,11 @@ import {
   RiLightbulbFlashLine,
   RiSettings3Line,
   RiFlashlightLine,
+  RiDoorOpenLine,
   RiArrowUpDownLine,
   RiAddLine,
   RiLogoutBoxLine,
+  RiHomeLine,
 } from "@remixicon/react"
 import { api } from "~/lib/api"
 import { getCookie, setCookie } from "~/lib/cookie"
@@ -67,9 +69,10 @@ function getSiteColor(index: number) {
 
 const siteNavItems = [
   { to: "/overview", icon: RiDashboardLine, label: "Overview" },
-  { to: "/devices", icon: RiCpuLine, label: "Devices" },
   { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers" },
+  { to: "/rooms", icon: RiDoorOpenLine, label: "Rooms" },
   { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
+  { to: "/devices", icon: RiCpuLine, label: "Devices" },
 ]
 
 function SiteSwitcher({
@@ -151,6 +154,15 @@ function SiteSwitcher({
               </div>
               <div className="font-medium text-muted-foreground">Add site</div>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2 p-2"
+              onClick={() => navigate("/")}
+            >
+              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                <RiHomeLine className="size-4" />
+              </div>
+              <div className="font-medium text-muted-foreground">Dashboard</div>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
@@ -219,29 +231,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         )}
 
-        <SidebarSeparator />
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Settings">
-                <NavLink
-                  to="/settings"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : ""
-                  }
-                >
-                  <RiSettings3Line className="size-4" />
-                  <span>Settings</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+        {currentSite && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Settings">
+                    <NavLink
+                      to={`/settings?site=${currentSite.id}`}
+                      className={({ isActive }) =>
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : ""
+                      }
+                    >
+                      <RiSettings3Line className="size-4" />
+                      <span>Settings</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+          </>
+        )}
+
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Home">
+              <NavLink to="/" end>
+                <RiHomeLine className="size-4" />
+                <span>Home</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

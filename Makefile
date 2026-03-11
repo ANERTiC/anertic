@@ -96,3 +96,15 @@ release-worker:
 
 release-ingester:
 	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,ingester,olufy-0)
+
+deploy-web:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/web:$(GIT_REV) \
+		-f web/app.anertic.com/Dockerfile \
+		--push \
+		web/app.anertic.com
+	$(call deploy,$(IMAGE_BASE)/web:$(GIT_REV),anertic,staging-web,olufy-0)
+
+release-web:
+	$(call deploy,$(IMAGE_BASE)/web:$(GIT_REV),anertic,web,olufy-0)

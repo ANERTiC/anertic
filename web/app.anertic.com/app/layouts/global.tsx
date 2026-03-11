@@ -1,13 +1,11 @@
 import { Outlet, useNavigate } from "react-router"
 import {
   RiFlashlightLine,
-  RiSettings3Line,
   RiLogoutBoxLine,
 } from "@remixicon/react"
 
 import { clearAuth, getUser } from "~/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,13 +33,6 @@ export default function GlobalLayout() {
           <span className="text-sm font-semibold">ANERTiC</span>
         </button>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => navigate("/settings")}
-          >
-            <RiSettings3Line className="size-4" />
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="rounded-full transition-opacity hover:opacity-80">

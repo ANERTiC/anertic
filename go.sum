@@ -40,6 +40,8 @@ github.com/moonrhythm/httpmux v1.2.0 h1:9MxKlpRyolg3GDySJGyf4phogVpaClkhbec5eFEu
 github.com/moonrhythm/httpmux v1.2.0/go.mod h1:h2GSszA6yEUZiksc9kVNiteLrYeXhDKH9zNaN7RglVE=
 github.com/moonrhythm/parapet v0.13.6 h1:xpoXIEI1JiNVTs8F2edmZn75gMV2Dg6KQdpOlUt9rJs=
 github.com/moonrhythm/parapet v0.13.6/go.mod h1:QEhl1pk8viGxC3xz1XLmzU8UZRT5qxHXgUln5hXlRCQ=
+github.com/moonrhythm/session v0.19.0 h1:i3kEC199QVDyosnhehEWucsvbQvfrEJXNicLyYcHSiU=
+github.com/moonrhythm/session v0.19.0/go.mod h1:vTfTB8Nw4mE2o5uPONcAsihMLJJHYM0Bg9zoy+MEmGc=
 github.com/moonrhythm/validator v1.3.0 h1:OzZSW8Xtb66Gz7SA8qzY3ANupgdMojLFC1imDs1utOM=
 github.com/moonrhythm/validator v1.3.0/go.mod h1:gbDyBOwWGzphP8K2Sdrd9+MveRVxzxm+ezecimvu9UU=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=

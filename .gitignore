@@ -1,9 +1,39 @@
+# Build outputs
 .build/
-.env
-.env.*
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
 *.test
 *.out
+cover.out
+coverage.html
+
+# Go workspace
 vendor/
-.claude/
+go.work.local
+
+# Environment
+.env
+.env.*
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Tools
+.goreload
+.claude/
+
+# Debug
+__debug_bin*

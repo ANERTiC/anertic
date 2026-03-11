@@ -1,4 +1,4 @@
-package auth
+package provider
 
 import (
 	"context"
@@ -24,7 +24,13 @@ type OAuthProvider interface {
 
 var providers = map[string]OAuthProvider{}
 
-// RegisterProvider registers an OAuth provider by name.
-func RegisterProvider(p OAuthProvider) {
+// Register registers an OAuth provider by name.
+func Register(p OAuthProvider) {
 	providers[p.Name()] = p
+}
+
+// Get returns the provider by name and whether it exists.
+func Get(name string) (OAuthProvider, bool) {
+	p, ok := providers[name]
+	return p, ok
 }

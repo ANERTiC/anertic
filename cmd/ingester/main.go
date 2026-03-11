@@ -13,6 +13,10 @@ import (
 )
 
 func main() {
+	if err := configfile.LoadDotEnv("./.env"); err != nil {
+		slog.Warn("load .env", "error", err)
+	}
+
 	env := configfile.NewEnvReader()
 
 	cfg := pipeline.Config{

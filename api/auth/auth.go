@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -12,17 +15,21 @@ import (
 
 	"github.com/acoshift/arpc/v2"
 	"github.com/acoshift/pgsql/pgctx"
+	"github.com/moonrhythm/session"
 
-	"github.com/anertic/anertic/api/conf"
+	"github.com/anertic/anertic/api/auth/provider"
 )
+
+const sessionName = "auth"
 
 var (
 	errUnauthorized = arpc.NewErrorCode("unauthorized", "unauthorized")
-	errAuthFailed   = arpc.NewErrorCode("auth/failed", "authentication failed")
+
+	appURL string
 )
 
-func Init() {
-	initGoogle()
+func SetAppURL(u string) {
+	appURL = u
 }
 
 // Middleware validates Bearer token and sets user in context.
@@ -50,32 +57,66 @@ func Middleware(actx *arpc.MiddlewareContext) error {
 	return nil
 }
 
+func generateState() string {
+	var b [16]byte
+	_, err := io.ReadFull(rand.Reader, b[:])
+	if err != nil {
+		panic(err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b[:])
+}
+
 // ProviderRedirect redirects to the OAuth provider's consent page.
-// The provider is determined from the URL path: /auth/{provider}
 func ProviderRedirect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("provider")
-	p, ok := providers[name]
+	p, ok := provider.Get(name)
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)
 		return
 	}
 
-	// TODO: add state param with HMAC for CSRF protection
-	u := p.AuthURL("")
+	state := generateState()
+
+	s, err := session.Get(r.Context(), sessionName)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "auth: get session", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	s.Set("state", state)
+	s.Set("redirect_url", r.URL.Query().Get("redirect_url"))
+
+	u := p.AuthURL(state)
 	http.Redirect(w, r, u, http.StatusFound)
 }
 
 // ProviderCallback handles the OAuth callback from any provider.
-// The provider is determined from the URL path: /auth/{provider}/callback
 func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	name := r.PathValue("provider")
-	p, ok := providers[name]
+	p, ok := provider.Get(name)
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)
 		return
 	}
+
+	s, err := session.Get(ctx, sessionName)
+	if err != nil {
+		slog.ErrorContext(ctx, "auth: get session", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate state
+	savedState := s.PopString("state")
+	if savedState == "" || savedState != r.URL.Query().Get("state") {
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	redirectURL := s.PopString("redirect_url")
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
@@ -112,7 +153,11 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectURL := conf.AppURL + "/login/callback?" + url.Values{
+	if redirectURL == "" {
+		redirectURL = appURL + "/login/callback"
+	}
+
+	redirectURL += "?" + url.Values{
 		"token":         {token},
 		"refresh_token": {refreshToken},
 	}.Encode()

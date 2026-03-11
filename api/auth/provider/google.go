@@ -1,4 +1,4 @@
-package auth
+package provider
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
-
-	"github.com/anertic/anertic/api/conf"
 )
 
 type googleProvider struct {
@@ -15,23 +13,23 @@ type googleProvider struct {
 	oidc   *oidc.Provider
 }
 
-func initGoogle() {
-	provider, err := oidc.NewProvider(context.Background(), "https://accounts.google.com")
+func NewGoogle(clientID, clientSecret, redirectURL string) OAuthProvider {
+	p, err := oidc.NewProvider(context.Background(), "https://accounts.google.com")
 	if err != nil {
 		slog.Error("auth: failed to init google oidc provider", "error", err)
-		return
+		return nil
 	}
 
-	RegisterProvider(&googleProvider{
+	return &googleProvider{
 		oauth2: &oauth2.Config{
-			ClientID:     conf.GoogleClientID,
-			ClientSecret: conf.GoogleClientSecret,
-			RedirectURL:  conf.GoogleRedirectURL,
-			Endpoint:     provider.Endpoint(),
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Endpoint:     p.Endpoint(),
 			Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
 		},
-		oidc: provider,
-	})
+		oidc: p,
+	}
 }
 
 func (g *googleProvider) Name() string {
@@ -50,7 +48,7 @@ func (g *googleProvider) Exchange(ctx context.Context, code string) (*UserInfo, 
 
 	rawIDToken, ok := tok.Extra("id_token").(string)
 	if !ok {
-		return nil, errAuthFailed
+		return nil, ErrAuthFailed
 	}
 
 	verifier := g.oidc.Verifier(&oidc.Config{ClientID: g.oauth2.ClientID})

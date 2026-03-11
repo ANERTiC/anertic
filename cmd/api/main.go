@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/acoshift/arpc/v2"
 	"github.com/acoshift/configfile"
@@ -13,10 +14,13 @@ import (
 	"github.com/moonrhythm/httpmux"
 	"github.com/moonrhythm/parapet"
 	"github.com/moonrhythm/parapet/pkg/cors"
+	"github.com/moonrhythm/session"
+	"github.com/moonrhythm/session/store"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/auth/provider"
 	"github.com/anertic/anertic/api/conf"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
@@ -54,8 +58,9 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	conf.Init()
-	auth.Init()
+	appCfg := conf.Load()
+	auth.SetAppURL(appCfg.AppURL)
+	provider.Register(provider.NewGoogle(appCfg.GoogleClientID, appCfg.GoogleClientSecret, appCfg.GoogleRedirectURL))
 
 	mux := httpmux.New()
 
@@ -85,6 +90,14 @@ func run() error {
 
 	srv.Handler = mux
 	srv.Use(cors.New())
+	srv.UseFunc(parapet.MiddlewareFunc(session.Middleware(session.Config{
+		Store:    &store.Redis{Client: rdb, Prefix: "sess:"},
+		HTTPOnly: true,
+		Path:     "/",
+		MaxAge:   10 * time.Minute,
+		Secure:   session.PreferSecure,
+		SameSite: http.SameSiteLaxMode,
+	})))
 	srv.UseFunc(pgctx.Middleware(db))
 	srv.UseFunc(rdctx.Middleware(rdb))
 	srv.Addr = cfg.StringDefault("ADDR", ":8080")

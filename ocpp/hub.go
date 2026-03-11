@@ -124,7 +124,8 @@ func (h *Hub) Subscribe(ctx context.Context) {
 	}
 }
 
-// SendCommand sends a command to a charge point.
+// SendCommand is the outbound entry point for API/external services to send
+// commands to a charge point (e.g. RemoteStart, Reset, UnlockConnector).
 // If the charger is on this replica, execute directly.
 // Otherwise, publish to broker for the correct replica to pick up.
 func (h *Hub) SendCommand(ctx context.Context, cmd *Command) (*CommandResponse, error) {

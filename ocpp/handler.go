@@ -9,9 +9,6 @@ import (
 	"github.com/coder/websocket"
 )
 
-// SupportedSubprotocols lists accepted OCPP subprotocols in preference order.
-var SupportedSubprotocols = []string{"ocpp2.0.1", "ocpp1.6"}
-
 // Handler returns an HTTP handler for OCPP WebSocket connections.
 // Detects OCPP version via WebSocket subprotocol negotiation.
 func Handler(hub *Hub) http.Handler {
@@ -23,7 +20,7 @@ func Handler(hub *Hub) http.Handler {
 		}
 
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			Subprotocols: SupportedSubprotocols,
+			Subprotocols: []string{"ocpp2.0.1", "ocpp1.6"},
 		})
 		if err != nil {
 			slog.ErrorContext(r.Context(), "ocpp ws accept error", "error", err, "chargePointID", chargePointID)
@@ -63,7 +60,8 @@ func Handler(hub *Hub) http.Handler {
 	})
 }
 
-// handleOCPPMessage parses and routes an OCPP JSON message.
+// handleOCPPMessage parses an inbound OCPP JSON array message [msgType, msgID, ...],
+// then routes it: Call → version-specific Router, CallResult/CallError → pending response channel.
 func handleOCPPMessage(ctx context.Context, cp *ChargePoint, router Router, data []byte) {
 	var msg []json.RawMessage
 	if err := json.Unmarshal(data, &msg); err != nil {

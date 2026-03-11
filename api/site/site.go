@@ -9,6 +9,7 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 )
 
 var (
@@ -103,19 +104,20 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		tz = "Asia/Bangkok"
 	}
 
-	var id string
-	err := pgctx.QueryRow(ctx, `
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
 		INSERT INTO sites (
+			id,
 			name,
 			address,
 			timezone
-		) VALUES ($1, $2, $3)
-		RETURNING id
+		) VALUES ($1, $2, $3, $4)
 	`,
+		id,
 		p.Name,
 		p.Address,
 		tz,
-	).Scan(&id)
+	)
 	if err != nil {
 		return nil, err
 	}

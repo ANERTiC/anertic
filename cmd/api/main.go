@@ -77,6 +77,12 @@ func run() error {
 			Result any  `json:"result"`
 		}{true, v})
 	}
+	am.OnOK(func(w http.ResponseWriter, r *http.Request, req any, res any) {
+		slog.Info("api", "method", r.Method, "path", r.URL.Path)
+	})
+	am.OnError(func(w http.ResponseWriter, r *http.Request, req any, err error) {
+		slog.Error("api", "method", r.Method, "path", r.URL.Path, "error", err)
+	})
 
 	api.Mount(mux, am)
 

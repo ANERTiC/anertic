@@ -1,3 +1,35 @@
+create table if not exists users
+(
+    id            varchar(20) primary key not null,
+    email         text                    not null unique,
+    name          text                    not null default '',
+    picture       text                    not null default '',
+    provider      text                    not null default 'google',
+    provider_id   text                    not null default '',
+    created_at    timestamptz             not null default now(),
+    updated_at    timestamptz             not null default now()
+);
+
+create table if not exists user_auth_tokens
+(
+    user_id    varchar(20) not null references users (id),
+    token      text        not null unique,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_user_auth_tokens_user_id on user_auth_tokens (user_id);
+
+create table if not exists user_auth_refresh_tokens
+(
+    user_id    varchar(20) not null references users (id),
+    token      text        not null unique,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_user_auth_refresh_tokens_user_id on user_auth_refresh_tokens (user_id);
+
 create table if not exists sites
 (
     id         varchar(20) primary key not null,

@@ -16,6 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/api"
+	"github.com/anertic/anertic/api/auth"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
 
@@ -50,6 +51,8 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
+	auth.Init()
+
 	mux := httpmux.New()
 
 	am := arpc.New()
@@ -62,8 +65,19 @@ func run() error {
 		}{true, v})
 	}
 
+	// OAuth routes (public, raw HTTP)
+	mux.HandleFunc("GET /auth/google", auth.ExternalProviderRedirect)
+	mux.HandleFunc("GET /auth/google/callback", auth.ExternalProviderCallback)
+
+	// Public API routes
+	mux.Handle("POST /api/v1/auth.refreshToken", am.Handler(auth.RefreshToken))
+
+	// Protected API routes
+	a := mux.Group("", am.Middleware(auth.Middleware))
+	a.Handle("POST /api/v1/auth.me", am.Handler(auth.Me))
+	api.Mount(a, am)
+
 	mux.Handle("/", am.NotFoundHandler())
-	api.Mount(mux, am)
 
 	srv.Handler = mux
 	srv.Use(cors.New())

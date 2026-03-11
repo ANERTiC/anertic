@@ -97,11 +97,13 @@ release-ingester:
 	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,ingester,olufy-0)
 
 VITE_API_URL ?= https://api.anertic.com
+VITE_APP_URL ?= https://app.anertic.com
 
 deploy-web:
 	docker buildx build \
 		--platform linux/amd64 \
 		--build-arg VITE_API_URL=$(VITE_API_URL) \
+		--build-arg VITE_APP_URL=$(VITE_APP_URL) \
 		-t $(IMAGE_BASE)/web:$(GIT_REV) \
 		-f web/app.anertic.com/Dockerfile \
 		--push \

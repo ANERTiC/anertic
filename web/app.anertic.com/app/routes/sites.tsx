@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import useSWR from 'swr'
 
 import { api } from '~/lib/api'
+import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -96,7 +97,8 @@ export default function Sites() {
       toast.success('Site created successfully')
       setOpen(false)
       resetForm()
-      navigate(`/sites/${result.id}`)
+      setCookie("anertic_current_site", result.id)
+      navigate(`/chargers?site=${result.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create site')
     } finally {
@@ -205,7 +207,10 @@ export default function Sites() {
             <Card
               key={site.id}
               className="cursor-pointer transition-colors hover:bg-muted/50"
-              onClick={() => navigate(`/sites/${site.id}`)}
+              onClick={() => {
+                setCookie("anertic_current_site", site.id)
+                navigate(`/chargers?site=${site.id}`)
+              }}
             >
               <CardContent className="pt-6">
                 <h3 className="font-medium">{site.name}</h3>

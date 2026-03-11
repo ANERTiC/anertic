@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router"
+import { NavLink, Outlet, useNavigate, useSearchParams } from "react-router"
 import {
   RiDashboardLine,
   RiBuilding2Line,
@@ -10,8 +10,11 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from "@remixicon/react"
+import useSWR from "swr"
 import type { Route } from "./+types/console"
 import { clearAuth, getUser, requireAuth } from "~/lib/auth"
+import { api } from "~/lib/api"
+import { setCookie } from "~/lib/cookie"
 import {
   Sidebar,
   SidebarContent,
@@ -33,24 +36,73 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { TooltipProvider } from "~/components/ui/tooltip"
-import { SiteProvider, useSite } from "~/hooks/use-site"
 
-const navItems = [
+interface Site {
+  id: string
+  name: string
+  address: string
+  timezone: string
+  createdAt: string
+}
+
+interface NavItem {
+  to: string
+  icon: typeof RiDashboardLine
+  label: string
+}
+
+const globalNavItems: NavItem[] = [
   { to: "/", icon: RiDashboardLine, label: "Dashboard" },
   { to: "/sites", icon: RiBuilding2Line, label: "Sites" },
+]
+
+const siteNavItems: NavItem[] = [
   { to: "/devices", icon: RiCpuLine, label: "Devices" },
   { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers" },
   { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
 ]
+
+function SiteNavGroup({ currentSite }: { currentSite: Site | null }) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Site</SidebarGroupLabel>
+      <SidebarMenu>
+        {siteNavItems.map((item) => (
+          <SidebarMenuItem key={item.to}>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to={currentSite ? `${item.to}?site=${currentSite.id}` : item.to}
+                className={({ isActive }) =>
+                  isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                }
+              >
+                <item.icon className="size-4" />
+                <span>{item.label}</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
 
 export function clientLoader({}: Route.ClientLoaderArgs) {
   requireAuth()
   return { user: getUser() }
 }
 
-function SiteSwitcher() {
-  const { sites, currentSite, setSite, loading } = useSite()
-
+function SiteSwitcher({
+  sites,
+  currentSite,
+  onSelect,
+  loading,
+}: {
+  sites: Site[]
+  currentSite: Site | null
+  onSelect: (site: Site) => void
+  loading: boolean
+}) {
   if (loading) {
     return <span className="text-sm text-muted-foreground">Loading...</span>
   }
@@ -68,7 +120,7 @@ function SiteSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {sites.map((site) => (
-          <DropdownMenuItem key={site.id} onClick={() => setSite(site)}>
+          <DropdownMenuItem key={site.id} onClick={() => onSelect(site)}>
             {site.id === currentSite?.id && (
               <RiCheckLine className="mr-2 size-4" />
             )}
@@ -85,6 +137,23 @@ function SiteSwitcher() {
 export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const { data, isLoading } = useSWR("site.list", () =>
+    api<{ items: Site[] }>("site.list"),
+  )
+  const sites = data?.items || []
+  const siteId = searchParams.get("site")
+  const currentSite = sites.find((s) => s.id === siteId) || null
+
+  function handleSelectSite(site: Site) {
+    setCookie("anertic_current_site", site.id)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set("site", site.id)
+      return next
+    })
+  }
 
   function handleSignOut() {
     clearAuth()
@@ -94,8 +163,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <SiteProvider>
-          <Sidebar>
+        <Sidebar>
             <SidebarHeader>
               <div className="flex items-center gap-2 px-2 py-1">
                 <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
@@ -108,7 +176,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
               <SidebarGroup>
                 <SidebarGroupLabel>Menu</SidebarGroupLabel>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {globalNavItems.map((item) => (
                     <SidebarMenuItem key={item.to}>
                       <SidebarMenuButton asChild>
                         <NavLink
@@ -126,6 +194,7 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
                   ))}
                 </SidebarMenu>
               </SidebarGroup>
+              <SiteNavGroup currentSite={currentSite} />
               <SidebarGroup>
                 <SidebarGroupLabel>System</SidebarGroupLabel>
                 <SidebarMenu>
@@ -172,13 +241,17 @@ export default function ConsoleLayout({ loaderData }: Route.ComponentProps) {
           <main className="flex flex-1 flex-col">
             <header className="flex h-12 items-center gap-2 border-b px-4">
               <SidebarTrigger />
-              <SiteSwitcher />
+              <SiteSwitcher
+                sites={sites}
+                currentSite={currentSite}
+                onSelect={handleSelectSite}
+                loading={isLoading}
+              />
             </header>
             <div className="flex-1 p-6">
               <Outlet />
             </div>
           </main>
-        </SiteProvider>
       </SidebarProvider>
     </TooltipProvider>
   )

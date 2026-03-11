@@ -4,7 +4,7 @@ import { RiCheckboxCircleLine, RiInformationLine, RiErrorWarningLine, RiCloseCir
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme="system"
+      theme="light"
       className="toaster group"
       icons={{
         success: (

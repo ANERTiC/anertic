@@ -2,14 +2,14 @@ FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 FROM base AS dependencies
-COPY package.json pnpm-lock.yaml /app/
+COPY web/app.anertic.com/package.json web/app.anertic.com/pnpm-lock.yaml /app/
 WORKDIR /app
 RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 ARG VITE_API_URL=https://api.anertic.com
 ENV VITE_API_URL=$VITE_API_URL
-COPY . /app/
+COPY web/app.anertic.com/ /app/
 COPY --from=dependencies /app/node_modules /app/node_modules
 WORKDIR /app
 RUN pnpm build

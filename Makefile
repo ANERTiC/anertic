@@ -105,7 +105,7 @@ deploy-web:
 		-t $(IMAGE_BASE)/web:$(GIT_REV) \
 		-f web/app.anertic.com/Dockerfile \
 		--push \
-		web/app.anertic.com
+		.
 	$(call deploy,$(IMAGE_BASE)/web:$(GIT_REV),anertic,staging-web,olufy-0)
 
 release-web:

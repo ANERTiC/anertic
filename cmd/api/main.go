@@ -17,6 +17,7 @@ import (
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/conf"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
 
@@ -53,6 +54,7 @@ func run() error {
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
+	conf.Init()
 	auth.Init()
 
 	mux := httpmux.New()

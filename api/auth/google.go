@@ -4,9 +4,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/acoshift/configfile"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
+
+	"github.com/anertic/anertic/api/conf"
 )
 
 type googleProvider struct {
@@ -15,8 +16,6 @@ type googleProvider struct {
 }
 
 func initGoogle() {
-	cfg := configfile.NewEnvReader()
-
 	provider, err := oidc.NewProvider(context.Background(), "https://accounts.google.com")
 	if err != nil {
 		slog.Error("auth: failed to init google oidc provider", "error", err)
@@ -25,9 +24,9 @@ func initGoogle() {
 
 	RegisterProvider(&googleProvider{
 		oauth2: &oauth2.Config{
-			ClientID:     cfg.String("GOOGLE_CLIENT_ID"),
-			ClientSecret: cfg.String("GOOGLE_CLIENT_SECRET"),
-			RedirectURL:  cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+			ClientID:     conf.GoogleClientID,
+			ClientSecret: conf.GoogleClientSecret,
+			RedirectURL:  conf.GoogleRedirectURL,
 			Endpoint:     provider.Endpoint(),
 			Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
 		},

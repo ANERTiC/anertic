@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/acoshift/arpc/v2"
-	"github.com/acoshift/configfile"
 	"github.com/acoshift/pgsql/pgctx"
+
+	"github.com/anertic/anertic/api/conf"
 )
 
 var (
@@ -20,12 +21,7 @@ var (
 	errAuthFailed   = arpc.NewErrorCode("auth/failed", "authentication failed")
 )
 
-var appURL string
-
 func Init() {
-	cfg := configfile.NewEnvReader()
-	appURL = cfg.StringDefault("APP_URL", "http://localhost:5173")
-
 	initGoogle()
 }
 
@@ -116,7 +112,7 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectURL := appURL + "/login/callback?" + url.Values{
+	redirectURL := conf.AppURL + "/login/callback?" + url.Values{
 		"token":         {token},
 		"refresh_token": {refreshToken},
 	}.Encode()

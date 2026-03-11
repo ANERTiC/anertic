@@ -2,10 +2,24 @@ import { getToken, getRefreshToken, setTokens, clearAuth } from "./auth"
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"
 
+interface APIError {
+  code?: string
+  message?: string
+}
+
 interface APIResponse<T> {
   ok: boolean
   result: T
-  error?: string
+  error?: APIError
+}
+
+export class ApiError extends Error {
+  code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.code = code
+  }
 }
 
 let refreshPromise: Promise<boolean> | null = null
@@ -67,7 +81,8 @@ export async function api<T>(method: string, body?: unknown): Promise<T> {
 
   const data: APIResponse<T> = await res.json()
   if (!data.ok) {
-    throw new Error(data.error || "Unknown error")
+    const err = data.error
+    throw new ApiError(err?.code || "", err?.message || "Unknown error")
   }
   return data.result
 }

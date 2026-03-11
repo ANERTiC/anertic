@@ -2,6 +2,8 @@ package site
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -9,6 +11,7 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 )
 
 var (
@@ -34,7 +37,7 @@ type ListResult struct {
 }
 
 func List(ctx context.Context, p *ListParams) (*ListResult, error) {
-	var items []Item
+	items := make([]Item, 0)
 
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
@@ -102,20 +105,24 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	if tz == "" {
 		tz = "Asia/Bangkok"
 	}
+	if _, err := time.LoadLocation(tz); err != nil {
+		return nil, arpc.NewErrorCode("site/invalid-timezone", "invalid timezone")
+	}
 
-	var id string
-	err := pgctx.QueryRow(ctx, `
-		INSERT INTO sites (
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into sites (
+			id,
 			name,
 			address,
 			timezone
-		) VALUES ($1, $2, $3)
-		RETURNING id
+		) values ($1, $2, $3, $4)
 	`,
+		id,
 		p.Name,
 		p.Address,
 		tz,
-	).Scan(&id)
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -147,14 +154,14 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 
 	var r GetResult
 	err := pgctx.QueryRow(ctx, `
-		SELECT
+		select
 			id,
 			name,
 			address,
 			timezone,
 			created_at
-		FROM sites
-		WHERE id = $1
+		from sites
+		where id = $1
 	`, p.ID).Scan(
 		&r.ID,
 		&r.Name,
@@ -162,8 +169,11 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.Timezone,
 		&r.CreatedAt,
 	)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	return &r, nil

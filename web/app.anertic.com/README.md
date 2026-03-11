@@ -1,21 +1,41 @@
-# React Router + shadcn/ui
+# app.anertic.com
 
-This is a template for a new React Router project with React, TypeScript, and shadcn/ui.
+ANERTiC web application built with React Router v7, Tailwind CSS v4, and shadcn/ui.
 
-## Adding components
+## Tech Stack
 
-To add components to your app, run the following command:
+- **Framework**: React Router v7 (SSR)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui (Radix UI)
+- **Icons**: Remix Icon
+- **Font**: Noto Sans (Variable)
+
+## Getting Started
+
+```bash
+pnpm install
+pnpm dev
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm start` | Start production server |
+| `pnpm typecheck` | Run type checking |
+| `pnpm format` | Format code with Prettier |
+
+## Adding Components
 
 ```bash
 npx shadcn@latest add button
 ```
 
-This will place the ui components in the `components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
+Import using the `~/` path alias:
 
 ```tsx
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button"
 ```

@@ -7,6 +7,3 @@
 vendor/
 .claude/
 .DS_Store
-api
-ingester
-worker

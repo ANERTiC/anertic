@@ -48,6 +48,7 @@ func ProviderRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Set("state", state)
+	s.Set("provider", name)
 	s.Set("redirect_url", r.URL.Query().Get("redirect_url"))
 
 	u := p.AuthURL(state)
@@ -57,13 +58,6 @@ func ProviderRedirect(w http.ResponseWriter, r *http.Request) {
 // ProviderCallback handles the OAuth callback from any provider.
 func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	name := r.PathValue("provider")
-	p, ok := provider.Get(name)
-	if !ok {
-		http.Error(w, "unknown provider", http.StatusBadRequest)
-		return
-	}
 
 	s, err := session.Get(ctx, sessionName)
 	if err != nil {
@@ -76,6 +70,13 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 	savedState := s.PopString("state")
 	if savedState == "" || savedState != r.URL.Query().Get("state") {
 		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	name := s.PopString("provider")
+	p, ok := provider.Get(name)
+	if !ok {
+		http.Error(w, "unknown provider", http.StatusBadRequest)
 		return
 	}
 

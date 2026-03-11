@@ -14,14 +14,18 @@ export default [
   // OAuth callback (no layout)
   route("login/callback", "routes/login-callback.tsx"),
 
-  // Authenticated (console) layout
+  // Authenticated
   layout("layouts/console.tsx", [
-    index("routes/dashboard.tsx"),
-    route("sites", "routes/sites.tsx"),
-    route("settings", "routes/settings.tsx"),
+    // Global pages (top bar, no sidebar)
+    layout("layouts/global.tsx", [
+      index("routes/dashboard.tsx"),
+      route("sites", "routes/sites.tsx"),
+      route("settings", "routes/settings.tsx"),
+    ]),
 
-    // Site-scoped pages (require ?site= param)
+    // Site-scoped pages (sidebar)
     layout("layouts/site.tsx", [
+      route("overview", "routes/overview.tsx"),
       route("chargers", "routes/chargers.tsx"),
       route("chargers/:chargerId", "routes/charger-detail.tsx"),
       route("devices", "routes/devices.tsx"),

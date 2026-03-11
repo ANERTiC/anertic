@@ -15,8 +15,9 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
-	ocpp "github.com/anertic/anertic/ocpp/core"
-	"github.com/anertic/anertic/pkg/wsredis"
+	"github.com/anertic/anertic/ocpp"
+	"github.com/anertic/anertic/ocpp/v16"
+	"github.com/anertic/anertic/ocpp/v201"
 )
 
 func main() {
@@ -43,18 +44,22 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	opt.PoolSize = 20
+	opt.MinIdleConns = 5
+	opt.ReadTimeout = 35 * time.Second  // > OCPP Call timeout (30s)
+	opt.WriteTimeout = 10 * time.Second
+	opt.DialTimeout = 5 * time.Second
 	rdb := redis.NewClient(opt)
 	defer rdb.Close()
 
-	broker := wsredis.NewRedisBroker(rdb, "ocpp:bus")
-	hub := ocpp.NewHub(broker)
+	hub := ocpp.NewHub(rdb)
+	hub.RegisterRouter("ocpp1.6", v16.NewRouter())
+	hub.RegisterRouter("ocpp2.0.1", v201.NewRouter())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	ctx = pgctx.NewContext(ctx, db)
-
-	go hub.Subscribe(ctx)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

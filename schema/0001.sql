@@ -42,21 +42,6 @@ create table if not exists meters
 
 create index if not exists idx_meters_device_id on meters (device_id);
 
-create table if not exists ev_chargers
-(
-    id                varchar(20) primary key not null,
-    device_id         varchar(20) references devices (id) unique,
-    charge_point_id   text                    not null unique, -- OCPP identity
-    ocpp_version      text                    not null default '1.6', -- '1.6' or '2.0.1'
-    status            text                    not null default 'unavailable',
-    connector_count   integer                 not null default 1,
-    max_power_kw      numeric(10, 2)          not null default 0,
-    current_session   jsonb,
-    last_heartbeat_at timestamptz,
-    created_at        timestamptz             not null default now(),
-    updated_at        timestamptz             not null default now()
-);
-
 create table if not exists readings
 (
     time       timestamptz    not null,
@@ -71,24 +56,6 @@ create table if not exists readings
 );
 
 create index if not exists idx_readings_meter_id_time on readings (meter_id, time desc);
-
-create table if not exists charging_sessions
-(
-    id             varchar(20) primary key not null,
-    ev_charger_id  varchar(20) references ev_chargers (id),
-    connector_id   integer                 not null default 1,
-    transaction_id integer,
-    id_tag         text                    not null default '',
-    start_time     timestamptz             not null,
-    end_time       timestamptz,
-    energy_kwh     numeric(12, 6)          not null default 0,
-    max_power_kw   numeric(10, 2)          not null default 0,
-    stop_reason    text,
-    metadata       jsonb                   not null default '{}',
-    created_at     timestamptz             not null default now()
-);
-
-create index if not exists idx_charging_sessions_charger on charging_sessions (ev_charger_id, start_time desc);
 
 create table if not exists insights
 (

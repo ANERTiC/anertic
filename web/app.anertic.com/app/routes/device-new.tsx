@@ -21,7 +21,7 @@ import { cn } from "~/lib/utils"
 
 // --- Types ---
 
-type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
+type DeviceType = "meter" | "inverter" | "solar_panel" | "appliance"
 type Step = "type" | "details"
 
 const STEPS: Step[] = ["type", "details"]
@@ -30,41 +30,73 @@ const STEP_LABELS: Record<Step, string> = {
   details: "Details",
 }
 
-const DEVICE_TYPE_CONFIG: Record<
-  DeviceType,
-  { label: string; icon: typeof RiCpuLine; color: string; bg: string; description: string; enabled: boolean }
-> = {
-  meter: {
+const DEVICE_TYPES: {
+  type: DeviceType
+  label: string
+  icon: typeof RiCpuLine
+  color: string
+  bg: string
+  description: string
+  enabled: boolean
+}[] = [
+  {
+    type: "meter",
     label: "Energy Meter",
     icon: RiCpuLine,
     color: "text-cyan-600",
     bg: "bg-cyan-500/10",
-    description: "Power and energy measurement device",
+    description: "Distribution board or circuit meter",
     enabled: true,
   },
-  inverter: {
+  {
+    type: "inverter",
     label: "Inverter",
     icon: RiFlashlightLine,
     color: "text-violet-600",
     bg: "bg-violet-500/10",
-    description: "Solar or hybrid inverter (DC to AC)",
+    description: "Solar or hybrid inverter",
     enabled: false,
   },
-  solar_panel: {
+  {
+    type: "solar_panel",
     label: "Solar Panel",
     icon: RiSunLine,
     color: "text-amber-600",
     bg: "bg-amber-500/10",
-    description: "Photovoltaic panel or array",
+    description: "PV panel or array",
     enabled: false,
   },
-  appliance: {
+  {
+    type: "appliance",
     label: "Appliance",
     icon: RiPlugLine,
     color: "text-emerald-600",
     bg: "bg-emerald-500/10",
-    description: "Smart appliance, battery, or HVAC",
+    description: "Individual device or EV charger",
     enabled: false,
+  },
+]
+
+const DETAIL_HINTS: Record<DeviceType, { namePlaceholder: string; tagPlaceholder: string; tagHelp: string }> = {
+  meter: {
+    namePlaceholder: "e.g. Building A Main DB",
+    tagPlaceholder: "e.g. Ground floor total consumption",
+    tagHelp: "Describe what this meter measures",
+  },
+  inverter: {
+    namePlaceholder: "e.g. Huawei SUN2000-10KTL",
+    tagPlaceholder: "e.g. Rooftop array inverter",
+    tagHelp: "Where this inverter is installed",
+  },
+  solar_panel: {
+    namePlaceholder: "e.g. Rooftop PV Array",
+    tagPlaceholder: "e.g. 20kWp east-facing array",
+    tagHelp: "Panel location or specification",
+  },
+  appliance: {
+    namePlaceholder: "e.g. Office AC Unit",
+    tagPlaceholder: "e.g. 2nd floor lobby",
+    tagHelp: "Location or purpose of this appliance",
   },
 }
 
@@ -81,23 +113,29 @@ export default function DeviceNew() {
   const [brand, setBrand] = useState("")
   const [model, setModel] = useState("")
 
-  const activeSteps = STEPS
-  const activeStepIndex = activeSteps.indexOf(step)
+  const stepIndex = STEPS.indexOf(step)
+  const hints = selectedType ? DETAIL_HINTS[selectedType] : DETAIL_HINTS.meter
+
+  const canContinue = (() => {
+    if (step === "type") return selectedType !== null
+    if (step === "details") return name.trim() !== ""
+    return false
+  })()
 
   function handleCreate() {
-    toast.success(`Device "${name}" created successfully`)
+    toast.success(`Device "${name}" created`)
     navigate("/devices")
   }
 
   function goNext() {
-    const idx = activeSteps.indexOf(step)
-    if (idx < activeSteps.length - 1) setStep(activeSteps[idx + 1])
+    if (stepIndex < STEPS.length - 1) setStep(STEPS[stepIndex + 1])
   }
 
   function goBack() {
-    const idx = activeSteps.indexOf(step)
-    if (idx > 0) setStep(activeSteps[idx - 1])
+    if (stepIndex > 0) setStep(STEPS[stepIndex - 1])
   }
+
+  const selectedTypeConfig = selectedType ? DEVICE_TYPES.find(t => t.type === selectedType) : null
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -115,38 +153,38 @@ export default function DeviceNew() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Add Device</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {step === "type" && "Select the hardware type"}
-            {step === "details" && "Enter device details"}
+            {step === "type" && "Select the device type"}
+            {step === "details" && "Enter device information"}
           </p>
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">
-          {activeStepIndex + 1} / {activeSteps.length}
+          {stepIndex + 1} / {STEPS.length}
         </span>
       </div>
 
       {/* Progress bar */}
       <div className="flex gap-1.5">
-        {activeSteps.map((s, i) => (
+        {STEPS.map((s, i) => (
           <button
             key={s}
-            onClick={() => { if (i < activeStepIndex) setStep(s) }}
-            disabled={i > activeStepIndex}
+            onClick={() => { if (i < stepIndex) setStep(s) }}
+            disabled={i > stepIndex}
             className="group flex-1"
           >
             <div
               className={cn(
                 "h-1 rounded-full transition-all duration-500",
-                i < activeStepIndex
+                i < stepIndex
                   ? "bg-foreground"
-                  : i === activeStepIndex
+                  : i === stepIndex
                     ? "bg-foreground/50"
                     : "bg-border",
-                i < activeStepIndex && "cursor-pointer group-hover:bg-foreground/70",
+                i < stepIndex && "cursor-pointer group-hover:bg-foreground/70",
               )}
             />
             <span className={cn(
               "mt-1.5 block text-[10px] font-medium text-muted-foreground transition-colors",
-              i === activeStepIndex && "text-foreground",
+              i === stepIndex && "text-foreground",
             )}>
               {STEP_LABELS[s]}
             </span>
@@ -154,58 +192,56 @@ export default function DeviceNew() {
         ))}
       </div>
 
-      {/* Step 1: Device Type */}
+      {/* Step: Device Type */}
       {step === "type" && (
         <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            {(Object.entries(DEVICE_TYPE_CONFIG) as [DeviceType, typeof DEVICE_TYPE_CONFIG[DeviceType]][]).map(
-              ([type, config]) => {
-                const Icon = config.icon
-                const isSelected = selectedType === type
-                const isDisabled = !config.enabled
-                return (
-                  <button
-                    key={type}
-                    onClick={() => !isDisabled && setSelectedType(type)}
-                    disabled={isDisabled}
-                    className={cn(
-                      "relative rounded-xl border-2 p-5 text-left transition-all",
-                      isDisabled
-                        ? "cursor-not-allowed opacity-40"
-                        : isSelected
-                          ? "border-foreground/20 bg-foreground/[0.03] shadow-sm"
-                          : "border-border/50 hover:border-border hover:bg-muted/20",
-                    )}
-                  >
-                    {isSelected && (
-                      <div className="absolute right-3 top-3">
-                        <RiCheckLine className="size-4 text-foreground/40" />
-                      </div>
-                    )}
-
-                    <div className={cn("mb-3 flex size-10 items-center justify-center rounded-xl", config.bg)}>
-                      <Icon className={cn("size-5", config.color)} />
+            {DEVICE_TYPES.map((config) => {
+              const Icon = config.icon
+              const isSelected = selectedType === config.type
+              const isDisabled = !config.enabled
+              return (
+                <button
+                  key={config.type}
+                  onClick={() => !isDisabled && setSelectedType(config.type)}
+                  disabled={isDisabled}
+                  className={cn(
+                    "relative rounded-xl border-2 p-5 text-left transition-all",
+                    isDisabled
+                      ? "cursor-not-allowed opacity-40"
+                      : isSelected
+                        ? "border-foreground/20 bg-foreground/[0.03] shadow-sm"
+                        : "border-border/50 hover:border-border hover:bg-muted/20",
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute right-3 top-3">
+                      <RiCheckLine className="size-4 text-foreground/40" />
                     </div>
+                  )}
 
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold">{config.label}</p>
-                      {isDisabled && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Coming soon
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {config.description}
-                    </p>
-                  </button>
-                )
-              },
-            )}
+                  <div className={cn("mb-3 flex size-10 items-center justify-center rounded-xl", config.bg)}>
+                    <Icon className={cn("size-5", config.color)} />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">{config.label}</p>
+                    {isDisabled && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        Coming soon
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {config.description}
+                  </p>
+                </button>
+              )
+            })}
           </div>
 
           <div className="flex justify-end">
-            <Button disabled={!selectedType} onClick={goNext} className="gap-1.5">
+            <Button disabled={!canContinue} onClick={goNext} className="gap-1.5">
               Continue
               <RiArrowRightSLine className="size-4" />
             </Button>
@@ -213,9 +249,17 @@ export default function DeviceNew() {
         </div>
       )}
 
-      {/* Step 2: Details */}
+      {/* Step: Details */}
       {step === "details" && (
         <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-5">
+          {/* Summary of selection */}
+          {selectedTypeConfig && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <selectedTypeConfig.icon className={cn("size-3.5", selectedTypeConfig.color)} />
+              <span className="font-medium text-foreground">{selectedTypeConfig.label}</span>
+            </div>
+          )}
+
           <Card className="border-border/50">
             <CardContent className="p-5 space-y-4">
               <div>
@@ -226,7 +270,7 @@ export default function DeviceNew() {
                   id="device-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Main DB Meter"
+                  placeholder={hints.namePlaceholder}
                   className="mt-1.5"
                   autoFocus
                 />
@@ -240,11 +284,11 @@ export default function DeviceNew() {
                   id="device-tag"
                   value={tag}
                   onChange={(e) => setTag(e.target.value)}
-                  placeholder="e.g. Building A total power"
+                  placeholder={hints.tagPlaceholder}
                   className="mt-1.5"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Describe what this meter measures
+                  {hints.tagHelp}
                 </p>
               </div>
 
@@ -278,7 +322,7 @@ export default function DeviceNew() {
               <RiArrowLeftSLine className="size-4" />
               Back
             </Button>
-            <Button disabled={!name.trim()} onClick={handleCreate} className="gap-1.5">
+            <Button disabled={!canContinue} onClick={handleCreate} className="gap-1.5">
               <RiCheckLine className="size-4" />
               Create Device
             </Button>

@@ -43,15 +43,12 @@ import { cn } from "~/lib/utils"
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
 type MeterProtocol = "mqtt" | "http" | "modbus"
 type ConnectionStatus = "online" | "offline" | "degraded"
-type MeterSubtype = "main_db" | "floor_sub_db" | "electrical_device"
-
 interface Device {
   id: string
   siteId: string
   name: string
   type: DeviceType
-  subtype: MeterSubtype | null
-  tag: string | null
+  tag: string
   brand: string
   model: string
   isActive: boolean
@@ -99,12 +96,6 @@ const DEVICE_TYPE_CONFIG: Record<
   appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
 }
 
-const SUBTYPE_CONFIG: Record<MeterSubtype, { label: string }> = {
-  main_db: { label: "Main DB" },
-  floor_sub_db: { label: "Floor Sub-DB" },
-  electrical_device: { label: "Electrical Device" },
-}
-
 const PROTOCOL_CONFIG: Record<MeterProtocol, { label: string; color: string; bg: string; icon: typeof RiWifiLine }> = {
   mqtt: { label: "MQTT", color: "text-purple-700", bg: "bg-purple-500/10", icon: RiWifiLine },
   http: { label: "HTTP", color: "text-blue-700", bg: "bg-blue-500/10", icon: RiLink },
@@ -125,7 +116,6 @@ function getMockDevice(id: string): Device {
     siteId: "site_01",
     name: "Grid Meter",
     type: "meter",
-    subtype: "main_db",
     tag: "Main grid import/export",
     brand: "Eastron",
     model: "SDM630-Modbus V2",
@@ -243,11 +233,6 @@ export default function DeviceDetail() {
                 <Badge variant="secondary" className="text-[10px]">
                   {typeConfig.label}
                 </Badge>
-                {device.subtype && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {SUBTYPE_CONFIG[device.subtype].label}
-                  </Badge>
-                )}
                 {device.tag && (
                   <span className="text-xs text-muted-foreground">{device.tag}</span>
                 )}

@@ -23,8 +23,7 @@ create table if not exists devices
     site_id    varchar(20) references sites (id),
     name       text                    not null,
     type       text                    not null,     -- 'meter', 'inverter', 'solar_panel', 'appliance'
-    subtype    text                    not null default '',
-    tag        text                    not null default '',
+    tag        text                    not null default '', -- free text describing what the device measures or its location
     brand      text                    not null default '',
     model      text                    not null default '',
     metadata   jsonb                   not null default '{}',
@@ -86,15 +85,9 @@ All columns except `time`, `meter_id`, and `metadata` are nullable — meters re
 
 ### meter
 
-Energy meters that measure consumption or flow at a distribution point.
+Energy meters that measure consumption or flow at a distribution point. Use `tag` to describe what the meter measures (e.g. "Main DB", "Floor 2 Sub-DB", "Lobby AC circuit").
 
-| Subtype | Description | Phase Config | Meters |
-|---|---|---|---|
-| `main_db` | Main Distribution Board | Always 3-phase | 3 meters (L1, L2, L3) |
-| `floor_sub_db` | Floor Sub-Distribution Board | Always 3-phase | 3 meters (L1, L2, L3) |
-| `electrical_device` | Single appliance, plug, or circuit | Always 1-phase | 1 meter (phase=0) |
-
-Phase is auto-determined from subtype — no manual phase selection needed for the device itself. Phase is assigned per meter.
+Phase configuration is determined by the meters attached to the device — a 3-phase setup has 3 meters (L1, L2, L3), a single-phase setup has 1 meter (phase=0).
 
 ### inverter
 
@@ -290,7 +283,7 @@ id: dev_001, type: inverter, name: "Huawei SUN2000-10KTL", brand: "Huawei"
 
 **Device:**
 ```
-id: dev_002, type: meter, subtype: main_db, name: "Building MDB"
+id: dev_002, type: meter, name: "Building MDB", tag: "Main distribution board"
 ```
 
 **Meters:**
@@ -305,7 +298,7 @@ id: dev_002, type: meter, subtype: main_db, name: "Building MDB"
 
 **Device:**
 ```
-id: dev_003, type: meter, subtype: floor_sub_db, name: "Floor 2 SDB"
+id: dev_003, type: meter, name: "Floor 2 SDB", tag: "Floor 2 sub-distribution board"
 ```
 
 **Meters:**
@@ -606,7 +599,7 @@ When a physical meter is replaced:
 For derived values that don't come from a physical sensor (e.g., "net consumption = MDB - solar export").
 
 **Setup:**
-- Create a device (type=meter, subtype=calculated) with a meter (protocol=`calculated`)
+- Create a device (type=meter, tag="calculated") with a meter (protocol=`calculated`)
 - Worker runs on interval, queries existing meter_readings, computes result, writes back to `meter_readings`
 
 **Flow:**

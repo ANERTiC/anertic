@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"slices"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -36,7 +35,6 @@ type Item struct {
 	SiteID    string    `json:"siteId"`
 	Name      string    `json:"name"`
 	Type      string    `json:"type"`
-	Subtype   string    `json:"subtype"`
 	Tag       string    `json:"tag"`
 	Brand     string    `json:"brand"`
 	Model     string    `json:"model"`
@@ -64,7 +62,6 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"site_id",
 			"name",
 			"type",
-			"subtype",
 			"tag",
 			"brand",
 			"model",
@@ -87,7 +84,6 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.SiteID,
 			&it.Name,
 			&it.Type,
-			&it.Subtype,
 			&it.Tag,
 			&it.Brand,
 			&it.Model,
@@ -110,25 +106,19 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
-	SiteID  string `json:"siteId"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Subtype string `json:"subtype"`
-	Tag     string `json:"tag"`
-	Brand   string `json:"brand"`
-	Model   string `json:"model"`
+	SiteID string `json:"siteId"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Tag    string `json:"tag"`
+	Brand  string `json:"brand"`
+	Model  string `json:"model"`
 }
-
-var validSubtypes = []string{"main_db", "floor_sub_db", "electrical_device"}
 
 func (p *CreateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.Name != "", "name is required")
 	v.Must(p.Type != "", "type is required")
-	if p.Type == "meter" && p.Subtype != "" {
-		v.Must(slices.Contains(validSubtypes, p.Subtype), "invalid subtype")
-	}
 	return v.Error()
 }
 
@@ -150,17 +140,15 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 			site_id,
 			name,
 			type,
-			subtype,
 			tag,
 			brand,
 			model
-		) values ($1, $2, $3, $4, $5, $6, $7)
+		) values ($1, $2, $3, $4, $5, $6)
 		returning id
 	`,
 		p.SiteID,
 		p.Name,
 		p.Type,
-		p.Subtype,
 		p.Tag,
 		p.Brand,
 		p.Model,
@@ -201,7 +189,6 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			site_id,
 			name,
 			type,
-			subtype,
 			tag,
 			brand,
 			model,
@@ -214,7 +201,6 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.SiteID,
 		&r.Name,
 		&r.Type,
-		&r.Subtype,
 		&r.Tag,
 		&r.Brand,
 		&r.Model,

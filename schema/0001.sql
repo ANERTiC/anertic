@@ -91,8 +91,7 @@ create table if not exists devices
     site_id    varchar(20) references sites (id),
     name       text                    not null,
     type    text not null, -- 'meter', 'inverter', 'solar_panel', 'appliance'
-    subtype text not null default '', -- meter: 'main_db', 'floor_sub_db', 'electrical_device'
-    tag               text not null default '', -- free text describing what the meter measures
+    tag               text not null default '', -- free text describing what the device measures or its location
     brand             text not null default '',
     model             text not null default '',
     metadata   jsonb                   not null default '{}',

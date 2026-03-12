@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { toast } from "sonner"
 import {
   RiSettings3Line,
@@ -72,7 +72,7 @@ interface SiteSettings {
   updatedAt: string
 }
 
-type MemberRole = "owner" | "admin" | "editor" | "viewer"
+type MemberRole = "*" | "editor" | "viewer"
 
 interface SiteMember {
   userId: string
@@ -91,8 +91,7 @@ interface PendingInvite {
 }
 
 const ROLE_CONFIG: Record<MemberRole, { label: string; color: string; description: string }> = {
-  owner: { label: "Owner", color: "bg-amber-500/15 text-amber-700", description: "Full access, can delete site" },
-  admin: { label: "Admin", color: "bg-violet-500/15 text-violet-700", description: "Manage members and settings" },
+  "*": { label: "Owner", color: "bg-amber-500/15 text-amber-700", description: "Full access, can delete site" },
   editor: { label: "Editor", color: "bg-blue-500/15 text-blue-700", description: "Edit devices and chargers" },
   viewer: { label: "Viewer", color: "bg-muted text-muted-foreground", description: "View-only access" },
 }
@@ -104,7 +103,7 @@ function generateMockMembers(): SiteMember[] {
       name: "Kamail S.",
       email: "kamail@anertic.com",
       picture: "",
-      role: "owner",
+      role: "*",
       joinedAt: "2025-08-15T10:00:00Z",
     },
     {
@@ -112,7 +111,7 @@ function generateMockMembers(): SiteMember[] {
       name: "Prem T.",
       email: "prem@anertic.com",
       picture: "",
-      role: "admin",
+      role: "editor",
       joinedAt: "2025-09-01T08:00:00Z",
     },
     {
@@ -232,6 +231,7 @@ function SectionHeader({
 // --- Main Component ---
 
 export default function Settings() {
+  const { mutate: globalMutate } = useSWRConfig()
   const siteId = useSiteId()
   const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<SiteSettings>(() =>
@@ -317,6 +317,7 @@ export default function Settings() {
       toast.success("Site settings saved")
       setEditingGeneral(false)
       mutateSite()
+      globalMutate("site.list")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save")
     } finally {
@@ -338,6 +339,7 @@ export default function Settings() {
       })
       toast.success("Tariff settings saved")
       mutateSite()
+      globalMutate("site.list")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save")
     } finally {
@@ -815,7 +817,7 @@ export default function Settings() {
                     </button>
                     {roleDropdownOpen === "invite" && (
                       <div className="absolute left-0 right-0 top-10 z-20 rounded-lg border bg-background p-1 shadow-lg">
-                        {(["admin", "editor", "viewer"] as MemberRole[]).map((r) => (
+                        {(["editor", "viewer"] as MemberRole[]).map((r) => (
                           <button
                             key={r}
                             onClick={() => {
@@ -887,7 +889,7 @@ export default function Settings() {
           {/* Member List */}
           <div className="mt-5 space-y-1">
             {members.map((member) => {
-              const isOwner = member.role === "owner"
+              const isOwner = member.role === "*"
               const initials = member.name
                 .split(" ")
                 .map((w) => w[0])
@@ -942,7 +944,7 @@ export default function Settings() {
                         </button>
                         {roleDropdownOpen === member.userId && (
                           <div className="absolute right-0 top-8 z-20 w-48 rounded-lg border bg-background p-1 shadow-lg">
-                            {(["admin", "editor", "viewer"] as MemberRole[]).map((r) => (
+                            {(["editor", "viewer"] as MemberRole[]).map((r) => (
                               <button
                                 key={r}
                                 onClick={() => handleChangeMemberRole(member.userId, r)}
@@ -959,8 +961,8 @@ export default function Settings() {
                         )}
                       </div>
                     ) : (
-                      <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium", ROLE_CONFIG.owner.color)}>
-                        {ROLE_CONFIG.owner.label}
+                      <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium", ROLE_CONFIG["*"].color)}>
+                        {ROLE_CONFIG["*"].label}
                       </span>
                     )}
 

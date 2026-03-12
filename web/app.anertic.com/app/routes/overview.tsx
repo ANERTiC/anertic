@@ -564,7 +564,7 @@ export default function Overview() {
             const accent = insightAccent(insight.type)
 
             return (
-              <Card key={insight.id} className="group cursor-pointer transition-colors hover:bg-muted/50">
+              <Card key={insight.id} className="group cursor-pointer py-0 transition-colors hover:bg-muted/50">
                 <CardContent className="p-4">
                   <div className="flex gap-3">
                     <div
@@ -697,7 +697,7 @@ export default function Overview() {
 
       {/* Energy Mix + Timeline */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
+        <Card className="py-0">
           <CardContent className="p-5">
             <h3 className="text-sm font-medium text-muted-foreground">Energy Mix</h3>
             <div className="mt-4 flex items-center justify-center">
@@ -716,7 +716,7 @@ export default function Overview() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="py-0 lg:col-span-2">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">Today's Energy</h3>
@@ -839,8 +839,8 @@ export default function Overview() {
           )}
         </div>
 
-        <Card>
-          <CardContent className="p-5">
+        <Card className="flex h-full flex-col py-0">
+          <CardContent className="flex flex-1 flex-col p-5">
             <h3 className="text-sm font-medium text-muted-foreground">Devices</h3>
             <div className="mt-4 flex items-center gap-4">
               <div className="flex size-12 items-center justify-center rounded-xl bg-violet-50">
@@ -854,6 +854,7 @@ export default function Overview() {
                 <p className="text-xs text-muted-foreground">online</p>
               </div>
             </div>
+            <div className="flex-1" />
             <button
               onClick={() => navigate(`/devices?site=${siteId}`)}
               className="mt-3 flex w-full items-center justify-center gap-1 rounded-md border py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"

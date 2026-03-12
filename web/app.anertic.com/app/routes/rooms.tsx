@@ -409,7 +409,7 @@ export default function Rooms() {
   const [mounted, setMounted] = useState(false)
   const [floors, setFloors] = useState<Floor[]>(() => generateMockFloors())
   const [activeFloorId, setActiveFloorId] = useState<string | null>(null)
-  const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null)
+  const [expandedRoomIds, setExpandedRoomIds] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
@@ -485,7 +485,7 @@ export default function Rooms() {
 
       {/* Site-wide Summary Strip */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card>
+        <Card className="py-0">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-violet-500/10">
               <RiFlashlightLine className="size-5 text-violet-600" />
@@ -496,7 +496,7 @@ export default function Rooms() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="py-0">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10">
               <RiPlugLine className="size-5 text-blue-600" />
@@ -507,7 +507,7 @@ export default function Rooms() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="py-0">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10">
               <RiSensorLine className="size-5 text-emerald-600" />
@@ -521,7 +521,7 @@ export default function Rooms() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="py-0">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10">
               <RiDoorOpenLine className="size-5 text-amber-600" />
@@ -549,7 +549,7 @@ export default function Rooms() {
                 key={floor.id}
                 onClick={() => {
                   setActiveFloorId(floor.id)
-                  setExpandedRoomId(null)
+                  setExpandedRoomIds(new Set())
                 }}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
@@ -654,8 +654,13 @@ export default function Rooms() {
             <RoomCard
               key={room.id}
               room={room}
-              isExpanded={expandedRoomId === room.id}
-              onToggle={() => setExpandedRoomId(expandedRoomId === room.id ? null : room.id)}
+              isExpanded={expandedRoomIds.has(room.id)}
+              onToggle={() => setExpandedRoomIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(room.id)) next.delete(room.id)
+                else next.add(room.id)
+                return next
+              })}
               onAssignDevice={() => {
                 setAssignToRoomId(room.id)
                 setAssignDeviceOpen(true)
@@ -669,8 +674,13 @@ export default function Rooms() {
             <RoomListItem
               key={room.id}
               room={room}
-              isExpanded={expandedRoomId === room.id}
-              onToggle={() => setExpandedRoomId(expandedRoomId === room.id ? null : room.id)}
+              isExpanded={expandedRoomIds.has(room.id)}
+              onToggle={() => setExpandedRoomIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(room.id)) next.delete(room.id)
+                else next.add(room.id)
+                return next
+              })}
               onAssignDevice={() => {
                 setAssignToRoomId(room.id)
                 setAssignDeviceOpen(true)
@@ -727,7 +737,7 @@ function RoomCard({
   return (
     <Card
       className={cn(
-        "group transition-all duration-200 hover:shadow-md",
+        "group py-0 transition-all duration-200 hover:shadow-md",
         isExpanded && "ring-1 ring-violet-500/30",
         room.status === "warning" && "border-amber-500/30",
         room.status === "critical" && "border-red-500/30",
@@ -897,7 +907,7 @@ function RoomListItem({
   const Icon = roomIcon(room.type)
 
   return (
-    <Card className={cn("transition-all", isExpanded && "ring-1 ring-violet-500/30")}>
+    <Card className={cn("py-0 transition-all", isExpanded && "ring-1 ring-violet-500/30")}>
       <CardContent className="p-0">
         <button
           onClick={onToggle}
@@ -1012,9 +1022,6 @@ function DeviceRow({ device }: { device: Device }) {
         <div className="w-14">
           <p className="text-xs tabular-nums text-muted-foreground">{device.todayKwh.toFixed(1)} kWh</p>
         </div>
-        <Badge className={cn("text-[10px] px-1.5 py-0", deviceStatusBadge(device.status))}>
-          {device.status}
-        </Badge>
       </div>
     </div>
   )

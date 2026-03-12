@@ -2,7 +2,10 @@ package boot
 
 import (
 	"context"
+	"log/slog"
 	"time"
+
+	"github.com/acoshift/pgsql/pgctx"
 
 	"github.com/anertic/anertic/ocpp"
 )
@@ -28,14 +31,65 @@ type Result struct {
 }
 
 func BootNotification(ctx context.Context, p *Params) (*Result, error) {
-	_ = ocpp.ChargePointID(ctx)
+	chargePointID := ocpp.ChargePointID(ctx)
 
-	// TODO: upsert charger info (vendor, model, serial, firmware) in ev_chargers
-	// TODO: update last_heartbeat_at
+	var registrationStatus string
+	var heartbeatInterval int
+	err := pgctx.QueryRow(ctx, `
+		update ev_chargers
+		set vendor = $2,
+		    model = $3,
+		    serial_number = $4,
+		    charge_box_serial_number = $5,
+		    firmware_version = $6,
+		    iccid = $7,
+		    imsi = $8,
+		    meter_type = $9,
+		    meter_serial_number = $10,
+		    registration_status = case when site_id is not null then 'Accepted' else 'Pending' end,
+		    last_heartbeat_at = now(),
+		    updated_at = now()
+		where charge_point_id = $1
+		returning registration_status, heartbeat_interval
+	`,
+		chargePointID,
+		p.ChargePointVendor,
+		p.ChargePointModel,
+		p.ChargePointSerialNumber,
+		p.ChargeBoxSerialNumber,
+		p.FirmwareVersion,
+		p.Iccid,
+		p.Imsi,
+		p.MeterType,
+		p.MeterSerialNumber,
+	).Scan(
+		&registrationStatus,
+		&heartbeatInterval,
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "boot notification: update charger failed",
+			"error", err,
+			"chargePointID", chargePointID,
+		)
+		return &Result{
+			Status:      "Rejected",
+			CurrentTime: time.Now().UTC().Format(time.RFC3339),
+			Interval:    60,
+		}, nil
+	}
+
+	slog.InfoContext(ctx, "boot notification",
+		"chargePointID", chargePointID,
+		"vendor", p.ChargePointVendor,
+		"model", p.ChargePointModel,
+		"serial", p.ChargePointSerialNumber,
+		"firmware", p.FirmwareVersion,
+		"status", registrationStatus,
+	)
 
 	return &Result{
-		Status:      "Accepted",
+		Status:      registrationStatus,
 		CurrentTime: time.Now().UTC().Format(time.RFC3339),
-		Interval:    60,
+		Interval:    heartbeatInterval,
 	}, nil
 }

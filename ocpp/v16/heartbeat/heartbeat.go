@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/acoshift/pgsql/pgctx"
+
 	"github.com/anertic/anertic/ocpp"
 )
 
@@ -16,9 +18,17 @@ type Result struct {
 }
 
 func Heartbeat(ctx context.Context, p *Params) (*Result, error) {
-	_ = ocpp.ChargePointID(ctx)
+	chargePointID := ocpp.ChargePointID(ctx)
 
-	// TODO: update ev_chargers.last_heartbeat_at
+	_, err := pgctx.Exec(ctx, `
+		update ev_chargers
+		set last_heartbeat_at = now(),
+		    updated_at = now()
+		where charge_point_id = $1
+	`, chargePointID)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Result{
 		CurrentTime: time.Now().UTC().Format(time.RFC3339),

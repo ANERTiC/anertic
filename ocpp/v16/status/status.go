@@ -48,7 +48,7 @@ func StatusNotification(ctx context.Context, p *Params) (*Result, error) {
 
 func upsertConnectorStatus(ctx context.Context, chargePointID string, connectorID int, status, errorCode, info string, ts time.Time) error {
 	_, err := pgctx.Exec(ctx, `
-		insert into ev_connectors (id, ev_charger_id, connector_id, status, error_code, info, last_status_at)
+		insert into ev_connectors (id, charger_id, connector_id, status, error_code, info, last_status_at)
 		select
 			substr(md5(ec.id || '-' || $2::text), 1, 20),
 			ec.id,
@@ -59,7 +59,7 @@ func upsertConnectorStatus(ctx context.Context, chargePointID string, connectorI
 			$6
 		from ev_chargers ec
 		where ec.charge_point_id = $1
-		on conflict (ev_charger_id, connector_id)
+		on conflict (charger_id, connector_id)
 		do update set
 			status         = excluded.status,
 			error_code     = excluded.error_code,

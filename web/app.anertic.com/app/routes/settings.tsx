@@ -20,6 +20,13 @@ import {
   RiRefreshLine,
   RiEyeLine,
   RiEyeOffLine,
+  RiTeamLine,
+  RiUserAddLine,
+  RiCloseLine,
+  RiMore2Line,
+  RiArrowDownSLine,
+  RiUserUnfollowLine,
+  RiSendPlaneLine,
 } from "@remixicon/react"
 import { useSiteId } from "~/layouts/site"
 import { Card, CardContent } from "~/components/ui/card"
@@ -59,6 +66,79 @@ interface SiteSettings {
   // Meta
   createdAt: string
   updatedAt: string
+}
+
+type MemberRole = "owner" | "admin" | "editor" | "viewer"
+
+interface SiteMember {
+  userId: string
+  name: string
+  email: string
+  picture: string
+  role: MemberRole
+  joinedAt: string
+}
+
+interface PendingInvite {
+  id: string
+  email: string
+  role: MemberRole
+  invitedAt: string
+}
+
+const ROLE_CONFIG: Record<MemberRole, { label: string; color: string; description: string }> = {
+  owner: { label: "Owner", color: "bg-amber-500/15 text-amber-700", description: "Full access, can delete site" },
+  admin: { label: "Admin", color: "bg-violet-500/15 text-violet-700", description: "Manage members and settings" },
+  editor: { label: "Editor", color: "bg-blue-500/15 text-blue-700", description: "Edit devices and chargers" },
+  viewer: { label: "Viewer", color: "bg-muted text-muted-foreground", description: "View-only access" },
+}
+
+function generateMockMembers(): SiteMember[] {
+  return [
+    {
+      userId: "u_001",
+      name: "Kamail S.",
+      email: "kamail@anertic.com",
+      picture: "",
+      role: "owner",
+      joinedAt: "2025-08-15T10:00:00Z",
+    },
+    {
+      userId: "u_002",
+      name: "Prem T.",
+      email: "prem@anertic.com",
+      picture: "",
+      role: "admin",
+      joinedAt: "2025-09-01T08:00:00Z",
+    },
+    {
+      userId: "u_003",
+      name: "Jira W.",
+      email: "jira@example.com",
+      picture: "",
+      role: "editor",
+      joinedAt: "2026-01-10T14:00:00Z",
+    },
+    {
+      userId: "u_004",
+      name: "Nattawut K.",
+      email: "nattawut@example.com",
+      picture: "",
+      role: "viewer",
+      joinedAt: "2026-02-20T09:00:00Z",
+    },
+  ]
+}
+
+function generateMockInvites(): PendingInvite[] {
+  return [
+    {
+      id: "inv_001",
+      email: "new.member@example.com",
+      role: "viewer",
+      invitedAt: "2026-03-11T16:00:00Z",
+    },
+  ]
 }
 
 // --- Mock Data ---
@@ -156,6 +236,14 @@ export default function Settings() {
   const [copiedKey, setCopiedKey] = useState(false)
   const [editingGeneral, setEditingGeneral] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [members, setMembers] = useState<SiteMember[]>(() => generateMockMembers())
+  const [invites, setInvites] = useState<PendingInvite[]>(() => generateMockInvites())
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteRole, setInviteRole] = useState<MemberRole>("viewer")
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState<string | null>(null)
+  const [memberMenuOpen, setMemberMenuOpen] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -166,6 +254,39 @@ export default function Settings() {
     value: SiteSettings[K],
   ) {
     setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleInvite() {
+    if (!inviteEmail.trim()) return
+    setInvites((prev) => [
+      ...prev,
+      {
+        id: `inv_${Date.now()}`,
+        email: inviteEmail.trim(),
+        role: inviteRole,
+        invitedAt: new Date().toISOString(),
+      },
+    ])
+    setInviteEmail("")
+    setInviteRole("viewer")
+    setShowInviteForm(false)
+  }
+
+  function handleRevokeInvite(id: string) {
+    setInvites((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  function handleChangeMemberRole(userId: string, role: MemberRole) {
+    setMembers((prev) =>
+      prev.map((m) => (m.userId === userId ? { ...m, role } : m)),
+    )
+    setRoleDropdownOpen(null)
+  }
+
+  function handleRemoveMember(userId: string) {
+    setMembers((prev) => prev.filter((m) => m.userId !== userId))
+    setConfirmRemove(null)
+    setMemberMenuOpen(null)
   }
 
   function handleCopyApiKey() {
@@ -199,7 +320,7 @@ export default function Settings() {
       {/* ──────────────────────────────
           GENERAL
           ────────────────────────────── */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
             <SectionHeader
@@ -305,7 +426,7 @@ export default function Settings() {
       {/* ──────────────────────────────
           ENERGY TARIFFS
           ────────────────────────────── */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-6">
           <SectionHeader
             icon={RiMoneyDollarCircleLine}
@@ -431,7 +552,7 @@ export default function Settings() {
       {/* ──────────────────────────────
           NOTIFICATIONS
           ────────────────────────────── */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-6">
           <SectionHeader
             icon={RiNotification3Line}
@@ -518,9 +639,277 @@ export default function Settings() {
       </Card>
 
       {/* ──────────────────────────────
+          MEMBERS
+          ────────────────────────────── */}
+      <Card className="py-0">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <SectionHeader
+              icon={RiTeamLine}
+              title="Members"
+              description="Manage who has access to this site"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => setShowInviteForm(!showInviteForm)}
+            >
+              {showInviteForm ? (
+                <>
+                  <RiCloseLine className="size-3.5" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <RiUserAddLine className="size-3.5" />
+                  Invite
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Invite Form */}
+          {showInviteForm && (
+            <div className="mt-5 rounded-lg border border-dashed border-primary/30 bg-primary/[0.03] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Email address</Label>
+                  <Input
+                    type="email"
+                    placeholder="colleague@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+                  />
+                </div>
+                <div className="w-full space-y-1.5 sm:w-36">
+                  <Label className="text-xs text-muted-foreground">Role</Label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setRoleDropdownOpen(roleDropdownOpen === "invite" ? null : "invite")}
+                      className="flex h-9 w-full items-center justify-between rounded-md border bg-background px-3 text-sm"
+                    >
+                      <span>{ROLE_CONFIG[inviteRole].label}</span>
+                      <RiArrowDownSLine className="size-4 text-muted-foreground" />
+                    </button>
+                    {roleDropdownOpen === "invite" && (
+                      <div className="absolute left-0 right-0 top-10 z-20 rounded-lg border bg-background p-1 shadow-lg">
+                        {(["admin", "editor", "viewer"] as MemberRole[]).map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => {
+                              setInviteRole(r)
+                              setRoleDropdownOpen(null)
+                            }}
+                            className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left transition-colors hover:bg-muted"
+                          >
+                            <span className="text-sm font-medium">{ROLE_CONFIG[r].label}</span>
+                            <span className="text-[10px] text-muted-foreground">{ROLE_CONFIG[r].description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <Button size="sm" className="gap-1.5" onClick={handleInvite}>
+                    <RiSendPlaneLine className="size-3.5" />
+                    Send Invite
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pending Invites */}
+          {invites.length > 0 && (
+            <div className="mt-5">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Pending Invitations
+              </h4>
+              <div className="mt-2 space-y-1">
+                {invites.map((invite) => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between rounded-lg px-4 py-2.5 transition-colors hover:bg-muted/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-8 items-center justify-center rounded-full border border-dashed border-muted-foreground/30">
+                        <RiMailLine className="size-3.5 text-muted-foreground/50" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{invite.email}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
+                          Invited {new Date(invite.invitedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_CONFIG[invite.role].color)}>
+                        {ROLE_CONFIG[invite.role].label}
+                      </span>
+                      <button
+                        onClick={() => handleRevokeInvite(invite.id)}
+                        className="rounded p-1 text-muted-foreground/40 transition-colors hover:bg-red-500/10 hover:text-red-500"
+                        title="Revoke invite"
+                      >
+                        <RiCloseLine className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Separator className="mt-3" />
+            </div>
+          )}
+
+          {/* Member List */}
+          <div className="mt-5 space-y-1">
+            {members.map((member) => {
+              const isOwner = member.role === "owner"
+              const initials = member.name
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)
+
+              return (
+                <div
+                  key={member.userId}
+                  className="group relative flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-muted/30"
+                >
+                  <div className="flex items-center gap-3">
+                    {member.picture ? (
+                      <img
+                        src={member.picture}
+                        alt={member.name}
+                        className="size-9 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                        {initials}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{member.name}</p>
+                        {isOwner && (
+                          <span className="rounded bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold text-amber-600">
+                            OWNER
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Role selector (not for owner) */}
+                    {!isOwner ? (
+                      <div className="relative">
+                        <button
+                          onClick={() => setRoleDropdownOpen(roleDropdownOpen === member.userId ? null : member.userId)}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                            ROLE_CONFIG[member.role].color,
+                            "hover:opacity-80",
+                          )}
+                        >
+                          {ROLE_CONFIG[member.role].label}
+                          <RiArrowDownSLine className="size-3" />
+                        </button>
+                        {roleDropdownOpen === member.userId && (
+                          <div className="absolute right-0 top-8 z-20 w-48 rounded-lg border bg-background p-1 shadow-lg">
+                            {(["admin", "editor", "viewer"] as MemberRole[]).map((r) => (
+                              <button
+                                key={r}
+                                onClick={() => handleChangeMemberRole(member.userId, r)}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                                  r === member.role && "bg-muted",
+                                )}
+                              >
+                                <span>{ROLE_CONFIG[r].label}</span>
+                                {r === member.role && <RiCheckLine className="size-3.5 text-primary" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium", ROLE_CONFIG.owner.color)}>
+                        {ROLE_CONFIG.owner.label}
+                      </span>
+                    )}
+
+                    {/* Actions menu (not for owner) */}
+                    {!isOwner && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setMemberMenuOpen(memberMenuOpen === member.userId ? null : member.userId)}
+                          className="rounded p-1 text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-muted-foreground"
+                        >
+                          <RiMore2Line className="size-4" />
+                        </button>
+                        {memberMenuOpen === member.userId && (
+                          <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border bg-background p-1 shadow-lg">
+                            {confirmRemove === member.userId ? (
+                              <div className="space-y-1 p-2">
+                                <p className="text-xs font-medium text-red-600">Remove this member?</p>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 flex-1 text-xs"
+                                    onClick={() => {
+                                      setConfirmRemove(null)
+                                      setMemberMenuOpen(null)
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="h-7 flex-1 text-xs"
+                                    onClick={() => handleRemoveMember(member.userId)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmRemove(member.userId)}
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-500/10"
+                              >
+                                <RiUserUnfollowLine className="size-3.5" />
+                                Remove member
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Member count footer */}
+          <div className="mt-4 flex items-center justify-between border-t pt-3 text-[10px] text-muted-foreground/60">
+            <span>{members.length} member{members.length !== 1 && "s"}{invites.length > 0 && ` · ${invites.length} pending`}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────
           API & INTEGRATIONS
           ────────────────────────────── */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-6">
           <SectionHeader
             icon={RiKeyLine}
@@ -630,7 +1019,7 @@ export default function Settings() {
       {/* ──────────────────────────────
           DANGER ZONE
           ────────────────────────────── */}
-      <Card className="border-red-200/50">
+      <Card className="border-red-200/50 py-0">
         <CardContent className="p-6">
           <SectionHeader
             icon={RiShieldLine}

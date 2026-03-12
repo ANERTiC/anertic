@@ -32,25 +32,58 @@ create index if not exists idx_user_auth_refresh_tokens_user_id on user_auth_ref
 
 create table if not exists sites
 (
-    id         varchar(20) primary key not null,
-    name       text                    not null,
-    address    text                    not null default '',
-    timezone   text                    not null default 'Asia/Bangkok',
-    metadata   jsonb                   not null default '{}',
-    created_at timestamptz             not null default now(),
-    updated_at timestamptz             not null default now()
+    id                        varchar(20) primary key not null,
+    name                      text                    not null,
+    address                   text                    not null default '',
+    timezone                  text                    not null default 'Asia/Bangkok',
+    currency                  text                    not null default 'THB',
+    savings_target_kwh        numeric                 not null default 500,
+    grid_import_rate          numeric                 not null default 0,
+    grid_export_rate          numeric                 not null default 0,
+    peak_start_hour           int                     not null default 17,
+    peak_end_hour             int                     not null default 21,
+    peak_rate                 numeric                 not null default 0,
+    off_peak_rate             numeric                 not null default 0,
+    email_alerts              boolean                 not null default true,
+    push_alerts               boolean                 not null default false,
+    alert_offline             boolean                 not null default true,
+    alert_fault               boolean                 not null default true,
+    alert_high_consumption    boolean                 not null default false,
+    alert_low_solar           boolean                 not null default false,
+    offline_threshold_minutes int                     not null default 30,
+    consumption_threshold_kwh numeric                 not null default 50,
+    api_key                   text                    not null default '',
+    webhook_url               text                    not null default '',
+    metadata                  jsonb                   not null default '{}',
+    created_at                timestamptz             not null default now(),
+    updated_at                timestamptz             not null default now()
 );
 
 create table if not exists site_members
 (
     site_id    varchar(20) not null references sites (id),
     user_id    varchar(20) not null references users (id),
-    roles      varchar[]   not null default '{*}',
+    role       varchar[]   not null default '{*}',
     created_at timestamptz not null default now(),
     primary key (site_id, user_id)
 );
 
 create index if not exists idx_site_members_user_id on site_members (user_id);
+
+create table if not exists site_member_invitations
+(
+    id         varchar(20) primary key not null,
+    site_id    varchar(20) not null references sites (id),
+    email      text        not null,
+    role       varchar[]   not null default '{*}',
+    invited_by varchar(20) not null references users (id),
+    status     text        not null default 'pending', -- 'pending', 'accepted', 'expired'
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_site_member_invitations_site_id on site_member_invitations (site_id);
+create index if not exists idx_site_member_invitations_email on site_member_invitations (email);
 
 create table if not exists devices
 (

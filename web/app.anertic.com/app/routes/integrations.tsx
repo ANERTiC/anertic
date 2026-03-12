@@ -379,7 +379,7 @@ export default function Integrations() {
               const pc = providerColor(integration.provider)
 
               return (
-                <Card key={integration.id} className="overflow-hidden">
+                <Card key={integration.id} className="overflow-hidden py-0">
                   <CardContent className="p-0">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-3 p-4 pb-0 sm:p-5 sm:pb-0">
@@ -489,7 +489,7 @@ export default function Integrations() {
             return (
               <Card
                 key={integration.id}
-                className="group cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+                className="group cursor-pointer py-0 transition-all hover:shadow-md hover:-translate-y-0.5"
                 onClick={() => handleOpenConnect(integration)}
               >
                 <CardContent className="p-4 sm:p-5">

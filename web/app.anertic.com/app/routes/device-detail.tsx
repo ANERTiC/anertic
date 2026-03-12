@@ -284,22 +284,22 @@ export default function DeviceDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="w-full sm:w-fit">
           <TabsTrigger value="overview" className="gap-1.5">
             <RiInformationLine className="size-3.5" />
-            Overview
+            <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-1.5">
             <RiBarChartBoxLine className="size-3.5" />
-            Live Data
+            <span className="hidden sm:inline">Live Data</span>
           </TabsTrigger>
           <TabsTrigger value="events" className="gap-1.5">
             <RiHistoryLine className="size-3.5" />
-            Events
+            <span className="hidden sm:inline">Events</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="gap-1.5">
             <RiSettings3Line className="size-3.5" />
-            Settings
+            <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
         </TabsList>
 

@@ -208,7 +208,7 @@ export default function DeviceDetail() {
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">{device.name}</h1>
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{device.name}</h1>
                 {!device.isActive && (
                   <Badge variant="secondary">Disabled</Badge>
                 )}
@@ -238,7 +238,7 @@ export default function DeviceDetail() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <Button variant="outline" size="sm" className="gap-1.5">
               <RiRefreshLine className="size-3.5" />
               Ping
@@ -251,6 +251,19 @@ export default function DeviceDetail() {
               <RiDeleteBinLine className="size-3.5" />
             </Button>
           </div>
+        </div>
+        <div className="flex gap-2 sm:hidden">
+          <Button variant="outline" size="sm" className="flex-1 gap-1.5">
+            <RiRefreshLine className="size-3.5" />
+            Ping
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 gap-1.5">
+            <RiEditLine className="size-3.5" />
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10">
+            <RiDeleteBinLine className="size-3.5" />
+          </Button>
         </div>
       </div>
 
@@ -275,10 +288,10 @@ export default function DeviceDetail() {
           subtitle={device.lastSeenAt ? formatTime(device.lastSeenAt) : "Never connected"}
         />
         <MetricCard
-          label="Created"
-          value={formatDateShort(device.createdAt)}
+          label="Firmware"
+          value={device.firmwareVersion || "N/A"}
           color="text-foreground"
-          subtitle={formatTime(device.createdAt)}
+          subtitle={device.brand}
         />
       </div>
 

@@ -17,7 +17,7 @@ export default function Login() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">ANERTiC</h1>
         <p className="text-center text-sm text-muted-foreground">
-          AI-powered energy monitoring platform
+          AI-Powered Energy Platform. Know your energy. Optimize your future.
         </p>
       </div>
 

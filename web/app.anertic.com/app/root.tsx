@@ -12,8 +12,8 @@ import { Toaster } from "~/components/ui/sonner"
 import "./app.css"
 
 export const meta: Route.MetaFunction = () => [
-  { title: "ANERTiC — AI-Powered Energy Monitoring" },
-  { name: "description", content: "AI-powered energy monitoring platform" },
+  { title: "ANERTiC — AI-Powered Energy Platform" },
+  { name: "description", content: "Know your energy. Optimize your future." },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {

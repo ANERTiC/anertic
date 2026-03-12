@@ -429,6 +429,7 @@ export default function Chargers() {
 
       {/* Fleet Summary Strip */}
       <Card className="overflow-hidden py-0">
+
         <CardContent className="p-0">
           <div className="grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-6">
             <FleetCell
@@ -615,7 +616,7 @@ function ChargerCard({
   return (
     <Card
       className={cn(
-        "group h-full cursor-pointer overflow-hidden transition-all hover:shadow-md",
+        "group h-full cursor-pointer overflow-hidden py-0 transition-all hover:shadow-md",
         isFaulted && "border-red-200",
       )}
       onClick={onClick}

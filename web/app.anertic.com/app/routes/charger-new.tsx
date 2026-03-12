@@ -49,10 +49,6 @@ export default function ChargerNew() {
   const [maxPowerKw, setMaxPowerKw] = useState("22")
   const [chargerType, setChargerType] = useState<"ac" | "dc">("ac")
 
-  const wsUrl = chargePointId
-    ? `wss://ocpp.anertic.com/ws/${encodeURIComponent(chargePointId)}`
-    : ""
-
   function goToStep3() {
     setStep(3)
     setConnectionStatus("waiting")
@@ -61,7 +57,7 @@ export default function ChargerNew() {
   }
 
   function copyWsUrl() {
-    navigator.clipboard.writeText(wsUrl)
+    navigator.clipboard.writeText("wss://ocpp.anertic.com/")
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -413,7 +409,7 @@ export default function ChargerNew() {
                 </Label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 overflow-hidden rounded-lg border bg-muted/40 px-4 py-3">
-                    <p className="truncate font-mono text-sm">{wsUrl}</p>
+                    <p className="truncate font-mono text-sm">{"wss://ocpp.anertic.com/"}</p>
                   </div>
                   <Button
                     variant="outline"
@@ -483,7 +479,7 @@ export default function ChargerNew() {
                     },
                     {
                       label: "WebSocket URL",
-                      value: wsUrl,
+                      value: "wss://ocpp.anertic.com/",
                       mono: true,
                     },
                     {

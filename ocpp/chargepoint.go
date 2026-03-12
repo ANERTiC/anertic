@@ -51,6 +51,9 @@ func (cp *ChargePoint) Call(ctx context.Context, action string, payload any) (js
 
 	msg := []any{MessageTypeCall, msgID, action, payload}
 
+	payloadJSON, _ := json.Marshal(payload)
+	go logMessage(context.WithoutCancel(ctx), cp.Identity, msgID, MessageTypeCall, action, "out", payloadJSON, "", "")
+
 	cp.mu.Lock()
 	err := wsjson.Write(ctx, cp.Conn, msg)
 	cp.mu.Unlock()

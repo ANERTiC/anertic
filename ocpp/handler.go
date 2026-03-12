@@ -111,12 +111,22 @@ func handleOCPPMessage(ctx context.Context, cp *ChargePoint, router Router, data
 		}
 		var action string
 		json.Unmarshal(msg[2], &action)
+		go logMessage(context.WithoutCancel(ctx), cp.Identity, msgID, MessageTypeCall, action, "in", msg[3], "", "")
 		router.HandleCall(ctx, cp, msgID, action, msg[3])
 
 	case MessageTypeCallResult:
+		go logMessage(context.WithoutCancel(ctx), cp.Identity, msgID, MessageTypeCallResult, "", "in", msg[2], "", "")
 		cp.HandleResponse(msgID, msg[2])
 
 	case MessageTypeCallError:
+		var errorCode, errorDesc string
+		if len(msg) >= 3 {
+			json.Unmarshal(msg[2], &errorCode)
+		}
+		if len(msg) >= 4 {
+			json.Unmarshal(msg[3], &errorDesc)
+		}
+		go logMessage(context.WithoutCancel(ctx), cp.Identity, msgID, MessageTypeCallError, "", "in", nil, errorCode, errorDesc)
 		cp.HandleResponse(msgID, msg[2])
 	}
 }
@@ -137,5 +147,7 @@ func CallAction[P any, R any](ctx context.Context, cp *ChargePoint, msgID string
 		return
 	}
 
+	resultJSON, _ := json.Marshal(result)
+	go logMessage(context.WithoutCancel(ctx), cp.Identity, msgID, MessageTypeCallResult, "", "out", resultJSON, "", "")
 	cp.Reply(ctx, msgID, result)
 }

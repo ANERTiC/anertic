@@ -59,7 +59,7 @@ func run() error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	mux.Handle("GET /ocpp/{chargePointID}", ocpp.Handler(hub))
+	mux.Handle("GET /{chargePointID}", ocpp.Handler(hub))
 
 	srv := parapet.NewBackend()
 	srv.Handler = mux

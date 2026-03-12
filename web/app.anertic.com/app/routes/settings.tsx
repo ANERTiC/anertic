@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import useSWR from "swr"
+import { toast } from "sonner"
 import {
   RiSettings3Line,
   RiMapPinLine,
@@ -36,6 +38,7 @@ import { Label } from "~/components/ui/label"
 import { Badge } from "~/components/ui/badge"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
+import { api } from "~/lib/api"
 
 // --- Types ---
 
@@ -237,8 +240,10 @@ export default function Settings() {
   const [showApiKey, setShowApiKey] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
   const [editingGeneral, setEditingGeneral] = useState(false)
+  const [savingGeneral, setSavingGeneral] = useState(false)
+  const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [members, setMembers] = useState<SiteMember[]>(() => generateMockMembers())
+  const [members, setMembers] = useState<SiteMember[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>(() => generateMockInvites())
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
@@ -246,6 +251,47 @@ export default function Settings() {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<string | null>(null)
   const [memberMenuOpen, setMemberMenuOpen] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+
+  // Fetch site data
+  const { data: siteData, mutate: mutateSite } = useSWR(
+    siteId ? ["site.get", siteId] : null,
+    () => api<any>("site.get", { id: siteId }),
+  )
+
+  // Fetch members
+  const { data: membersData, mutate: mutateMembers } = useSWR(
+    siteId ? ["site.listMembers", siteId] : null,
+    () => api<{ items: SiteMember[] }>("site.listMembers", { siteId }),
+  )
+
+  // Sync site data to settings state
+  useEffect(() => {
+    if (siteData) {
+      setSettings((prev) => ({
+        ...prev,
+        name: siteData.name || prev.name,
+        address: siteData.address || prev.address,
+        timezone: siteData.timezone || prev.timezone,
+        currency: siteData.currency || prev.currency,
+        gridImportRate: Number(siteData.gridImportRate) || 0,
+        gridExportRate: Number(siteData.gridExportRate) || 0,
+        peakStartHour: siteData.peakStartHour ?? prev.peakStartHour,
+        peakEndHour: siteData.peakEndHour ?? prev.peakEndHour,
+        peakRate: Number(siteData.peakRate) || 0,
+        offPeakRate: Number(siteData.offPeakRate) || 0,
+      }))
+    }
+  }, [siteData])
+
+  // Sync members data
+  useEffect(() => {
+    if (membersData?.items) {
+      setMembers(membersData.items.map((m: any) => ({
+        ...m,
+        joinedAt: m.createdAt,
+      })))
+    }
+  }, [membersData])
 
   useEffect(() => {
     setMounted(true)
@@ -258,20 +304,60 @@ export default function Settings() {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
+  async function handleSaveGeneral() {
+    setSavingGeneral(true)
+    try {
+      await api("site.update", {
+        id: siteId,
+        name: settings.name,
+        address: settings.address,
+        timezone: settings.timezone,
+        currency: settings.currency,
+      })
+      toast.success("Site settings saved")
+      setEditingGeneral(false)
+      mutateSite()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSavingGeneral(false)
+    }
+  }
+
+  async function handleSaveTariffs() {
+    setSavingTariffs(true)
+    try {
+      await api("site.updateTariff", {
+        id: siteId,
+        gridImportRate: settings.gridImportRate,
+        gridExportRate: settings.gridExportRate,
+        peakStartHour: settings.peakStartHour,
+        peakEndHour: settings.peakEndHour,
+        peakRate: settings.peakRate,
+        offPeakRate: settings.offPeakRate,
+      })
+      toast.success("Tariff settings saved")
+      mutateSite()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSavingTariffs(false)
+    }
+  }
+
   function handleInvite() {
     if (!inviteEmail.trim()) return
-    setInvites((prev) => [
-      ...prev,
-      {
-        id: `inv_${Date.now()}`,
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        invitedAt: new Date().toISOString(),
-      },
-    ])
-    setInviteEmail("")
-    setInviteRole("viewer")
-    setShowInviteForm(false)
+    api("site.addMember", { siteId, email: inviteEmail.trim() })
+      .then(() => {
+        toast.success("Member added")
+        setInviteEmail("")
+        setInviteRole("viewer")
+        setShowInviteForm(false)
+        mutateMembers()
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to add member")
+      })
   }
 
   function handleRevokeInvite(id: string) {
@@ -286,7 +372,14 @@ export default function Settings() {
   }
 
   function handleRemoveMember(userId: string) {
-    setMembers((prev) => prev.filter((m) => m.userId !== userId))
+    api("site.removeMember", { siteId, userId })
+      .then(() => {
+        toast.success("Member removed")
+        mutateMembers()
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to remove member")
+      })
     setConfirmRemove(null)
     setMemberMenuOpen(null)
   }
@@ -416,9 +509,9 @@ export default function Settings() {
               >
                 Cancel
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={() => setEditingGeneral(false)}>
+              <Button size="sm" className="gap-1.5" onClick={handleSaveGeneral} disabled={savingGeneral}>
                 <RiCheckLine className="size-3.5" />
-                Save Changes
+                {savingGeneral ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           )}
@@ -567,9 +660,9 @@ export default function Settings() {
             </div>
 
             <div className="flex justify-end">
-              <Button size="sm" className="gap-1.5">
+              <Button size="sm" className="gap-1.5" onClick={handleSaveTariffs} disabled={savingTariffs}>
                 <RiCheckLine className="size-3.5" />
-                Save Tariffs
+                {savingTariffs ? "Saving..." : "Save Tariffs"}
               </Button>
             </div>
           </div>

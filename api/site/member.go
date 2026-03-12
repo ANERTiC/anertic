@@ -152,6 +152,54 @@ func AddMember(ctx context.Context, p *AddMemberParams) (*AddMemberResult, error
 	return &AddMemberResult{UserID: userID}, nil
 }
 
+// UpdateMemberRole
+
+type UpdateMemberRoleParams struct {
+	SiteID string `json:"siteId"`
+	UserID string `json:"userId"`
+	Role   string `json:"role"`
+}
+
+func (p *UpdateMemberRoleParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.UserID != "", "userId is required")
+	v.Must(p.Role != "", "role is required")
+	v.Must(p.Role == "*" || p.Role == "editor" || p.Role == "viewer", "invalid role")
+	return v.Error()
+}
+
+func UpdateMemberRole(ctx context.Context, p *UpdateMemberRoleParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	result, err := pgctx.Exec(ctx, `
+		update site_members
+		set role = $1
+		where site_id = $2
+		  and user_id = $3
+	`,
+		p.Role,
+		p.SiteID,
+		p.UserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return nil, ErrMemberNotFound
+	}
+
+	return new(struct{}), nil
+}
+
 // RemoveMember
 
 type RemoveMemberParams struct {

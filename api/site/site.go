@@ -178,6 +178,13 @@ func (p *GetParams) Valid() error {
 
 type GetResult struct {
 	Item
+	Currency       string          `json:"currency"`
+	GridImportRate decimal.Decimal `json:"gridImportRate"`
+	GridExportRate decimal.Decimal `json:"gridExportRate"`
+	PeakStartHour  int             `json:"peakStartHour"`
+	PeakEndHour    int             `json:"peakEndHour"`
+	PeakRate       decimal.Decimal `json:"peakRate"`
+	OffPeakRate    decimal.Decimal `json:"offPeakRate"`
 }
 
 func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
@@ -196,6 +203,13 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			name,
 			address,
 			timezone,
+			currency,
+			grid_import_rate,
+			grid_export_rate,
+			peak_start_hour,
+			peak_end_hour,
+			peak_rate,
+			off_peak_rate,
 			metadata,
 			created_at
 		from sites
@@ -205,6 +219,13 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.Name,
 		&r.Address,
 		&r.Timezone,
+		&r.Currency,
+		&r.GridImportRate,
+		&r.GridExportRate,
+		&r.PeakStartHour,
+		&r.PeakEndHour,
+		&r.PeakRate,
+		&r.OffPeakRate,
 		pgsql.JSON(&r.Metadata),
 		&r.CreatedAt,
 	)

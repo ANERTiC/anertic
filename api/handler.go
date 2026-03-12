@@ -64,7 +64,12 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /site.listRole", am.Handler(site.ListRoles))
 	a.Handle("POST /site.listMembers", am.Handler(site.ListMembers))
 	a.Handle("POST /site.addMember", am.Handler(site.AddMember))
+	a.Handle("POST /site.updateMemberRole", am.Handler(site.UpdateMemberRole))
 	a.Handle("POST /site.removeMember", am.Handler(site.RemoveMember))
+	a.Handle("POST /site.inviteMember", am.Handler(site.InviteMember))
+	a.Handle("POST /site.listInvites", am.Handler(site.ListInvites))
+	a.Handle("POST /site.revokeInvite", am.Handler(site.RevokeInvite))
+	a.Handle("POST /site.acceptInvite", am.Handler(site.AcceptInvite))
 
 	// Devices
 	a.Handle("POST /device.list", am.Handler(device.List))

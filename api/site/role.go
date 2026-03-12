@@ -11,7 +11,7 @@ type Role struct {
 }
 
 var roles = []Role{
-	{ID: "*", Name: "Admin", Description: "Full access to all site settings and members"},
+	{ID: "*", Name: "Owner", Description: "Full access to all site settings and members"},
 	{ID: "editor", Name: "Editor", Description: "Can manage devices, chargers, and view data"},
 	{ID: "viewer", Name: "Viewer", Description: "Read-only access to site data"},
 }

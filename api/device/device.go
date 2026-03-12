@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -35,6 +36,8 @@ type Item struct {
 	SiteID    string    `json:"siteId"`
 	Name      string    `json:"name"`
 	Type      string    `json:"type"`
+	Subtype   string    `json:"subtype"`
+	Tag       string    `json:"tag"`
 	Brand     string    `json:"brand"`
 	Model     string    `json:"model"`
 	IsActive  bool      `json:"isActive"`
@@ -61,6 +64,8 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"site_id",
 			"name",
 			"type",
+			"subtype",
+			"tag",
 			"brand",
 			"model",
 			"is_active",
@@ -74,7 +79,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 				c.Eq("type", p.Type)
 			}
 		})
-		b.OrderBy("created_at DESC")
+		b.OrderBy("created_at desc")
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item
 		err := scan(
@@ -82,6 +87,8 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.SiteID,
 			&it.Name,
 			&it.Type,
+			&it.Subtype,
+			&it.Tag,
 			&it.Brand,
 			&it.Model,
 			&it.IsActive,
@@ -103,18 +110,25 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
-	SiteID string `json:"siteId"`
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Brand  string `json:"brand"`
-	Model  string `json:"model"`
+	SiteID  string `json:"siteId"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Subtype string `json:"subtype"`
+	Tag     string `json:"tag"`
+	Brand   string `json:"brand"`
+	Model   string `json:"model"`
 }
+
+var validSubtypes = []string{"main_db", "floor_sub_db", "electrical_device"}
 
 func (p *CreateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.Name != "", "name is required")
 	v.Must(p.Type != "", "type is required")
+	if p.Type == "meter" && p.Subtype != "" {
+		v.Must(slices.Contains(validSubtypes, p.Subtype), "invalid subtype")
+	}
 	return v.Error()
 }
 
@@ -132,18 +146,22 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 
 	var id string
 	err := pgctx.QueryRow(ctx, `
-		INSERT INTO devices (
+		insert into devices (
 			site_id,
 			name,
 			type,
+			subtype,
+			tag,
 			brand,
 			model
-		) VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
+		) values ($1, $2, $3, $4, $5, $6, $7)
+		returning id
 	`,
 		p.SiteID,
 		p.Name,
 		p.Type,
+		p.Subtype,
+		p.Tag,
 		p.Brand,
 		p.Model,
 	).Scan(&id)
@@ -178,22 +196,26 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 
 	var r GetResult
 	err := pgctx.QueryRow(ctx, `
-		SELECT
+		select
 			id,
 			site_id,
 			name,
 			type,
+			subtype,
+			tag,
 			brand,
 			model,
 			is_active,
 			created_at
-		FROM devices
-		WHERE id = $1
+		from devices
+		where id = $1
 	`, p.ID).Scan(
 		&r.ID,
 		&r.SiteID,
 		&r.Name,
 		&r.Type,
+		&r.Subtype,
+		&r.Tag,
 		&r.Brand,
 		&r.Model,
 		&r.IsActive,

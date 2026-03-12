@@ -12,11 +12,12 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 
-	"github.com/anertic/anertic/api/auth"
-	"github.com/anertic/anertic/api/iam"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 	"github.com/shopspring/decimal"
+
+	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/iam"
 )
 
 var (
@@ -296,8 +297,8 @@ type UpdateTariffParams struct {
 	ID             string           `json:"id"`
 	GridImportRate *decimal.Decimal `json:"gridImportRate"`
 	GridExportRate *decimal.Decimal `json:"gridExportRate"`
-	PeakStartHour  *int            `json:"peakStartHour"`
-	PeakEndHour    *int            `json:"peakEndHour"`
+	PeakStartHour  *int             `json:"peakStartHour"`
+	PeakEndHour    *int             `json:"peakEndHour"`
 	PeakRate       *decimal.Decimal `json:"peakRate"`
 	OffPeakRate    *decimal.Decimal `json:"offPeakRate"`
 }

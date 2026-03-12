@@ -75,7 +75,6 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
-
 // command is a message received from Redis pub/sub to execute on a charge point.
 type command struct {
 	Action  string          `json:"action"`

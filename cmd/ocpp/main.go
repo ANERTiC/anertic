@@ -14,8 +14,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/ocpp"
-	"github.com/anertic/anertic/ocpp/v16"
-	"github.com/anertic/anertic/ocpp/v201"
+	v16 "github.com/anertic/anertic/ocpp/v16"
+	v201 "github.com/anertic/anertic/ocpp/v201"
 	"github.com/anertic/anertic/pkg/rdctx"
 )
 

@@ -94,6 +94,11 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /reading.latest", am.Handler(reading.Latest))
 
 	// Insights
+	a.Handle("POST /insight.summary", am.Handler(insight.Summary))
 	a.Handle("POST /insight.list", am.Handler(insight.List))
 	a.Handle("POST /insight.get", am.Handler(insight.Get))
+	a.Handle("POST /insight.updateStatus", am.Handler(insight.UpdateStatus))
+	a.Handle("POST /insight.savingsHistory", am.Handler(insight.SavingsHistory))
+	a.Handle("POST /insight.weeklyPattern", am.Handler(insight.WeeklyPattern))
+	a.Handle("POST /insight.anomalies", am.Handler(insight.Anomalies))
 }

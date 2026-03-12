@@ -55,9 +55,9 @@ func SendAll(ctx context.Context, b Broker, event string, payload any) error {
 }
 
 type Hub struct {
-	mu      sync.RWMutex
-	topics  map[string]map[*websocket.Conn]struct{}
-	all     map[*websocket.Conn]struct{}
+	mu     sync.RWMutex
+	topics map[string]map[*websocket.Conn]struct{}
+	all    map[*websocket.Conn]struct{}
 	broker Broker
 	id     Identifier
 }

@@ -32,20 +32,20 @@ func (p *ListParams) Valid() error {
 }
 
 type Item struct {
-	ID                 string     `json:"id"`
-	SiteID             string     `json:"siteId"`
-	ChargePointID      string     `json:"chargePointId"`
-	OcppVersion        string     `json:"ocppVersion"`
-	Status             string     `json:"status"`
-	RegistrationStatus string     `json:"registrationStatus"`
+	ID                 string          `json:"id"`
+	SiteID             string          `json:"siteId"`
+	ChargePointID      string          `json:"chargePointId"`
+	OcppVersion        string          `json:"ocppVersion"`
+	Status             string          `json:"status"`
+	RegistrationStatus string          `json:"registrationStatus"`
 	ConnectorCount     decimal.Decimal `json:"connectorCount"`
 	MaxPowerKW         decimal.Decimal `json:"maxPowerKw"`
-	Vendor             string     `json:"vendor"`
-	Model              string     `json:"model"`
-	SerialNumber       string     `json:"serialNumber"`
-	FirmwareVersion    string     `json:"firmwareVersion"`
-	LastHeartbeatAt    *time.Time `json:"lastHeartbeatAt"`
-	CreatedAt          time.Time  `json:"createdAt"`
+	Vendor             string          `json:"vendor"`
+	Model              string          `json:"model"`
+	SerialNumber       string          `json:"serialNumber"`
+	FirmwareVersion    string          `json:"firmwareVersion"`
+	LastHeartbeatAt    *time.Time      `json:"lastHeartbeatAt"`
+	CreatedAt          time.Time       `json:"createdAt"`
 }
 
 type ListResult struct {
@@ -118,9 +118,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
-	SiteID         string  `json:"siteId"`
-	ChargePointID  string  `json:"chargePointId"`
-	OcppVersion    string  `json:"ocppVersion"`
+	SiteID         string          `json:"siteId"`
+	ChargePointID  string          `json:"chargePointId"`
+	OcppVersion    string          `json:"ocppVersion"`
 	ConnectorCount decimal.Decimal `json:"connectorCount"`
 	MaxPowerKW     decimal.Decimal `json:"maxPowerKw"`
 }
@@ -257,7 +257,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 // Update
 
 type UpdateParams struct {
-	ID             string   `json:"id"`
+	ID             string           `json:"id"`
 	ConnectorCount *decimal.Decimal `json:"connectorCount"`
 	MaxPowerKW     *decimal.Decimal `json:"maxPowerKw"`
 }

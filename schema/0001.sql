@@ -135,15 +135,53 @@ create index if not exists idx_readings_meter_id_time on readings (meter_id, tim
 
 create table if not exists insights
 (
-    id         varchar(20) primary key not null,
-    site_id    varchar(20) references sites (id),
-    type       text                    not null, -- 'daily_summary', 'anomaly', 'recommendation', 'cost_alert'
-    title      text                    not null,
-    body       text                    not null,
-    data       jsonb                   not null default '{}',
-    is_read    boolean                 not null default false,
-    created_at timestamptz             not null default now()
+    id           varchar(20) primary key not null,
+    site_id      varchar(20) not null references sites (id),
+    type         text        not null, -- 'warning', 'opportunity', 'achievement', 'anomaly'
+    category     text        not null, -- 'solar', 'grid', 'battery', 'ev', 'load', 'cost'
+    status       text        not null default 'new', -- 'new', 'acknowledged', 'resolved', 'dismissed'
+    title        text        not null,
+    summary      text        not null,
+    detail       text        not null default '',
+    impact       text        not null default '',
+    impact_value numeric     not null default 0,
+    impact_unit  text        not null default '',
+    action       text        not null default '',
+    confidence   int         not null default 0,
+    created_at   timestamptz not null default now()
 );
 
-create index if not exists idx_insights_site_id on insights (site_id, created_at desc);
-create index if not exists idx_insights_type on insights (type);
+create index if not exists idx_insights_site_created on insights (site_id, created_at desc);
+create index if not exists idx_insights_site_type on insights (site_id, type);
+create index if not exists idx_insights_site_status on insights (site_id, status);
+
+create table if not exists anomalies
+(
+    id          varchar(20) primary key not null,
+    site_id     varchar(20) not null references sites (id),
+    metric      text        not null,
+    expected    numeric     not null,
+    actual      numeric     not null,
+    deviation   numeric     not null,
+    severity    text        not null default 'low', -- 'low', 'medium', 'high'
+    description text        not null default '',
+    created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_anomalies_site_created on anomalies (site_id, created_at desc);
+create index if not exists idx_anomalies_site_severity on anomalies (site_id, severity);
+
+create table if not exists site_energy_daily
+(
+    site_id         varchar(20) not null references sites (id),
+    date            date        not null,
+    solar_kwh       numeric     not null default 0,
+    grid_import_kwh numeric     not null default 0,
+    grid_export_kwh numeric     not null default 0,
+    battery_kwh     numeric     not null default 0,
+    consumption_kwh numeric     not null default 0,
+    self_use_kwh    numeric     not null default 0,
+    optimal_kwh     numeric     not null default 0,
+    co2_avoided_kg  numeric     not null default 0,
+    primary key (site_id, date)
+);

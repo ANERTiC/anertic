@@ -27,7 +27,7 @@ func (p *QueryParams) Valid() error {
 type Reading struct {
 	Time      time.Time `json:"time"`
 	PowerW    float64   `json:"powerW"`
-	EnergyKWh float64  `json:"energyKwh"`
+	EnergyKWh float64   `json:"energyKwh"`
 	VoltageV  float64   `json:"voltageV"`
 	CurrentA  float64   `json:"currentA"`
 }

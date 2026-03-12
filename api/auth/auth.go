@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
-	"github.com/rs/xid"
 	"github.com/moonrhythm/session"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/auth/provider"
 	"github.com/anertic/anertic/api/conf"

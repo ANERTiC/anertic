@@ -2,7 +2,9 @@ import { useState } from "react"
 import { useNavigate } from "react-router"
 import {
   RiArrowLeftLine,
-  RiArrowRightLine,
+  RiArrowRightSLine,
+  RiArrowLeftSLine,
+  RiCheckLine,
   RiCheckboxCircleLine,
   RiChargingPile2Line,
   RiFileCopyLine,
@@ -26,17 +28,20 @@ interface CreateResult {
   id: string
 }
 
-const STEPS = [
-  { num: 1, label: "Identify" },
-  { num: 2, label: "Configure" },
-  { num: 3, label: "Connect" },
-] as const
+type Step = "identify" | "configure" | "connect"
+
+const STEPS: Step[] = ["identify", "configure", "connect"]
+const STEP_LABELS: Record<Step, string> = {
+  identify: "Identify",
+  configure: "Configure",
+  connect: "Connect",
+}
 
 export default function ChargerNew() {
   const navigate = useNavigate()
   const siteId = useSiteId()
 
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<Step>("identify")
   const [creating, setCreating] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<
     "waiting" | "connected"
@@ -49,11 +54,23 @@ export default function ChargerNew() {
   const [maxPowerKw, setMaxPowerKw] = useState("22")
   const [chargerType, setChargerType] = useState<"ac" | "dc">("ac")
 
-  function goToStep3() {
-    setStep(3)
-    setConnectionStatus("waiting")
-    // Mock: simulate charger connecting after delay
-    setTimeout(() => setConnectionStatus("connected"), 5000)
+  const activeStepIndex = STEPS.indexOf(step)
+
+  function goNext() {
+    const idx = STEPS.indexOf(step)
+    if (idx < STEPS.length - 1) {
+      const next = STEPS[idx + 1]
+      setStep(next)
+      if (next === "connect") {
+        setConnectionStatus("waiting")
+        setTimeout(() => setConnectionStatus("connected"), 5000)
+      }
+    }
+  }
+
+  function goBack() {
+    const idx = STEPS.indexOf(step)
+    if (idx > 0) setStep(STEPS[idx - 1])
   }
 
   function copyWsUrl() {
@@ -84,337 +101,252 @@ export default function ChargerNew() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
-      {/* Back + Title */}
-      <div>
-        <button
-          onClick={() => navigate(`/chargers?site=${siteId}`)}
-          className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <RiArrowLeftLine className="size-4" />
-          Back to Chargers
-        </button>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Add New Charger
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Register an EV charger and connect it via OCPP.
-        </p>
+    <div className="mx-auto max-w-2xl space-y-6">
+      {/* Back */}
+      <button
+        onClick={() => navigate(`/chargers?site=${siteId}`)}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <RiArrowLeftLine className="size-4" />
+        Back to chargers
+      </button>
+
+      {/* Header */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Add Charger</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {step === "identify" && "Enter the charge point identifier"}
+            {step === "configure" && "Set OCPP version and hardware specs"}
+            {step === "connect" && "Connect your charger via OCPP"}
+          </p>
+        </div>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {activeStepIndex + 1} / {STEPS.length}
+        </span>
       </div>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-0">
-        {STEPS.map(({ num, label }, i) => (
-          <div key={num} className="flex flex-1 items-center">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
-                  step > num
-                    ? "bg-emerald-500 text-white"
-                    : step === num
-                      ? "bg-foreground text-background shadow-sm"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {step > num ? (
-                  <RiCheckboxCircleLine className="size-4" />
-                ) : (
-                  num
-                )}
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-medium transition-colors",
-                  step >= num ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div
-                className={cn(
-                  "mx-4 h-px flex-1 transition-colors",
-                  step > num ? "bg-emerald-500" : "bg-border",
-                )}
-              />
-            )}
-          </div>
+      {/* Progress bar */}
+      <div className="flex gap-1.5">
+        {STEPS.map((s, i) => (
+          <button
+            key={s}
+            onClick={() => { if (i < activeStepIndex) setStep(s) }}
+            disabled={i > activeStepIndex}
+            className="group flex-1"
+          >
+            <div
+              className={cn(
+                "h-1 rounded-full transition-all duration-500",
+                i < activeStepIndex
+                  ? "bg-foreground"
+                  : i === activeStepIndex
+                    ? "bg-foreground/50"
+                    : "bg-border",
+                i < activeStepIndex && "cursor-pointer group-hover:bg-foreground/70",
+              )}
+            />
+            <span className={cn(
+              "mt-1.5 block text-[10px] font-medium text-muted-foreground transition-colors",
+              i === activeStepIndex && "text-foreground",
+            )}>
+              {STEP_LABELS[s]}
+            </span>
+          </button>
         ))}
       </div>
 
       {/* Step 1: Identify */}
-      {step === 1 && (
-        <Card className="py-0">
-          <CardContent className="space-y-6 py-6">
-            <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <RiChargingPile2Line className="size-6 text-primary" />
-              </div>
+      {step === "identify" && (
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-5">
+          <Card className="border-border/50">
+            <CardContent className="p-5 space-y-4">
               <div>
-                <h2 className="text-lg font-semibold">
-                  Identify Your Charger
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Enter the unique charge point identifier that's configured in
-                  your EVSE hardware. This ID will be used by the charger to
-                  authenticate with the OCPP server.
+                <Label htmlFor="chargePointId" className="text-xs">
+                  Charge Point ID <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="chargePointId"
+                  placeholder="e.g. CP-001, WALLBOX-A1"
+                  value={chargePointId}
+                  onChange={(e) => setChargePointId(e.target.value)}
+                  className="mt-1.5 font-mono"
+                  autoFocus
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Must match the identity configured in your charger's firmware
                 </p>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="chargePointId" className="text-sm font-medium">
-                Charge Point ID
-              </Label>
-              <Input
-                id="chargePointId"
-                placeholder="e.g. CP-001, WALLBOX-A1"
-                value={chargePointId}
-                onChange={(e) => setChargePointId(e.target.value)}
-                className="h-12 font-mono text-base"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">
-                Must match the identity string configured in your charger's
-                firmware. Usually found in the charger's admin panel under OCPP
-                settings.
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                size="lg"
-                onClick={() => setStep(2)}
-                disabled={!chargePointId.trim()}
-              >
-                Continue
-                <RiArrowRightLine className="ml-1.5 size-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex justify-end">
+            <Button disabled={!chargePointId.trim()} onClick={goNext} className="gap-1.5">
+              Continue
+              <RiArrowRightSLine className="size-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Step 2: Configure */}
-      {step === 2 && (
-        <Card className="py-0">
-          <CardContent className="space-y-6 py-6">
-            <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
-                <RiSettings3Line className="size-6 text-violet-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Configure Charger</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Set the OCPP protocol version and hardware specifications for{" "}
-                  <span className="font-mono font-semibold text-foreground">
-                    {chargePointId}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            {/* OCPP version selector */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">OCPP Version</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    v: "1.6",
-                    title: "OCPP 1.6-J",
-                    desc: "Most widely supported",
-                    sub: "JSON only",
-                  },
-                  {
-                    v: "2.0.1",
-                    title: "OCPP 2.0.1",
-                    desc: "Latest standard",
-                    sub: "JSON only",
-                  },
-                ].map(({ v, title, desc, sub }) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setOcppVersion(v)}
-                    className={cn(
-                      "flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-all",
-                      ocppVersion === v
-                        ? "border-foreground bg-foreground/[0.03] shadow-sm"
-                        : "border-border hover:border-foreground/20",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {desc}
-                    </span>
-                    <span className="mt-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                      {sub}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Charger Type */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Charger Type</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    t: "ac" as const,
-                    title: "AC",
-                    desc: "Level 2 charging",
-                    sub: "3.7 – 22 kW",
-                  },
-                  {
-                    t: "dc" as const,
-                    title: "DC",
-                    desc: "Fast charging",
-                    sub: "50 – 350 kW",
-                  },
-                ].map(({ t, title, desc, sub }) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setChargerType(t)
-                      setMaxPowerKw(t === "ac" ? "22" : "150")
-                    }}
-                    className={cn(
-                      "flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-all",
-                      chargerType === t
-                        ? "border-foreground bg-foreground/[0.03] shadow-sm"
-                        : "border-border hover:border-foreground/20",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {desc}
-                    </span>
-                    <span className="mt-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                      {sub}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hardware specs */}
-            <div className="grid grid-cols-2 gap-4">
+      {step === "configure" && (
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-5">
+          <Card className="border-border/50">
+            <CardContent className="p-5 space-y-5">
+              {/* OCPP version */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="connectorCount"
-                  className="flex items-center gap-1.5 text-sm font-medium"
-                >
-                  <RiPlugLine className="size-3.5 text-muted-foreground" />
-                  Connectors
-                </Label>
-                <Input
-                  id="connectorCount"
-                  type="number"
-                  min="1"
-                  max="8"
-                  value={connectorCount}
-                  onChange={(e) => setConnectorCount(e.target.value)}
-                  className="h-11"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Number of physical charging ports
-                </p>
+                <Label className="text-xs">OCPP Version</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { v: "1.6", title: "OCPP 1.6-J", desc: "Most widely supported" },
+                    { v: "2.0.1", title: "OCPP 2.0.1", desc: "Latest standard" },
+                  ].map(({ v, title, desc }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setOcppVersion(v)}
+                      className={cn(
+                        "rounded-xl border-2 px-4 py-3 text-left transition-all",
+                        ocppVersion === v
+                          ? "border-foreground/20 bg-foreground/[0.03] shadow-sm"
+                          : "border-border/50 hover:border-border hover:bg-muted/20",
+                      )}
+                    >
+                      <p className="text-sm font-semibold">{title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="maxPowerKw"
-                  className="flex items-center gap-1.5 text-sm font-medium"
-                >
-                  <RiFlashlightLine className="size-3.5 text-muted-foreground" />
-                  Max Power (kW)
-                </Label>
-                <Input
-                  id="maxPowerKw"
-                  type="number"
-                  step="0.1"
-                  placeholder="22"
-                  value={maxPowerKw}
-                  onChange={(e) => setMaxPowerKw(e.target.value)}
-                  className="h-11"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Maximum output power capacity
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <Button variant="ghost" onClick={() => setStep(1)}>
-                <RiArrowLeftLine className="mr-1.5 size-4" />
-                Back
-              </Button>
-              <Button size="lg" onClick={goToStep3}>
-                Register & Connect
-                <RiArrowRightLine className="ml-1.5 size-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Charger Type */}
+              <div className="space-y-2">
+                <Label className="text-xs">Charger Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { t: "ac" as const, title: "AC", desc: "Level 2 — 3.7–22 kW" },
+                    { t: "dc" as const, title: "DC", desc: "Fast — 50–350 kW" },
+                  ].map(({ t, title, desc }) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setChargerType(t)
+                        setMaxPowerKw(t === "ac" ? "22" : "150")
+                      }}
+                      className={cn(
+                        "rounded-xl border-2 px-4 py-3 text-left transition-all",
+                        chargerType === t
+                          ? "border-foreground/20 bg-foreground/[0.03] shadow-sm"
+                          : "border-border/50 hover:border-border hover:bg-muted/20",
+                      )}
+                    >
+                      <p className="text-sm font-semibold">{title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hardware specs */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="connectorCount" className="text-xs">Connectors</Label>
+                  <Input
+                    id="connectorCount"
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={connectorCount}
+                    onChange={(e) => setConnectorCount(e.target.value)}
+                    className="mt-1.5"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Number of charging ports
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="maxPowerKw" className="text-xs">Max Power (kW)</Label>
+                  <Input
+                    id="maxPowerKw"
+                    type="number"
+                    step="0.1"
+                    placeholder="22"
+                    value={maxPowerKw}
+                    onChange={(e) => setMaxPowerKw(e.target.value)}
+                    className="mt-1.5"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Maximum output capacity
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={goBack}>
+              <RiArrowLeftSLine className="size-4" />
+              Back
+            </Button>
+            <Button onClick={goNext} className="gap-1.5">
+              Register & Connect
+              <RiArrowRightSLine className="size-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Step 3: Connect */}
-      {step === 3 && (
-        <div className="space-y-4">
-          {/* Connection status card */}
-          <Card
-            className={cn(
-              "overflow-hidden py-0 transition-colors",
-              connectionStatus === "connected" && "border-emerald-200",
-            )}
-          >
-            <CardContent className="space-y-6 py-6">
-              <div className="flex items-start gap-4">
+      {step === "connect" && (
+        <div className="animate-in fade-in slide-in-from-bottom-1 duration-200 space-y-4">
+          {/* Connection status */}
+          <Card className={cn(
+            "border-border/50",
+            connectionStatus === "connected" && "border-emerald-200",
+          )}>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    "flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors",
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
                     connectionStatus === "connected"
                       ? "bg-emerald-500/10"
                       : "bg-amber-500/10",
                   )}
                 >
                   {connectionStatus === "connected" ? (
-                    <RiCheckboxCircleLine className="size-6 text-emerald-500" />
+                    <RiCheckboxCircleLine className="size-5 text-emerald-500" />
                   ) : (
-                    <RiLoader4Line className="size-6 animate-spin text-amber-600" />
+                    <RiLoader4Line className="size-5 animate-spin text-amber-600" />
                   )}
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold">
+                  <p className="text-sm font-semibold">
                     {connectionStatus === "connected"
                       ? "Charger Connected!"
                       : "Waiting for Connection"}
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {connectionStatus === "connected"
-                      ? `${chargePointId} is online and ready to charge via OCPP ${ocppVersion}.`
+                      ? `${chargePointId} is online and ready via OCPP ${ocppVersion}.`
                       : "Configure your charger's OCPP client to connect to the endpoint below."}
                   </p>
                 </div>
               </div>
 
               {/* WebSocket URL */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1.5 text-sm font-medium">
-                  <RiLinksLine className="size-3.5" />
-                  WebSocket Endpoint
-                </Label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 overflow-hidden rounded-lg border bg-muted/40 px-4 py-3">
+              <div>
+                <Label className="text-xs">WebSocket Endpoint</Label>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="flex-1 overflow-hidden rounded-lg border bg-muted/40 px-3 py-2.5">
                     <p className="truncate font-mono text-sm">{"wss://ocpp.anertic.com/"}</p>
                   </div>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="size-11 shrink-0"
+                    className="size-10 shrink-0"
                     onClick={copyWsUrl}
                   >
                     {copied ? (
@@ -426,16 +358,16 @@ export default function ChargerNew() {
                 </div>
               </div>
 
-              {/* Connection progress indicator */}
+              {/* Status indicator */}
               {connectionStatus === "waiting" && (
-                <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/30 px-4 py-3">
-                  <span className="relative flex size-3">
+                <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/30 px-3 py-2.5">
+                  <span className="relative flex size-2.5">
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex size-3 rounded-full bg-amber-500" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-amber-500" />
                   </span>
                   <div>
-                    <p className="text-sm font-medium">Listening for boot notification...</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs font-medium">Listening for boot notification...</p>
+                    <p className="text-[11px] text-muted-foreground">
                       The charger will send a BootNotification when it connects
                     </p>
                   </div>
@@ -443,13 +375,13 @@ export default function ChargerNew() {
               )}
 
               {connectionStatus === "connected" && (
-                <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/30 px-4 py-3">
-                  <RiCheckboxCircleLine className="size-5 text-emerald-500" />
+                <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2.5">
+                  <RiCheckboxCircleLine className="size-4 text-emerald-500" />
                   <div>
-                    <p className="text-sm font-medium text-emerald-700">
+                    <p className="text-xs font-medium text-emerald-700">
                       BootNotification received
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       Charger registered and heartbeat is active
                     </p>
                   </div>
@@ -458,52 +390,22 @@ export default function ChargerNew() {
             </CardContent>
           </Card>
 
-          {/* Configuration reference */}
+          {/* Config reference (while waiting) */}
           {connectionStatus === "waiting" && (
-            <Card className="py-0">
-              <CardContent className="py-5">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <RiSettings3Line className="size-4 text-muted-foreground" />
-                  Charger Configuration Reference
-                </div>
-                <div className="mt-4 space-y-3">
+            <Card className="border-border/50">
+              <CardContent className="p-5">
+                <p className="text-xs font-medium text-muted-foreground">Configuration Reference</p>
+                <div className="mt-3 space-y-2.5">
                   {[
-                    {
-                      label: "Charge Point ID",
-                      value: chargePointId,
-                      mono: true,
-                    },
-                    {
-                      label: "Protocol",
-                      value: `OCPP ${ocppVersion} (${ocppVersion === "1.6" ? "ocpp1.6" : "ocpp2.0.1"})`,
-                    },
-                    {
-                      label: "WebSocket URL",
-                      value: "wss://ocpp.anertic.com/",
-                      mono: true,
-                    },
-                    {
-                      label: "Connectors",
-                      value: `${connectorCount} port${parseInt(connectorCount) !== 1 ? "s" : ""}`,
-                    },
-                    {
-                      label: "Max Power",
-                      value: `${maxPowerKw} kW`,
-                    },
+                    { label: "Charge Point ID", value: chargePointId, mono: true },
+                    { label: "Protocol", value: `OCPP ${ocppVersion}` },
+                    { label: "WebSocket URL", value: "wss://ocpp.anertic.com/", mono: true },
+                    { label: "Connectors", value: `${connectorCount} port${parseInt(connectorCount) !== 1 ? "s" : ""}` },
+                    { label: "Max Power", value: `${maxPowerKw} kW` },
                   ].map(({ label, value, mono }) => (
-                    <div
-                      key={label}
-                      className="flex items-baseline justify-between gap-4"
-                    >
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {label}
-                      </span>
-                      <span
-                        className={cn(
-                          "truncate text-right text-sm",
-                          mono && "font-mono text-xs",
-                        )}
-                      >
+                    <div key={label} className="flex items-baseline justify-between gap-4">
+                      <span className="text-[11px] text-muted-foreground">{label}</span>
+                      <span className={cn("truncate text-right text-xs", mono && "font-mono")}>
                         {value}
                       </span>
                     </div>
@@ -515,8 +417,8 @@ export default function ChargerNew() {
 
           {/* Actions */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => setStep(2)}>
-              <RiArrowLeftLine className="mr-1.5 size-4" />
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={goBack}>
+              <RiArrowLeftSLine className="size-4" />
               Back
             </Button>
             {connectionStatus === "waiting" ? (
@@ -528,9 +430,9 @@ export default function ChargerNew() {
                 {creating ? "Saving..." : "Skip - I'll connect later"}
               </Button>
             ) : (
-              <Button size="lg" onClick={handleRegister} disabled={creating}>
-                {creating ? "Saving..." : "Done - Go to Charger"}
-                <RiArrowRightLine className="ml-1.5 size-4" />
+              <Button onClick={handleRegister} disabled={creating} className="gap-1.5">
+                {creating ? "Saving..." : "Done"}
+                <RiCheckLine className="size-4" />
               </Button>
             )}
           </div>

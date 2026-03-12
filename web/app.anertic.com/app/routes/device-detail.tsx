@@ -6,28 +6,25 @@ import {
   RiSunLine,
   RiPlugLine,
   RiFlashlightLine,
-  RiSignalWifiLine,
   RiSignalWifiOffLine,
-  RiTimeLine,
   RiSettings3Line,
   RiRefreshLine,
-  RiKeyLine,
   RiClipboardLine,
-  RiEyeLine,
-  RiEyeOffLine,
-  RiTerminalLine,
   RiEditLine,
   RiDeleteBinLine,
-  RiArrowUpSLine,
-  RiArrowDownSLine,
   RiAlertLine,
   RiCheckboxCircleLine,
   RiBarChartBoxLine,
-  RiHistoryLine,
-  RiInformationLine,
   RiLink,
-  RiCodeLine,
-  RiFileListLine,
+  RiAddLine,
+  RiSensorLine,
+  RiWifiLine,
+  RiArrowRightSLine,
+  RiDashboard3Line,
+  RiPulseLine,
+  RiCloseLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -38,46 +35,54 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
 
 // --- Types ---
 
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type Protocol = "mqtt" | "rest"
+type MeterProtocol = "mqtt" | "http" | "modbus"
 type ConnectionStatus = "online" | "offline" | "degraded"
+type MeterSubtype = "main_db" | "floor_sub_db" | "electrical_device"
 
 interface Device {
   id: string
   siteId: string
   name: string
   type: DeviceType
+  subtype: MeterSubtype | null
+  tag: string | null
   brand: string
   model: string
   isActive: boolean
-  protocol: Protocol
-  connectionStatus: ConnectionStatus
-  lastSeenAt: string | null
-  ipAddress: string | null
-  firmwareVersion: string | null
-  apiKeyPrefix: string | null
-  dataPointsToday: number
-  dataPointsTotal: number
-  uptimePercent: number
   createdAt: string
-  metadata: Record<string, string>
 }
 
-interface DataLog {
-  timestamp: string
-  type: string
-  value: string
+interface Meter {
+  id: string
+  deviceId: string
+  serialNumber: string
+  protocol: MeterProtocol
+  vendor: string
+  isOnline: boolean
+  lastSeenAt: string | null
+  config: Record<string, string>
+  createdAt: string
+  latestReadings: MeterReading[]
+}
+
+interface MeterReading {
+  metric: string
+  value: number
   unit: string
+  timestamp: string
 }
 
 interface EventLog {
   id: string
   timestamp: string
+  source: "device" | "meter"
+  sourceName: string
   type: "connected" | "disconnected" | "error" | "config_changed" | "data_received"
   message: string
 }
@@ -90,13 +95,20 @@ const DEVICE_TYPE_CONFIG: Record<
 > = {
   inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
   solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-  meter: { label: "Meter", icon: RiCpuLine, color: "text-cyan-600", bg: "bg-cyan-500/10" },
+  meter: { label: "Energy Meter", icon: RiDashboard3Line, color: "text-cyan-600", bg: "bg-cyan-500/10" },
   appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
 }
 
-const PROTOCOL_CONFIG: Record<Protocol, { label: string; color: string }> = {
-  mqtt: { label: "MQTT", color: "text-purple-700 bg-purple-500/10" },
-  rest: { label: "REST API", color: "text-blue-700 bg-blue-500/10" },
+const SUBTYPE_CONFIG: Record<MeterSubtype, { label: string }> = {
+  main_db: { label: "Main DB" },
+  floor_sub_db: { label: "Floor Sub-DB" },
+  electrical_device: { label: "Electrical Device" },
+}
+
+const PROTOCOL_CONFIG: Record<MeterProtocol, { label: string; color: string; bg: string; icon: typeof RiWifiLine }> = {
+  mqtt: { label: "MQTT", color: "text-purple-700", bg: "bg-purple-500/10", icon: RiWifiLine },
+  http: { label: "HTTP", color: "text-blue-700", bg: "bg-blue-500/10", icon: RiLink },
+  modbus: { label: "Modbus", color: "text-orange-700", bg: "bg-orange-500/10", icon: RiPulseLine },
 }
 
 const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
@@ -111,57 +123,74 @@ function getMockDevice(id: string): Device {
   return {
     id,
     siteId: "site_01",
-    name: "Main Inverter",
-    type: "inverter",
-    brand: "SMA",
-    model: "Sunny Tripower 10.0",
+    name: "Grid Meter",
+    type: "meter",
+    subtype: "main_db",
+    tag: "Main grid import/export",
+    brand: "Eastron",
+    model: "SDM630-Modbus V2",
     isActive: true,
-    protocol: "mqtt",
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 15000).toISOString(),
-    ipAddress: "192.168.1.40",
-    firmwareVersion: "3.10.18.R",
-    apiKeyPrefix: "anertic_inv_",
-    dataPointsToday: 2847,
-    dataPointsTotal: 1_284_320,
-    uptimePercent: 99.8,
-    createdAt: "2025-08-15T10:00:00Z",
-    metadata: {
-      serial_number: "SMA-INV-2030-4821",
-      max_power_kw: "10.0",
-      phases: "3",
-      mppt_count: "2",
-      communication_protocol: "SMA Speedwire",
-    },
+    createdAt: "2025-08-15T09:00:00Z",
   }
 }
 
-const MOCK_DATA_LOGS: DataLog[] = [
-  { timestamp: new Date(Date.now() - 5000).toISOString(), type: "ac_power", value: "4.23", unit: "kW" },
-  { timestamp: new Date(Date.now() - 5000).toISOString(), type: "dc_voltage", value: "385.2", unit: "V" },
-  { timestamp: new Date(Date.now() - 5000).toISOString(), type: "dc_current", value: "11.0", unit: "A" },
-  { timestamp: new Date(Date.now() - 5000).toISOString(), type: "frequency", value: "50.01", unit: "Hz" },
-  { timestamp: new Date(Date.now() - 5000).toISOString(), type: "temperature", value: "42.5", unit: "°C" },
-  { timestamp: new Date(Date.now() - 10000).toISOString(), type: "ac_power", value: "4.18", unit: "kW" },
-  { timestamp: new Date(Date.now() - 10000).toISOString(), type: "dc_voltage", value: "384.8", unit: "V" },
-  { timestamp: new Date(Date.now() - 10000).toISOString(), type: "dc_current", value: "10.9", unit: "A" },
-  { timestamp: new Date(Date.now() - 10000).toISOString(), type: "frequency", value: "50.00", unit: "Hz" },
-  { timestamp: new Date(Date.now() - 10000).toISOString(), type: "temperature", value: "42.3", unit: "°C" },
-  { timestamp: new Date(Date.now() - 15000).toISOString(), type: "ac_power", value: "4.15", unit: "kW" },
-  { timestamp: new Date(Date.now() - 15000).toISOString(), type: "dc_voltage", value: "383.9", unit: "V" },
-  { timestamp: new Date(Date.now() - 15000).toISOString(), type: "dc_current", value: "10.8", unit: "A" },
-  { timestamp: new Date(Date.now() - 15000).toISOString(), type: "frequency", value: "49.99", unit: "Hz" },
-  { timestamp: new Date(Date.now() - 15000).toISOString(), type: "temperature", value: "42.1", unit: "°C" },
-]
+function getMockMeters(deviceId: string): Meter[] {
+  return [
+    {
+      id: "mtr_01",
+      deviceId,
+      serialNumber: "SDM-2030-4821",
+      protocol: "modbus",
+      vendor: "Eastron",
+      isOnline: true,
+      lastSeenAt: new Date(Date.now() - 5000).toISOString(),
+      config: {
+        address: "192.168.1.41",
+        port: "502",
+        slave_id: "1",
+        baud_rate: "9600",
+        register_map: "eastron_sdm630",
+      },
+      createdAt: "2025-08-15T09:00:00Z",
+      latestReadings: [
+        { metric: "power_w", value: 2847.5, unit: "W", timestamp: new Date(Date.now() - 5000).toISOString() },
+        { metric: "energy_kwh", value: 12483.2, unit: "kWh", timestamp: new Date(Date.now() - 5000).toISOString() },
+        { metric: "voltage_v", value: 232.1, unit: "V", timestamp: new Date(Date.now() - 5000).toISOString() },
+        { metric: "current_a", value: 12.27, unit: "A", timestamp: new Date(Date.now() - 5000).toISOString() },
+        { metric: "frequency", value: 50.01, unit: "Hz", timestamp: new Date(Date.now() - 5000).toISOString() },
+        { metric: "pf", value: 0.98, unit: "", timestamp: new Date(Date.now() - 5000).toISOString() },
+      ],
+    },
+    {
+      id: "mtr_02",
+      deviceId,
+      serialNumber: "SDM-2030-4822",
+      protocol: "mqtt",
+      vendor: "Eastron",
+      isOnline: true,
+      lastSeenAt: new Date(Date.now() - 8000).toISOString(),
+      config: {
+        broker: "mqtt://broker.anertic.com:1883",
+        topic: "meters/mtr_02/telemetry",
+        qos: "1",
+      },
+      createdAt: "2025-09-01T10:30:00Z",
+      latestReadings: [
+        { metric: "power_w", value: 1523.8, unit: "W", timestamp: new Date(Date.now() - 8000).toISOString() },
+        { metric: "energy_kwh", value: 5841.7, unit: "kWh", timestamp: new Date(Date.now() - 8000).toISOString() },
+        { metric: "voltage_v", value: 231.8, unit: "V", timestamp: new Date(Date.now() - 8000).toISOString() },
+        { metric: "current_a", value: 6.57, unit: "A", timestamp: new Date(Date.now() - 8000).toISOString() },
+      ],
+    },
+  ]
+}
 
 const MOCK_EVENTS: EventLog[] = [
-  { id: "e1", timestamp: new Date(Date.now() - 5000).toISOString(), type: "data_received", message: "Telemetry batch received (5 data points)" },
-  { id: "e2", timestamp: new Date(Date.now() - 10000).toISOString(), type: "data_received", message: "Telemetry batch received (5 data points)" },
-  { id: "e3", timestamp: new Date(Date.now() - 300000).toISOString(), type: "connected", message: "Device reconnected via MQTT" },
-  { id: "e4", timestamp: new Date(Date.now() - 360000).toISOString(), type: "disconnected", message: "Connection lost — timeout after 30s" },
-  { id: "e5", timestamp: new Date(Date.now() - 3600000).toISOString(), type: "config_changed", message: "Polling interval changed from 10s to 5s" },
-  { id: "e6", timestamp: new Date(Date.now() - 7200000).toISOString(), type: "error", message: "Connection timeout — retried successfully" },
-  { id: "e7", timestamp: new Date(Date.now() - 86400000).toISOString(), type: "connected", message: "Initial connection established" },
+  { id: "e1", timestamp: new Date(Date.now() - 5000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "data_received", message: "Telemetry batch received (6 readings)" },
+  { id: "e2", timestamp: new Date(Date.now() - 8000).toISOString(), source: "meter", sourceName: "SDM-2030-4822", type: "data_received", message: "Telemetry batch received (4 readings)" },
+  { id: "e3", timestamp: new Date(Date.now() - 300000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "connected", message: "Meter reconnected via Modbus TCP" },
+  { id: "e4", timestamp: new Date(Date.now() - 360000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "disconnected", message: "Connection lost — timeout after 30s" },
+  { id: "e5", timestamp: new Date(Date.now() - 3600000).toISOString(), source: "device", sourceName: "Grid Meter", type: "config_changed", message: "Device tag updated" },
 ]
 
 // --- Component ---
@@ -169,20 +198,16 @@ const MOCK_EVENTS: EventLog[] = [
 export default function DeviceDetail() {
   const navigate = useNavigate()
   const { deviceId } = useParams()
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [expandedMeter, setExpandedMeter] = useState<string | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showEvents, setShowEvents] = useState(false)
 
   const device = getMockDevice(deviceId || "dev_01")
+  const meters = getMockMeters(device.id)
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
-  const statusConfig = STATUS_CONFIG[device.connectionStatus]
-  const protocolConfig = PROTOCOL_CONFIG[device.protocol]
 
-  const mockApiKey = `${device.apiKeyPrefix}test_0000000000000000`
-  const endpoint =
-    device.protocol === "mqtt"
-      ? `mqtt://broker.anertic.com:1883/devices/${device.id}/telemetry`
-      : `https://api.anertic.com/v1/devices/${device.id}/ingest`
+  const onlineMeters = meters.filter((m) => m.isOnline).length
 
   function handleCopy(text: string, label: string) {
     navigator.clipboard.writeText(text)
@@ -191,7 +216,7 @@ export default function DeviceDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Back + Header */}
+      {/* Header */}
       <div>
         <button
           onClick={() => navigate("/devices")}
@@ -209,417 +234,239 @@ export default function DeviceDetail() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{device.name}</h1>
-                {!device.isActive && (
-                  <Badge variant="secondary">Disabled</Badge>
-                )}
+                {!device.isActive && <Badge variant="secondary">Disabled</Badge>}
               </div>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {device.brand} {device.model}
               </p>
-              <div className="mt-2 flex items-center gap-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex size-2">
-                    {device.connectionStatus === "online" && (
-                      <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", statusConfig.dot)} />
-                    )}
-                    <span className={cn("relative inline-flex size-2 rounded-full", statusConfig.dot)} />
-                  </span>
-                  <span className={cn("text-xs font-medium", statusConfig.color)}>
-                    {statusConfig.label}
-                  </span>
-                </div>
-                <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-semibold", protocolConfig.color)}>
-                  {protocolConfig.label}
-                </span>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="text-[10px]">
                   {typeConfig.label}
                 </Badge>
+                {device.subtype && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {SUBTYPE_CONFIG[device.subtype].label}
+                  </Badge>
+                )}
+                {device.tag && (
+                  <span className="text-xs text-muted-foreground">{device.tag}</span>
+                )}
               </div>
             </div>
           </div>
 
           <div className="hidden items-center gap-2 sm:flex">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <RiRefreshLine className="size-3.5" />
-              Ping
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowEditDialog(true)}>
               <RiEditLine className="size-3.5" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10">
-              <RiDeleteBinLine className="size-3.5" />
-            </Button>
           </div>
-        </div>
-        <div className="flex gap-2 sm:hidden">
-          <Button variant="outline" size="sm" className="flex-1 gap-1.5">
-            <RiRefreshLine className="size-3.5" />
-            Ping
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 gap-1.5">
-            <RiEditLine className="size-3.5" />
-            Edit
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10">
-            <RiDeleteBinLine className="size-3.5" />
-          </Button>
         </div>
       </div>
 
       {/* Metrics Strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3">
         <MetricCard
-          label="Uptime"
-          value={`${device.uptimePercent}%`}
-          color={device.uptimePercent >= 99 ? "text-emerald-600" : "text-amber-600"}
-          subtitle="Last 30 days"
+          label="Meters"
+          value={`${onlineMeters}/${meters.length}`}
+          color={onlineMeters === meters.length ? "text-emerald-600" : "text-amber-600"}
+          subtitle="online"
         />
         <MetricCard
-          label="Data Points Today"
-          value={device.dataPointsToday.toLocaleString()}
-          color="text-foreground"
-          subtitle={`${device.dataPointsTotal.toLocaleString()} total`}
+          label="Total Power"
+          value={formatPower(meters.reduce((sum, m) => {
+            const pw = m.latestReadings.find((r) => r.metric === "power_w")
+            return sum + (pw?.value ?? 0)
+          }, 0))}
+          color="text-cyan-600"
+          subtitle="live"
         />
         <MetricCard
-          label="Last Seen"
-          value={formatLastSeen(device.lastSeenAt)}
-          color={device.connectionStatus === "online" ? "text-emerald-600" : "text-muted-foreground"}
-          subtitle={device.lastSeenAt ? formatTime(device.lastSeenAt) : "Never connected"}
-        />
-        <MetricCard
-          label="Firmware"
-          value={device.firmwareVersion || "N/A"}
-          color="text-foreground"
-          subtitle={device.brand}
+          label="Last Data"
+          value={formatLastSeen(meters.reduce((latest, m) => {
+            if (!m.lastSeenAt) return latest
+            return !latest || new Date(m.lastSeenAt) > new Date(latest) ? m.lastSeenAt : latest
+          }, null as string | null))}
+          color="text-emerald-600"
+          subtitle="most recent"
         />
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full sm:w-fit">
-          <TabsTrigger value="overview" className="gap-1.5">
-            <RiInformationLine className="size-3.5" />
-            <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="data" className="gap-1.5">
-            <RiBarChartBoxLine className="size-3.5" />
-            <span className="hidden sm:inline">Live Data</span>
-          </TabsTrigger>
-          <TabsTrigger value="events" className="gap-1.5">
-            <RiHistoryLine className="size-3.5" />
-            <span className="hidden sm:inline">Events</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5">
-            <RiSettings3Line className="size-3.5" />
-            <span className="hidden sm:inline">Settings</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="mt-6 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Connection Config */}
-            <Card className="border-border/50">
-              <CardContent className="space-y-4 p-5">
-                <div className="flex items-center gap-2">
-                  <RiLink className="size-4 text-muted-foreground/50" />
-                  <h3 className="text-sm font-semibold">Connection</h3>
-                </div>
-
-                <CopyField
-                  label="Endpoint"
-                  value={endpoint}
-                  icon={RiTerminalLine}
-                  onCopy={() => handleCopy(endpoint, "Endpoint")}
-                />
-
-                <div>
-                  <Label className="text-xs text-muted-foreground">API Key</Label>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
-                    <RiKeyLine className="size-3.5 shrink-0 text-muted-foreground/50" />
-                    <code className="flex-1 truncate text-xs">
-                      {showApiKey ? mockApiKey : `${device.apiKeyPrefix}test_••••••••••••••••`}
-                    </code>
-                    <button
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:bg-muted hover:text-muted-foreground"
-                    >
-                      {showApiKey ? <RiEyeOffLine className="size-3.5" /> : <RiEyeLine className="size-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => handleCopy(mockApiKey, "API key")}
-                      className="shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:bg-muted hover:text-muted-foreground"
-                    >
-                      <RiClipboardLine className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <CopyField
-                  label="Device ID"
-                  value={device.id}
-                  icon={RiCpuLine}
-                  mono
-                  onCopy={() => handleCopy(device.id, "Device ID")}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Device Info */}
-            <Card className="border-border/50">
-              <CardContent className="space-y-4 p-5">
-                <div className="flex items-center gap-2">
-                  <RiFileListLine className="size-4 text-muted-foreground/50" />
-                  <h3 className="text-sm font-semibold">Device Info</h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  <InfoRow label="Brand" value={device.brand} />
-                  <InfoRow label="Model" value={device.model} />
-                  {device.ipAddress && <InfoRow label="IP Address" value={device.ipAddress} />}
-                  {device.firmwareVersion && <InfoRow label="Firmware" value={`v${device.firmwareVersion}`} />}
-                  <InfoRow label="Protocol" value={protocolConfig.label} />
-                  <InfoRow label="Type" value={typeConfig.label} />
-                </div>
-              </CardContent>
-            </Card>
+      {/* Aggregated Readings */}
+      {meters.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <RiPulseLine className="size-4 text-muted-foreground/50" />
+            <h3 className="text-sm font-semibold">Live Readings</h3>
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
+            </span>
           </div>
-
-          {/* Metadata */}
-          {Object.keys(device.metadata).length > 0 && (
-            <Card className="border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <RiCodeLine className="size-4 text-muted-foreground/50" />
-                  <h3 className="text-sm font-semibold">Metadata</h3>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 lg:grid-cols-3">
-                    {Object.entries(device.metadata).map(([key, value]) => (
-                      <div key={key}>
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                          {key.replace(/_/g, " ")}
-                        </p>
-                        <p className="text-sm font-medium">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick Integration Guide */}
-          <Card className="border-border/50 bg-gradient-to-br from-muted/20 via-background to-primary/5">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <RiTerminalLine className="size-4 text-muted-foreground/50" />
-                <h3 className="text-sm font-semibold">Quick Integration</h3>
+          <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
+            {aggregateReadings(meters).map((reading) => (
+              <div key={reading.metric} className="rounded-xl border border-border/50 bg-card p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                  {formatMetricLabel(reading.metric)}
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
+                  {formatReadingValue(reading.value, reading.metric)}
+                  <span className="ml-1 text-[11px] font-normal text-muted-foreground">{reading.unit}</span>
+                </p>
               </div>
-              <div className="rounded-lg border border-border/50 bg-foreground/[0.02] p-4">
-                <pre className="overflow-x-auto text-xs leading-relaxed text-muted-foreground">
-                  <code>{getIntegrationSnippet(device, endpoint, mockApiKey)}</code>
-                </pre>
-              </div>
-              <button
-                onClick={() => handleCopy(getIntegrationSnippet(device, endpoint, mockApiKey), "Code snippet")}
-                className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <RiClipboardLine className="size-3" />
-                Copy snippet
-              </button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Live Data Tab */}
-        <TabsContent value="data" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Latest telemetry data from this device
-            </p>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
-              </span>
-              Streaming
-            </div>
-          </div>
-
-          {/* Latest Values */}
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {MOCK_DATA_LOGS.slice(0, 5).map((log) => (
-              <Card key={log.type} className="border-border/50">
-                <CardContent className="p-4">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                    {log.type.replace(/_/g, " ")}
-                  </p>
-                  <p className="mt-1 text-xl font-bold tabular-nums tracking-tight">
-                    {log.value}
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">{log.unit}</span>
-                  </p>
-                </CardContent>
-              </Card>
             ))}
           </div>
+        </div>
+      )}
 
-          {/* Data Stream Table */}
-          <Card className="border-border/50">
-            <CardContent className="p-0">
-              <div className="border-b border-border/50 px-5 py-3">
-                <h3 className="text-sm font-semibold">Data Stream</h3>
-              </div>
-              <div className="divide-y divide-border/30">
-                {MOCK_DATA_LOGS.map((log, i) => (
-                  <div key={i} className="flex items-center gap-4 px-5 py-2.5">
-                    <span className="w-20 shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                      {formatTime(log.timestamp)}
-                    </span>
-                    <span className="w-28 shrink-0 text-xs font-medium">
-                      {log.type.replace(/_/g, " ")}
-                    </span>
-                    <span className="text-sm font-semibold tabular-nums">
-                      {log.value}
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">{log.unit}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+      {/* Meters */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <RiSensorLine className="size-4 text-muted-foreground/50" />
+            <h3 className="text-sm font-semibold">Meters</h3>
+            <span className="text-xs text-muted-foreground">{meters.length}</span>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1.5">
+            <RiAddLine className="size-3.5" />
+            Add Meter
+          </Button>
+        </div>
+
+        {meters.length === 0 ? (
+          <Card className="border-2 border-dashed border-border/60">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <RiSensorLine className="size-8 text-muted-foreground/20" />
+              <p className="mt-2 text-sm text-muted-foreground">No meters configured</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">
+                Add a meter to start collecting energy data
+              </p>
+              <Button size="sm" className="mt-4 gap-1.5">
+                <RiAddLine className="size-3.5" />
+                Add Meter
+              </Button>
             </CardContent>
           </Card>
-        </TabsContent>
+        ) : (
+          <div className="space-y-3">
+            {meters.map((meter) => (
+              <MeterCard
+                key={meter.id}
+                meter={meter}
+                expanded={expandedMeter === meter.id}
+                onToggle={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
+                onCopy={handleCopy}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Events Tab */}
-        <TabsContent value="events" className="mt-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Connection events and status changes
-          </p>
+      {/* Recent Activity */}
+      <div>
+        <button
+          onClick={() => setShowEvents(!showEvents)}
+          className="mb-3 flex w-full items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <RiBarChartBoxLine className="size-4 text-muted-foreground/50" />
+            <h3 className="text-sm font-semibold">Recent Activity</h3>
+            <span className="text-xs text-muted-foreground">{MOCK_EVENTS.length}</span>
+          </div>
+          {showEvents ? (
+            <RiArrowUpSLine className="size-4 text-muted-foreground" />
+          ) : (
+            <RiArrowDownSLine className="size-4 text-muted-foreground" />
+          )}
+        </button>
 
+        {showEvents && (
           <Card className="border-border/50">
             <CardContent className="p-0">
               <div className="divide-y divide-border/30">
                 {MOCK_EVENTS.map((event) => (
-                  <div key={event.id} className="flex items-start gap-3 px-5 py-3.5">
+                  <div key={event.id} className="flex items-start gap-3 px-4 py-3">
                     <div className="mt-0.5">
                       <EventIcon type={event.type} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm">{event.message}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {formatRelativeTime(event.timestamp)}
-                      </p>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground/60">
+                          {event.source === "meter" ? event.sourceName : "Device"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {formatRelativeTime(event.timestamp)}
+                        </span>
+                      </div>
                     </div>
-                    <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                      {formatTime(event.timestamp)}
-                    </span>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
+      </div>
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="mt-6 space-y-6">
-          <Card className="border-border/50">
-            <CardContent className="space-y-5 p-5">
-              <h3 className="text-sm font-semibold">Device Configuration</h3>
+      {/* Edit Device Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md gap-0 p-0">
+          <div className="space-y-5 p-6">
+            <div>
+              <h2 className="text-lg font-semibold">Edit Device</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">Update device configuration</p>
+            </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-name" className="text-xs">Name</Label>
+                <Input id="edit-name" defaultValue={device.name} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="edit-tag" className="text-xs">Tag</Label>
+                <Input id="edit-tag" defaultValue={device.tag || ""} placeholder="e.g. Main grid import/export" className="mt-1.5" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="device-name" className="text-xs">Device Name</Label>
-                  <Input id="device-name" defaultValue={device.name} className="mt-1.5" />
+                  <Label htmlFor="edit-brand" className="text-xs">Brand</Label>
+                  <Input id="edit-brand" defaultValue={device.brand} className="mt-1.5" />
                 </div>
                 <div>
-                  <Label htmlFor="device-brand" className="text-xs">Brand</Label>
-                  <Input id="device-brand" defaultValue={device.brand} className="mt-1.5" />
-                </div>
-                <div>
-                  <Label htmlFor="device-model" className="text-xs">Model</Label>
-                  <Input id="device-model" defaultValue={device.model} className="mt-1.5" />
-                </div>
-                <div>
-                  <Label htmlFor="device-ip" className="text-xs">IP Address</Label>
-                  <Input id="device-ip" defaultValue={device.ipAddress || ""} placeholder="e.g. 192.168.1.40" className="mt-1.5" />
+                  <Label htmlFor="edit-model" className="text-xs">Model</Label>
+                  <Input id="edit-model" defaultValue={device.model} className="mt-1.5" />
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="flex justify-end">
-                <Button size="sm">Save changes</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <Separator />
 
-          <Card className="border-border/50">
-            <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-semibold">Polling Configuration</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="poll-interval" className="text-xs">Poll Interval (seconds)</Label>
-                  <Input id="poll-interval" type="number" defaultValue="5" className="mt-1.5" />
-                </div>
-                <div>
-                  <Label htmlFor="timeout" className="text-xs">Timeout (seconds)</Label>
-                  <Input id="timeout" type="number" defaultValue="30" className="mt-1.5" />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button size="sm">Save changes</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50">
-            <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-semibold">API Key Management</h3>
-              <p className="text-xs text-muted-foreground">
-                Regenerating the API key will invalidate the current key. The device will need to be reconfigured.
-              </p>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                <RiKeyLine className="size-3.5" />
-                Regenerate API Key
+          <div className="flex items-center justify-between p-4 px-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                setShowEditDialog(false)
+              }}
+            >
+              <RiDeleteBinLine className="mr-1.5 size-3.5" />
+              Delete device
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowEditDialog(false)}>
+                Cancel
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Danger Zone */}
-          <Card className="border-destructive/20">
-            <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm">
-                    {device.isActive ? "Disable this device" : "Enable this device"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {device.isActive
-                      ? "The device will stop sending data and disconnect."
-                      : "Re-enable data collection from this device."}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">
-                  {device.isActive ? "Disable" : "Enable"}
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm">Delete this device</p>
-                  <p className="text-xs text-muted-foreground">
-                    Permanently remove this device and all its data. This cannot be undone.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
-                  <RiDeleteBinLine className="mr-1.5 size-3.5" />
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <Button size="sm" onClick={() => {
+                toast.success("Device updated")
+                setShowEditDialog(false)
+              }}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -638,53 +485,149 @@ function MetricCard({
   subtitle: string
 }) {
   return (
-    <Card className="border-border/50">
-      <CardContent className="p-4">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-          {label}
-        </p>
-        <p className={cn("mt-1 text-lg font-bold tabular-nums", color)}>{value}</p>
-        <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function CopyField({
-  label,
-  value,
-  icon: Icon,
-  mono,
-  onCopy,
-}: {
-  label: string
-  value: string
-  icon: typeof RiTerminalLine
-  mono?: boolean
-  onCopy: () => void
-}) {
-  return (
-    <div>
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
-        <Icon className="size-3.5 shrink-0 text-muted-foreground/50" />
-        <code className={cn("flex-1 truncate text-xs", mono && "font-mono")}>{value}</code>
-        <button
-          onClick={onCopy}
-          className="shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:bg-muted hover:text-muted-foreground"
-        >
-          <RiClipboardLine className="size-3.5" />
-        </button>
-      </div>
+    <div className="rounded-xl border border-border/50 bg-card p-4">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+        {label}
+      </p>
+      <p className={cn("mt-1 text-lg font-bold tabular-nums", color)}>{value}</p>
+      <p className="text-[11px] text-muted-foreground">{subtitle}</p>
     </div>
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function MeterCard({
+  meter,
+  expanded,
+  onToggle,
+  onCopy,
+}: {
+  meter: Meter
+  expanded: boolean
+  onToggle: () => void
+  onCopy: (text: string, label: string) => void
+}) {
+  const proto = PROTOCOL_CONFIG[meter.protocol]
+  const ProtoIcon = proto.icon
+  const power = meter.latestReadings.find((r) => r.metric === "power_w")
+
+  return (
+    <Card className={cn("border-border/50 transition-all", expanded && "ring-1 ring-border")}>
+      {/* Header — always visible */}
+      <button onClick={onToggle} className="flex w-full items-center gap-4 p-4 text-left">
+        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", proto.bg)}>
+          <ProtoIcon className={cn("size-5", proto.color)} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">{meter.serialNumber}</p>
+            <StatusDot status={meter.isOnline ? "online" : "offline"} />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {meter.vendor} · {proto.label}
+            {meter.lastSeenAt && ` · ${formatLastSeen(meter.lastSeenAt)}`}
+          </p>
+        </div>
+        {power && (
+          <div className="hidden shrink-0 text-right sm:block">
+            <p className="text-sm font-bold tabular-nums text-cyan-600">{formatPower(power.value)}</p>
+            <p className="text-[10px] text-muted-foreground">live</p>
+          </div>
+        )}
+        <RiArrowRightSLine
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground/30 transition-transform",
+            expanded && "rotate-90",
+          )}
+        />
+      </button>
+
+      {/* Expanded — readings + config */}
+      {expanded && (
+        <div className="border-t border-border/50">
+          {/* Readings */}
+          <div className="px-4 py-4">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Latest Readings
+            </p>
+            <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
+              {meter.latestReadings.map((reading) => (
+                <div key={reading.metric} className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                    {formatMetricLabel(reading.metric)}
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums">
+                    {formatReadingValue(reading.value, reading.metric)}
+                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">{reading.unit}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Config */}
+          <div className="px-4 py-4">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Configuration
+            </p>
+            <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-3">
+                <InfoRow label="Serial" value={meter.serialNumber} mono />
+                <InfoRow label="Protocol" value={proto.label} />
+                <InfoRow label="Vendor" value={meter.vendor} />
+                {Object.entries(meter.config).map(([key, value]) => (
+                  <InfoRow key={key} label={key.replace(/_/g, " ")} value={value} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Actions */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="xs" className="gap-1 text-xs">
+                <RiRefreshLine className="size-3" />
+                Ping
+              </Button>
+              <Button variant="outline" size="xs" className="gap-1 text-xs">
+                <RiSettings3Line className="size-3" />
+                Configure
+              </Button>
+            </div>
+            <Button variant="ghost" size="xs" className="gap-1 text-xs text-destructive hover:bg-destructive/10">
+              <RiDeleteBinLine className="size-3" />
+              Remove
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function StatusDot({ status }: { status: "online" | "offline" | "degraded" }) {
+  const config = STATUS_CONFIG[status]
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="relative flex size-1.5">
+        {status === "online" && (
+          <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", config.dot)} />
+        )}
+        <span className={cn("relative inline-flex size-1.5 rounded-full", config.dot)} />
+      </span>
+      <span className={cn("text-[11px] font-medium", config.color)}>{config.label}</span>
+    </span>
+  )
+}
+
+function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</p>
-      <p className="mt-0.5 text-sm">{value}</p>
+      <p className={cn("mt-0.5 text-sm", mono && "font-mono text-xs")}>{value}</p>
     </div>
   )
 }
@@ -708,6 +651,58 @@ function EventIcon({ type }: { type: EventLog["type"] }) {
 
 // --- Helpers ---
 
+function aggregateReadings(meters: Meter[]): MeterReading[] {
+  const byMetric = new Map<string, { value: number; unit: string; count: number; timestamp: string }>()
+  const sumMetrics = new Set(["power_w", "current_a", "energy_kwh"])
+
+  for (const meter of meters) {
+    for (const reading of meter.latestReadings) {
+      const existing = byMetric.get(reading.metric)
+      if (!existing) {
+        byMetric.set(reading.metric, { value: reading.value, unit: reading.unit, count: 1, timestamp: reading.timestamp })
+      } else if (sumMetrics.has(reading.metric)) {
+        existing.value += reading.value
+        existing.count++
+      } else {
+        existing.value = (existing.value * existing.count + reading.value) / (existing.count + 1)
+        existing.count++
+      }
+    }
+  }
+
+  return Array.from(byMetric.entries()).map(([metric, data]) => ({
+    metric,
+    value: data.value,
+    unit: data.unit,
+    timestamp: data.timestamp,
+  }))
+}
+
+function formatPower(watts: number): string {
+  if (watts >= 1000) return `${(watts / 1000).toFixed(1)} kW`
+  return `${watts.toFixed(0)} W`
+}
+
+function formatReadingValue(value: number, metric: string): string {
+  if (metric === "pf") return value.toFixed(2)
+  if (metric === "energy_kwh") return value.toLocaleString(undefined, { maximumFractionDigits: 1 })
+  if (metric === "frequency") return value.toFixed(2)
+  if (value >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 1 })
+  return value.toFixed(1)
+}
+
+function formatMetricLabel(metric: string): string {
+  const labels: Record<string, string> = {
+    power_w: "Power",
+    energy_kwh: "Energy",
+    voltage_v: "Voltage",
+    current_a: "Current",
+    frequency: "Frequency",
+    pf: "Power Factor",
+  }
+  return labels[metric] || metric.replace(/_/g, " ")
+}
+
 function formatLastSeen(lastSeenAt: string | null): string {
   if (!lastSeenAt) return "Never"
   const diff = Date.now() - new Date(lastSeenAt).getTime()
@@ -721,50 +716,14 @@ function formatLastSeen(lastSeenAt: string | null): string {
   return `${days}d ago`
 }
 
-function formatTime(isoStr: string): string {
-  return new Date(isoStr).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  })
-}
-
-function formatDateShort(isoStr: string): string {
-  return new Date(isoStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
-
 function formatRelativeTime(isoStr: string): string {
   const diff = Date.now() - new Date(isoStr).getTime()
   const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds} seconds ago`
+  if (seconds < 60) return `${seconds}s ago`
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
+  if (minutes < 60) return `${minutes}m ago`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`
+  if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
-  return `${days} day${days > 1 ? "s" : ""} ago`
-}
-
-function getIntegrationSnippet(device: Device, endpoint: string, apiKey: string): string {
-  if (device.protocol === "mqtt") {
-    return `# MQTT — publish telemetry
-mosquitto_pub \\
-  -h broker.anertic.com \\
-  -p 1883 \\
-  -t "devices/${device.id}/telemetry" \\
-  -u "${device.id}" \\
-  -P "${apiKey}" \\
-  -m '{"ac_power": 4.23, "dc_voltage": 385.2}'`
-  }
-
-  return `# REST API — POST telemetry
-curl -X POST ${endpoint} \\
-  -H "Authorization: Bearer ${apiKey}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"ac_power": 4.23, "dc_voltage": 385.2}'`
+  return `${days}d ago`
 }

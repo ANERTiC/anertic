@@ -351,7 +351,7 @@ export default function Dashboard() {
                 : "Get started by creating a site"}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/sites")} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate("/sites/create")} className="gap-1.5">
             <RiAddLine className="size-3.5" />
             New site
           </Button>
@@ -365,7 +365,7 @@ export default function Dashboard() {
           </div>
         ) : sites.length === 0 ? (
           <button
-            onClick={() => navigate("/sites")}
+            onClick={() => navigate("/sites/create")}
             className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-all hover:border-primary/30 hover:bg-primary/5"
           >
             <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">

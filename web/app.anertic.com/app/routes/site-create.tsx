@@ -62,9 +62,9 @@ export default function SiteCreate() {
   }
 
   return (
-    <div className="flex min-h-svh">
+    <div className="flex h-[calc(100svh-3.5rem)]">
       {/* Left panel — illustration / branding */}
-      <div className="relative hidden w-[45%] overflow-hidden bg-gradient-to-br from-slate-50 via-primary/[0.04] to-amber-50/40 lg:block">
+      <div className="relative hidden w-[45%] overflow-hidden border-r border-border/40 bg-gradient-to-br from-slate-50 via-primary/[0.04] to-amber-50/40 lg:block">
         {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.035]"

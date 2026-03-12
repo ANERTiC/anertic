@@ -130,12 +130,13 @@ export default function Sites() {
             Manage your energy monitoring sites
           </p>
         </div>
+        <Button onClick={() => navigate("/sites/create")}>
+          <RiAddLine className="mr-2 h-4 w-4" />
+          New Site
+        </Button>
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button>
-              <RiAddLine className="mr-2 h-4 w-4" />
-              New Site
-            </Button>
+            <span className="hidden" />
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreate}>
@@ -209,7 +210,7 @@ export default function Sites() {
         </div>
       ) : sites.length === 0 ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => navigate("/sites/create")}
           className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-all hover:border-primary/30 hover:bg-primary/5"
         >
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">

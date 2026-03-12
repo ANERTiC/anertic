@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
-import useSWR, { useSWRConfig } from "swr"
-import { toast } from "sonner"
+import { useState, useEffect, useCallback } from 'react'
+import useSWR, { useSWRConfig } from 'swr'
+import { toast } from 'sonner'
 import {
   RiSettings3Line,
   RiMapPinLine,
@@ -29,16 +29,17 @@ import {
   RiArrowDownSLine,
   RiUserUnfollowLine,
   RiSendPlaneLine,
-} from "@remixicon/react"
-import { useSiteId } from "~/layouts/site"
-import { Card, CardContent } from "~/components/ui/card"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Badge } from "~/components/ui/badge"
-import { Separator } from "~/components/ui/separator"
-import { cn } from "~/lib/utils"
-import { api } from "~/lib/api"
+} from '@remixicon/react'
+import { useSiteId } from '~/layouts/site'
+import { Card, CardContent } from '~/components/ui/card'
+import { Button } from '~/components/ui/button'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import { Badge } from '~/components/ui/badge'
+import { Separator } from '~/components/ui/separator'
+import { cn } from '~/lib/utils'
+import { api } from '~/lib/api'
+import { Skeleton } from '~/components/ui/skeleton'
 
 // --- Types ---
 
@@ -72,7 +73,7 @@ interface SiteSettings {
   updatedAt: string
 }
 
-type MemberRole = "*" | "editor" | "viewer"
+type MemberRole = '*' | 'editor' | 'viewer'
 
 interface SiteMember {
   userId: string
@@ -90,45 +91,60 @@ interface PendingInvite {
   invitedAt: string
 }
 
-const ROLE_CONFIG: Record<MemberRole, { label: string; color: string; description: string }> = {
-  "*": { label: "Owner", color: "bg-amber-500/15 text-amber-700", description: "Full access, can delete site" },
-  editor: { label: "Editor", color: "bg-blue-500/15 text-blue-700", description: "Edit devices and chargers" },
-  viewer: { label: "Viewer", color: "bg-muted text-muted-foreground", description: "View-only access" },
+const ROLE_CONFIG: Record<
+  MemberRole,
+  { label: string; color: string; description: string }
+> = {
+  '*': {
+    label: 'Owner',
+    color: 'bg-amber-500/15 text-amber-700',
+    description: 'Full access, can delete site',
+  },
+  editor: {
+    label: 'Editor',
+    color: 'bg-blue-500/15 text-blue-700',
+    description: 'Edit devices and chargers',
+  },
+  viewer: {
+    label: 'Viewer',
+    color: 'bg-muted text-muted-foreground',
+    description: 'View-only access',
+  },
 }
 
 function generateMockMembers(): SiteMember[] {
   return [
     {
-      userId: "u_001",
-      name: "Kamail S.",
-      email: "kamail@anertic.com",
-      picture: "",
-      role: "*",
-      joinedAt: "2025-08-15T10:00:00Z",
+      userId: 'u_001',
+      name: 'Kamail S.',
+      email: 'kamail@anertic.com',
+      picture: '',
+      role: '*',
+      joinedAt: '2025-08-15T10:00:00Z',
     },
     {
-      userId: "u_002",
-      name: "Prem T.",
-      email: "prem@anertic.com",
-      picture: "",
-      role: "editor",
-      joinedAt: "2025-09-01T08:00:00Z",
+      userId: 'u_002',
+      name: 'Prem T.',
+      email: 'prem@anertic.com',
+      picture: '',
+      role: 'editor',
+      joinedAt: '2025-09-01T08:00:00Z',
     },
     {
-      userId: "u_003",
-      name: "Jira W.",
-      email: "jira@example.com",
-      picture: "",
-      role: "editor",
-      joinedAt: "2026-01-10T14:00:00Z",
+      userId: 'u_003',
+      name: 'Jira W.',
+      email: 'jira@example.com',
+      picture: '',
+      role: 'editor',
+      joinedAt: '2026-01-10T14:00:00Z',
     },
     {
-      userId: "u_004",
-      name: "Nattawut K.",
-      email: "nattawut@example.com",
-      picture: "",
-      role: "viewer",
-      joinedAt: "2026-02-20T09:00:00Z",
+      userId: 'u_004',
+      name: 'Nattawut K.',
+      email: 'nattawut@example.com',
+      picture: '',
+      role: 'viewer',
+      joinedAt: '2026-02-20T09:00:00Z',
     },
   ]
 }
@@ -136,10 +152,10 @@ function generateMockMembers(): SiteMember[] {
 function generateMockInvites(): PendingInvite[] {
   return [
     {
-      id: "inv_001",
-      email: "new.member@example.com",
-      role: "viewer",
-      invitedAt: "2026-03-11T16:00:00Z",
+      id: 'inv_001',
+      email: 'new.member@example.com',
+      role: 'viewer',
+      invitedAt: '2026-03-11T16:00:00Z',
     },
   ]
 }
@@ -148,10 +164,10 @@ function generateMockInvites(): PendingInvite[] {
 
 function generateMockSettings(): SiteSettings {
   return {
-    name: "Bangkok HQ",
-    address: "123 Sukhumvit Rd, Klongtoey, Bangkok 10110",
-    timezone: "Asia/Bangkok",
-    currency: "THB",
+    name: 'Bangkok HQ',
+    address: '123 Sukhumvit Rd, Klongtoey, Bangkok 10110',
+    timezone: 'Asia/Bangkok',
+    currency: 'THB',
     gridImportRate: 4.15,
     gridExportRate: 2.2,
     touEnabled: false,
@@ -167,10 +183,10 @@ function generateMockSettings(): SiteSettings {
     alertLowSolar: false,
     offlineThresholdMinutes: 30,
     consumptionThresholdKwh: 50,
-    apiKey: "anertic_test_0000000000000000",
-    webhookUrl: "",
-    createdAt: "2025-11-15T08:00:00Z",
-    updatedAt: "2026-03-10T14:30:00Z",
+    apiKey: 'anertic_test_0000000000000000',
+    webhookUrl: '',
+    createdAt: '2025-11-15T08:00:00Z',
+    updatedAt: '2026-03-10T14:30:00Z',
   }
 }
 
@@ -190,14 +206,14 @@ function Toggle({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200",
-        checked ? "bg-primary" : "bg-muted-foreground/25",
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200',
+        checked ? 'bg-primary' : 'bg-muted-foreground/25'
       )}
     >
       <span
         className={cn(
-          "pointer-events-none block size-3.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200",
-          checked ? "translate-x-[1.125rem]" : "translate-x-[0.175rem]",
+          'pointer-events-none block size-3.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200',
+          checked ? 'translate-x-[1.125rem]' : 'translate-x-[0.175rem]'
         )}
       />
     </button>
@@ -234,9 +250,31 @@ export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
   const siteId = useSiteId()
   const [mounted, setMounted] = useState(false)
-  const [settings, setSettings] = useState<SiteSettings>(() =>
-    generateMockSettings(),
-  )
+  const [settings, setSettings] = useState<SiteSettings>({
+    name: '',
+    address: '',
+    timezone: '',
+    currency: '',
+    gridImportRate: 0,
+    gridExportRate: 0,
+    touEnabled: false,
+    peakStartHour: 9,
+    peakEndHour: 22,
+    peakRate: 0,
+    offPeakRate: 0,
+    emailAlerts: true,
+    pushAlerts: true,
+    alertOffline: true,
+    alertFault: true,
+    alertHighConsumption: true,
+    alertLowSolar: false,
+    offlineThresholdMinutes: 30,
+    consumptionThresholdKwh: 50,
+    apiKey: '',
+    webhookUrl: '',
+    createdAt: '',
+    updatedAt: '',
+  })
   const [showApiKey, setShowApiKey] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
   const [editingGeneral, setEditingGeneral] = useState(false)
@@ -244,24 +282,29 @@ export default function Settings() {
   const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [members, setMembers] = useState<SiteMember[]>([])
-  const [invites, setInvites] = useState<PendingInvite[]>(() => generateMockInvites())
+  const [invites, setInvites] = useState<PendingInvite[]>(() =>
+    generateMockInvites()
+  )
   const [showInviteForm, setShowInviteForm] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<MemberRole>("viewer")
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<MemberRole>('viewer')
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<string | null>(null)
   const [memberMenuOpen, setMemberMenuOpen] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
 
   // Fetch site data
-  const { data: siteData, mutate: mutateSite } = useSWR(
-    siteId ? ["site.get", siteId] : null,
-    () => api<any>("site.get", { id: siteId }),
+  const {
+    data: siteData,
+    isLoading: isLoadingSite,
+    mutate: mutateSite,
+  } = useSWR(siteId ? ['site.get', siteId] : null, () =>
+    api<any>('site.get', { id: siteId })
   )
 
   // Fetch members
   const { data: membersData, mutate: mutateMembers } = useSWR(
-    siteId ? ["site.listMembers", siteId] : null,
-    () => api<{ items: SiteMember[] }>("site.listMembers", { siteId }),
+    siteId ? ['site.listMembers', siteId] : null,
+    () => api<{ items: SiteMember[] }>('site.listMembers', { siteId })
   )
 
   // Sync site data to settings state
@@ -286,10 +329,12 @@ export default function Settings() {
   // Sync members data
   useEffect(() => {
     if (membersData?.items) {
-      setMembers(membersData.items.map((m: any) => ({
-        ...m,
-        joinedAt: m.createdAt,
-      })))
+      setMembers(
+        membersData.items.map((m: any) => ({
+          ...m,
+          joinedAt: m.createdAt,
+        }))
+      )
     }
   }, [membersData])
 
@@ -299,7 +344,7 @@ export default function Settings() {
 
   function update<K extends keyof SiteSettings>(
     key: K,
-    value: SiteSettings[K],
+    value: SiteSettings[K]
   ) {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
@@ -307,19 +352,19 @@ export default function Settings() {
   async function handleSaveGeneral() {
     setSavingGeneral(true)
     try {
-      await api("site.update", {
+      await api('site.update', {
         id: siteId,
         name: settings.name,
         address: settings.address,
         timezone: settings.timezone,
         currency: settings.currency,
       })
-      toast.success("Site settings saved")
+      toast.success('Site settings saved')
       setEditingGeneral(false)
       mutateSite()
-      globalMutate(["site.list", ""])
+      globalMutate(['site.list', ''])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save")
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSavingGeneral(false)
     }
@@ -328,7 +373,7 @@ export default function Settings() {
   async function handleSaveTariffs() {
     setSavingTariffs(true)
     try {
-      await api("site.updateTariff", {
+      await api('site.updateTariff', {
         id: siteId,
         gridImportRate: settings.gridImportRate,
         gridExportRate: settings.gridExportRate,
@@ -337,11 +382,11 @@ export default function Settings() {
         peakRate: settings.peakRate,
         offPeakRate: settings.offPeakRate,
       })
-      toast.success("Tariff settings saved")
+      toast.success('Tariff settings saved')
       mutateSite()
-      globalMutate(["site.list", ""])
+      globalMutate(['site.list', ''])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save")
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSavingTariffs(false)
     }
@@ -349,16 +394,16 @@ export default function Settings() {
 
   function handleInvite() {
     if (!inviteEmail.trim()) return
-    api("site.addMember", { siteId, email: inviteEmail.trim() })
+    api('site.addMember', { siteId, email: inviteEmail.trim() })
       .then(() => {
-        toast.success("Member added")
-        setInviteEmail("")
-        setInviteRole("viewer")
+        toast.success('Member added')
+        setInviteEmail('')
+        setInviteRole('viewer')
         setShowInviteForm(false)
         mutateMembers()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to add member")
+        toast.error(err instanceof Error ? err.message : 'Failed to add member')
       })
   }
 
@@ -368,19 +413,21 @@ export default function Settings() {
 
   function handleChangeMemberRole(userId: string, role: MemberRole) {
     setMembers((prev) =>
-      prev.map((m) => (m.userId === userId ? { ...m, role } : m)),
+      prev.map((m) => (m.userId === userId ? { ...m, role } : m))
     )
     setRoleDropdownOpen(null)
   }
 
   function handleRemoveMember(userId: string) {
-    api("site.removeMember", { siteId, userId })
+    api('site.removeMember', { siteId, userId })
       .then(() => {
-        toast.success("Member removed")
+        toast.success('Member removed')
         mutateMembers()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to remove member")
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to remove member'
+        )
       })
     setConfirmRemove(null)
     setMemberMenuOpen(null)
@@ -393,22 +440,18 @@ export default function Settings() {
   }
 
   const maskedKey =
-    settings.apiKey.slice(0, 8) +
-    "..." +
-    settings.apiKey.slice(-4)
+    settings.apiKey.slice(0, 8) + '...' + settings.apiKey.slice(-4)
 
   return (
     <div
       className={cn(
-        "mx-auto max-w-3xl space-y-8 pb-16 transition-opacity duration-500",
-        mounted ? "opacity-100" : "opacity-0",
+        'mx-auto max-w-3xl space-y-8 pb-16 transition-opacity duration-500',
+        mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Site Settings
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Site Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Configure your site preferences, energy tariffs, and integrations.
         </p>
@@ -425,39 +468,41 @@ export default function Settings() {
               title="General"
               description="Site identity and location"
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-xs"
-              onClick={() => setEditingGeneral(!editingGeneral)}
-            >
-              <RiEditLine className="size-3.5" />
-              {editingGeneral ? "Done" : "Edit"}
-            </Button>
+            {!isLoadingSite && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setEditingGeneral(!editingGeneral)}
+              >
+                <RiEditLine className="size-3.5" />
+                {editingGeneral ? 'Done' : 'Edit'}
+              </Button>
+            )}
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Site Name
-              </Label>
-              {editingGeneral ? (
+              <Label className="text-xs text-muted-foreground">Site Name</Label>
+              {isLoadingSite ? (
+                <Skeleton className="h-5 w-32" />
+              ) : editingGeneral ? (
                 <Input
                   value={settings.name}
-                  onChange={(e) => update("name", e.target.value)}
+                  onChange={(e) => update('name', e.target.value)}
                 />
               ) : (
                 <p className="text-sm font-medium">{settings.name}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Timezone
-              </Label>
-              {editingGeneral ? (
+              <Label className="text-xs text-muted-foreground">Timezone</Label>
+              {isLoadingSite ? (
+                <Skeleton className="h-5 w-28" />
+              ) : editingGeneral ? (
                 <Input
                   value={settings.timezone}
-                  onChange={(e) => update("timezone", e.target.value)}
+                  onChange={(e) => update('timezone', e.target.value)}
                 />
               ) : (
                 <p className="flex items-center gap-1.5 text-sm font-medium">
@@ -467,35 +512,35 @@ export default function Settings() {
               )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label className="text-xs text-muted-foreground">
-                Address
-              </Label>
-              {editingGeneral ? (
+              <Label className="text-xs text-muted-foreground">Address</Label>
+              {isLoadingSite ? (
+                <Skeleton className="h-5 w-72" />
+              ) : editingGeneral ? (
                 <Input
                   value={settings.address}
-                  onChange={(e) => update("address", e.target.value)}
+                  onChange={(e) => update('address', e.target.value)}
                 />
               ) : (
                 <p className="text-sm font-medium">{settings.address}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Currency
-              </Label>
-              {editingGeneral ? (
+              <Label className="text-xs text-muted-foreground">Currency</Label>
+              {isLoadingSite ? (
+                <Skeleton className="h-5 w-12" />
+              ) : editingGeneral ? (
                 <Input
                   value={settings.currency}
-                  onChange={(e) => update("currency", e.target.value)}
+                  onChange={(e) => update('currency', e.target.value)}
                 />
               ) : (
-                <p className="text-sm font-medium">{settings.currency}</p>
+                <p className="text-sm font-medium">
+                  {settings.currency || 'THB'}
+                </p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Site ID
-              </Label>
+              <Label className="text-xs text-muted-foreground">Site ID</Label>
               <p className="font-mono text-xs text-muted-foreground">
                 {siteId}
               </p>
@@ -511,9 +556,14 @@ export default function Settings() {
               >
                 Cancel
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={handleSaveGeneral} disabled={savingGeneral}>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={handleSaveGeneral}
+                disabled={savingGeneral}
+              >
                 <RiCheckLine className="size-3.5" />
-                {savingGeneral ? "Saving..." : "Save Changes"}
+                {savingGeneral ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           )}
@@ -536,29 +586,37 @@ export default function Settings() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  Grid Import Rate ({settings.currency}/kWh)
+                  Grid Import Rate ({settings.currency || '—'}/kWh)
                 </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={settings.gridImportRate}
-                  onChange={(e) =>
-                    update("gridImportRate", parseFloat(e.target.value) || 0)
-                  }
-                />
+                {isLoadingSite ? (
+                  <Skeleton className="h-9 w-full rounded-md" />
+                ) : (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settings.gridImportRate}
+                    onChange={(e) =>
+                      update('gridImportRate', parseFloat(e.target.value) || 0)
+                    }
+                  />
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  Grid Export Rate ({settings.currency}/kWh)
+                  Grid Export Rate ({settings.currency || '—'}/kWh)
                 </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={settings.gridExportRate}
-                  onChange={(e) =>
-                    update("gridExportRate", parseFloat(e.target.value) || 0)
-                  }
-                />
+                {isLoadingSite ? (
+                  <Skeleton className="h-9 w-full rounded-md" />
+                ) : (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={settings.gridExportRate}
+                    onChange={(e) =>
+                      update('gridExportRate', parseFloat(e.target.value) || 0)
+                    }
+                  />
+                )}
               </div>
             </div>
 
@@ -568,7 +626,7 @@ export default function Settings() {
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Time-of-Use Rates
                   </h4>
                   <Badge variant="outline" className="text-[10px]">
@@ -577,7 +635,7 @@ export default function Settings() {
                 </div>
                 <Toggle
                   checked={settings.touEnabled}
-                  onChange={(v) => update("touEnabled", v)}
+                  onChange={(v) => update('touEnabled', v)}
                 />
               </div>
 
@@ -592,8 +650,8 @@ export default function Settings() {
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Hours</span>
                         <span className="font-medium tabular-nums">
-                          {String(settings.peakStartHour).padStart(2, "0")}:00 –{" "}
-                          {String(settings.peakEndHour).padStart(2, "0")}:00
+                          {String(settings.peakStartHour).padStart(2, '0')}:00 –{' '}
+                          {String(settings.peakEndHour).padStart(2, '0')}:00
                         </span>
                       </div>
                       <div className="space-y-1">
@@ -605,7 +663,7 @@ export default function Settings() {
                           step="0.01"
                           value={settings.peakRate}
                           onChange={(e) =>
-                            update("peakRate", parseFloat(e.target.value) || 0)
+                            update('peakRate', parseFloat(e.target.value) || 0)
                           }
                           className="h-8 text-sm"
                         />
@@ -621,8 +679,8 @@ export default function Settings() {
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Hours</span>
                         <span className="font-medium tabular-nums">
-                          {String(settings.peakEndHour).padStart(2, "0")}:00 –{" "}
-                          {String(settings.peakStartHour).padStart(2, "0")}:00
+                          {String(settings.peakEndHour).padStart(2, '0')}:00 –{' '}
+                          {String(settings.peakStartHour).padStart(2, '0')}:00
                         </span>
                       </div>
                       <div className="space-y-1">
@@ -634,7 +692,10 @@ export default function Settings() {
                           step="0.01"
                           value={settings.offPeakRate}
                           onChange={(e) =>
-                            update("offPeakRate", parseFloat(e.target.value) || 0)
+                            update(
+                              'offPeakRate',
+                              parseFloat(e.target.value) || 0
+                            )
                           }
                           className="h-8 text-sm"
                         />
@@ -653,7 +714,9 @@ export default function Settings() {
                         No TOU meter configured
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground/60">
-                        Enable this if your site has a Time-of-Use meter with different peak and off-peak electricity rates. This helps calculate more accurate energy costs.
+                        Enable this if your site has a Time-of-Use meter with
+                        different peak and off-peak electricity rates. This
+                        helps calculate more accurate energy costs.
                       </p>
                     </div>
                   </div>
@@ -661,12 +724,19 @@ export default function Settings() {
               )}
             </div>
 
-            <div className="flex justify-end">
-              <Button size="sm" className="gap-1.5" onClick={handleSaveTariffs} disabled={savingTariffs}>
-                <RiCheckLine className="size-3.5" />
-                {savingTariffs ? "Saving..." : "Save Tariffs"}
-              </Button>
-            </div>
+            {!isLoadingSite && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleSaveTariffs}
+                  disabled={savingTariffs}
+                >
+                  <RiCheckLine className="size-3.5" />
+                  {savingTariffs ? 'Saving...' : 'Save Tariffs'}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -685,7 +755,7 @@ export default function Settings() {
           <div className="mt-6 space-y-5">
             {/* Channels */}
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Channels
               </h4>
               <div className="mt-3 space-y-3">
@@ -701,7 +771,7 @@ export default function Settings() {
                   </div>
                   <Toggle
                     checked={settings.emailAlerts}
-                    onChange={(v) => update("emailAlerts", v)}
+                    onChange={(v) => update('emailAlerts', v)}
                   />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border px-4 py-3">
@@ -716,7 +786,7 @@ export default function Settings() {
                   </div>
                   <Toggle
                     checked={settings.pushAlerts}
-                    onChange={(v) => update("pushAlerts", v)}
+                    onChange={(v) => update('pushAlerts', v)}
                   />
                 </div>
               </div>
@@ -726,7 +796,7 @@ export default function Settings() {
 
             {/* Alert Types */}
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Alert Types
               </h4>
               <div className="mt-3 space-y-1">
@@ -734,25 +804,25 @@ export default function Settings() {
                   label="Device Offline"
                   description={`Alert when a device is unreachable for ${settings.offlineThresholdMinutes} min`}
                   checked={settings.alertOffline}
-                  onChange={(v) => update("alertOffline", v)}
+                  onChange={(v) => update('alertOffline', v)}
                 />
                 <AlertToggle
                   label="Charger Fault"
                   description="Alert when a charger reports a fault status"
                   checked={settings.alertFault}
-                  onChange={(v) => update("alertFault", v)}
+                  onChange={(v) => update('alertFault', v)}
                 />
                 <AlertToggle
                   label="High Consumption"
                   description={`Alert when daily consumption exceeds ${settings.consumptionThresholdKwh} kWh`}
                   checked={settings.alertHighConsumption}
-                  onChange={(v) => update("alertHighConsumption", v)}
+                  onChange={(v) => update('alertHighConsumption', v)}
                 />
                 <AlertToggle
                   label="Low Solar Output"
                   description="Alert when solar production drops below expected levels"
                   checked={settings.alertLowSolar}
-                  onChange={(v) => update("alertLowSolar", v)}
+                  onChange={(v) => update('alertLowSolar', v)}
                 />
               </div>
             </div>
@@ -796,28 +866,34 @@ export default function Settings() {
             <div className="mt-5 rounded-lg border border-dashed border-primary/30 bg-primary/[0.03] p-4">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Email address</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Email address
+                  </Label>
                   <Input
                     type="email"
                     placeholder="colleague@company.com"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
                   />
                 </div>
                 <div className="w-full space-y-1.5 sm:w-36">
                   <Label className="text-xs text-muted-foreground">Role</Label>
                   <div className="relative">
                     <button
-                      onClick={() => setRoleDropdownOpen(roleDropdownOpen === "invite" ? null : "invite")}
+                      onClick={() =>
+                        setRoleDropdownOpen(
+                          roleDropdownOpen === 'invite' ? null : 'invite'
+                        )
+                      }
                       className="flex h-9 w-full items-center justify-between rounded-md border bg-background px-3 text-sm"
                     >
                       <span>{ROLE_CONFIG[inviteRole].label}</span>
                       <RiArrowDownSLine className="size-4 text-muted-foreground" />
                     </button>
-                    {roleDropdownOpen === "invite" && (
-                      <div className="absolute left-0 right-0 top-10 z-20 rounded-lg border bg-background p-1 shadow-lg">
-                        {(["editor", "viewer"] as MemberRole[]).map((r) => (
+                    {roleDropdownOpen === 'invite' && (
+                      <div className="absolute top-10 right-0 left-0 z-20 rounded-lg border bg-background p-1 shadow-lg">
+                        {(['editor', 'viewer'] as MemberRole[]).map((r) => (
                           <button
                             key={r}
                             onClick={() => {
@@ -826,8 +902,12 @@ export default function Settings() {
                             }}
                             className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left transition-colors hover:bg-muted"
                           >
-                            <span className="text-sm font-medium">{ROLE_CONFIG[r].label}</span>
-                            <span className="text-[10px] text-muted-foreground">{ROLE_CONFIG[r].description}</span>
+                            <span className="text-sm font-medium">
+                              {ROLE_CONFIG[r].label}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {ROLE_CONFIG[r].description}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -847,7 +927,7 @@ export default function Settings() {
           {/* Pending Invites */}
           {invites.length > 0 && (
             <div className="mt-5">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Pending Invitations
               </h4>
               <div className="mt-2 space-y-1">
@@ -861,14 +941,25 @@ export default function Settings() {
                         <RiMailLine className="size-3.5 text-muted-foreground/50" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">{invite.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {invite.email}
+                        </p>
                         <p className="text-[10px] text-muted-foreground/60">
-                          Invited {new Date(invite.invitedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          Invited{' '}
+                          {new Date(invite.invitedAt).toLocaleDateString(
+                            'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_CONFIG[invite.role].color)}>
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                          ROLE_CONFIG[invite.role].color
+                        )}
+                      >
                         {ROLE_CONFIG[invite.role].label}
                       </span>
                       <button
@@ -889,11 +980,11 @@ export default function Settings() {
           {/* Member List */}
           <div className="mt-5 space-y-1">
             {members.map((member) => {
-              const isOwner = member.role === "*"
+              const isOwner = member.role === '*'
               const initials = member.name
-                .split(" ")
+                .split(' ')
                 .map((w) => w[0])
-                .join("")
+                .join('')
                 .toUpperCase()
                 .slice(0, 2)
 
@@ -923,7 +1014,9 @@ export default function Settings() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.email}
+                      </p>
                     </div>
                   </div>
 
@@ -932,37 +1025,52 @@ export default function Settings() {
                     {!isOwner ? (
                       <div className="relative">
                         <button
-                          onClick={() => setRoleDropdownOpen(roleDropdownOpen === member.userId ? null : member.userId)}
+                          onClick={() =>
+                            setRoleDropdownOpen(
+                              roleDropdownOpen === member.userId
+                                ? null
+                                : member.userId
+                            )
+                          }
                           className={cn(
-                            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                            'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
                             ROLE_CONFIG[member.role].color,
-                            "hover:opacity-80",
+                            'hover:opacity-80'
                           )}
                         >
                           {ROLE_CONFIG[member.role].label}
                           <RiArrowDownSLine className="size-3" />
                         </button>
                         {roleDropdownOpen === member.userId && (
-                          <div className="absolute right-0 top-8 z-20 w-48 rounded-lg border bg-background p-1 shadow-lg">
-                            {(["editor", "viewer"] as MemberRole[]).map((r) => (
+                          <div className="absolute top-8 right-0 z-20 w-48 rounded-lg border bg-background p-1 shadow-lg">
+                            {(['editor', 'viewer'] as MemberRole[]).map((r) => (
                               <button
                                 key={r}
-                                onClick={() => handleChangeMemberRole(member.userId, r)}
+                                onClick={() =>
+                                  handleChangeMemberRole(member.userId, r)
+                                }
                                 className={cn(
-                                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
-                                  r === member.role && "bg-muted",
+                                  'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted',
+                                  r === member.role && 'bg-muted'
                                 )}
                               >
                                 <span>{ROLE_CONFIG[r].label}</span>
-                                {r === member.role && <RiCheckLine className="size-3.5 text-primary" />}
+                                {r === member.role && (
+                                  <RiCheckLine className="size-3.5 text-primary" />
+                                )}
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium", ROLE_CONFIG["*"].color)}>
-                        {ROLE_CONFIG["*"].label}
+                      <span
+                        className={cn(
+                          'rounded-full px-2.5 py-1 text-[11px] font-medium',
+                          ROLE_CONFIG['*'].color
+                        )}
+                      >
+                        {ROLE_CONFIG['*'].label}
                       </span>
                     )}
 
@@ -970,16 +1078,24 @@ export default function Settings() {
                     {!isOwner && (
                       <div className="relative">
                         <button
-                          onClick={() => setMemberMenuOpen(memberMenuOpen === member.userId ? null : member.userId)}
+                          onClick={() =>
+                            setMemberMenuOpen(
+                              memberMenuOpen === member.userId
+                                ? null
+                                : member.userId
+                            )
+                          }
                           className="rounded p-1 text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-muted-foreground"
                         >
                           <RiMore2Line className="size-4" />
                         </button>
                         {memberMenuOpen === member.userId && (
-                          <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border bg-background p-1 shadow-lg">
+                          <div className="absolute top-8 right-0 z-20 w-44 rounded-lg border bg-background p-1 shadow-lg">
                             {confirmRemove === member.userId ? (
                               <div className="space-y-1 p-2">
-                                <p className="text-xs font-medium text-red-600">Remove this member?</p>
+                                <p className="text-xs font-medium text-red-600">
+                                  Remove this member?
+                                </p>
                                 <div className="flex gap-1">
                                   <Button
                                     variant="ghost"
@@ -996,7 +1112,9 @@ export default function Settings() {
                                     variant="destructive"
                                     size="sm"
                                     className="h-7 flex-1 text-xs"
-                                    onClick={() => handleRemoveMember(member.userId)}
+                                    onClick={() =>
+                                      handleRemoveMember(member.userId)
+                                    }
                                   >
                                     Remove
                                   </Button>
@@ -1023,7 +1141,10 @@ export default function Settings() {
 
           {/* Member count footer */}
           <div className="mt-4 flex items-center justify-between border-t pt-3 text-[10px] text-muted-foreground/60">
-            <span>{members.length} member{members.length !== 1 && "s"}{invites.length > 0 && ` · ${invites.length} pending`}</span>
+            <span>
+              {members.length} member{members.length !== 1 && 's'}
+              {invites.length > 0 && ` · ${invites.length} pending`}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -1070,13 +1191,9 @@ export default function Settings() {
                   ) : (
                     <RiFileCopyLine className="size-3.5" />
                   )}
-                  {copiedKey ? "Copied" : "Copy"}
+                  {copiedKey ? 'Copied' : 'Copy'}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                >
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                   <RiRefreshLine className="size-3.5" />
                   Regenerate
                 </Button>
@@ -1096,7 +1213,7 @@ export default function Settings() {
               <Input
                 placeholder="https://example.com/webhooks/anertic"
                 value={settings.webhookUrl}
-                onChange={(e) => update("webhookUrl", e.target.value)}
+                onChange={(e) => update('webhookUrl', e.target.value)}
               />
               <p className="text-[10px] text-muted-foreground">
                 We'll send POST requests with event payloads to this URL.
@@ -1120,19 +1237,19 @@ export default function Settings() {
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <RiTimeLine className="size-3.5" />
-            Created{" "}
-            {new Date(settings.createdAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
+            Created{' '}
+            {new Date(settings.createdAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
             })}
           </span>
           <span>
-            Last updated{" "}
-            {new Date(settings.updatedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
+            Last updated{' '}
+            {new Date(settings.updatedAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
             })}
           </span>
         </div>

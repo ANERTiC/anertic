@@ -986,22 +986,23 @@ function EnergyRing({
   totalKwh: number
   selfSufficiency: number
 }) {
-  const radius = 56
-  const stroke = 10
+  const size = 160
+  const stroke = 12
+  const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const solarArc = (solarPercent / 100) * circumference
   const gridArc = circumference - solarArc
 
   return (
-    <div className="relative">
-      <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-        <circle cx="70" cy="70" r={radius} fill="none" stroke="oklch(0.7 0.12 250)" strokeWidth={stroke} strokeDasharray={`${gridArc} ${circumference}`} strokeDashoffset={0} strokeLinecap="round" className="transition-all duration-700" />
-        <circle cx="70" cy="70" r={radius} fill="none" stroke="oklch(0.75 0.16 80)" strokeWidth={stroke} strokeDasharray={`${solarArc} ${circumference}`} strokeDashoffset={-gridArc} strokeLinecap="round" className="transition-all duration-700" />
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="oklch(0.7 0.12 250)" strokeWidth={stroke} strokeDasharray={`${gridArc} ${circumference}`} strokeDashoffset={0} strokeLinecap="round" className="transition-all duration-700" />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="oklch(0.75 0.16 80)" strokeWidth={stroke} strokeDasharray={`${solarArc} ${circumference}`} strokeDashoffset={-gridArc} strokeLinecap="round" className="transition-all duration-700" />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-xl font-bold tabular-nums">{formatEnergy(totalKwh)}</p>
-        <p className="text-[10px] text-muted-foreground">total today</p>
-        <p className="mt-1 text-xs font-medium text-emerald-600">{selfSufficiency.toFixed(0)}% self</p>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+        <p className="text-2xl font-bold tabular-nums leading-none">{formatEnergy(totalKwh)}</p>
+        <p className="text-[11px] text-muted-foreground">total today</p>
+        <p className="text-xs font-medium text-emerald-600">{selfSufficiency.toFixed(0)}% self</p>
       </div>
     </div>
   )

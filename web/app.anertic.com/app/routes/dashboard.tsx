@@ -25,6 +25,7 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Skeleton } from "~/components/ui/skeleton"
 import { Badge } from "~/components/ui/badge"
 import { cn } from "~/lib/utils"
+import { PendingInvites } from "~/components/pending-invites"
 
 interface Site {
   id: string
@@ -122,6 +123,9 @@ export default function Dashboard() {
           {getGreeting()}, {user?.name?.split(" ")[0] || "there"}
         </h1>
       </div>
+
+      {/* Pending Invitations */}
+      <PendingInvites />
 
       {/* Energy Flow Hero — Desktop */}
       <div className="mb-8 hidden overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-primary/5 p-6 sm:block">

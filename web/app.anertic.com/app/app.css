@@ -109,4 +109,10 @@
   html {
     @apply font-sans;
     }
+  @supports (scrollbar-gutter: stable) {
+    body[data-scroll-locked] {
+      --removed-body-scroll-bar-size: 0px;
+      margin-right: 0 !important;
+    }
+  }
 }

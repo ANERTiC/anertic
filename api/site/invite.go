@@ -342,3 +342,135 @@ func AcceptInvite(ctx context.Context, p *AcceptInviteParams) (*struct{}, error)
 
 	return new(struct{}), nil
 }
+
+// MyInvites lists all pending invitations for the current user
+
+type MyInvite struct {
+	ID        string    `json:"id"`
+	SiteID    string    `json:"siteId"`
+	SiteName  string    `json:"siteName"`
+	Role      string    `json:"role"`
+	InvitedBy string    `json:"invitedBy"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type MyInvitesResult struct {
+	Items []MyInvite `json:"items"`
+}
+
+func MyInvites(ctx context.Context, _ *struct{}) (*MyInvitesResult, error) {
+	userID := auth.AccountID(ctx)
+
+	// get user email
+	var email string
+	err := pgctx.QueryRow(ctx, `
+		select email from users where id = $1
+	`,
+		userID,
+	).Scan(&email)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]MyInvite, 0)
+
+	rows, err := pgctx.Query(ctx, `
+		select
+			i.id,
+			i.site_id,
+			s.name,
+			i.role,
+			u.name,
+			i.expires_at,
+			i.created_at
+		from site_member_invitations i
+		join sites s on s.id = i.site_id
+		join users u on u.id = i.invited_by
+		where i.email = $1
+		  and i.status = 'pending'
+		  and i.expires_at > now()
+		order by i.created_at desc
+	`,
+		email,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var it MyInvite
+		err := rows.Scan(
+			&it.ID,
+			&it.SiteID,
+			&it.SiteName,
+			&it.Role,
+			&it.InvitedBy,
+			&it.ExpiresAt,
+			&it.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &MyInvitesResult{Items: items}, nil
+}
+
+// DeclineInvite
+
+type DeclineInviteParams struct {
+	ID string `json:"id"`
+}
+
+func (p *DeclineInviteParams) Valid() error {
+	v := validator.New()
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+func DeclineInvite(ctx context.Context, p *DeclineInviteParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	userID := auth.AccountID(ctx)
+
+	// get user email
+	var email string
+	err := pgctx.QueryRow(ctx, `
+		select email from users where id = $1
+	`,
+		userID,
+	).Scan(&email)
+	if err != nil {
+		return nil, err
+	}
+
+	// only decline if the invite belongs to the current user
+	result, err := pgctx.Exec(ctx, `
+		update site_member_invitations
+		set status = 'declined'
+		where id = $1
+		  and email = $2
+		  and status = 'pending'
+	`,
+		p.ID,
+		email,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return nil, ErrInviteNotFound
+	}
+
+	return new(struct{}), nil
+}

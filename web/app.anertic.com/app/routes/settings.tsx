@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import {
@@ -39,6 +39,7 @@ import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { cn } from '~/lib/utils'
 import { api } from '~/lib/api'
+import { getUser } from '~/lib/auth'
 import { Skeleton } from '~/components/ui/skeleton'
 
 // --- Types ---
@@ -88,7 +89,9 @@ interface PendingInvite {
   id: string
   email: string
   role: MemberRole
-  invitedAt: string
+  status: string
+  expiresAt: string
+  createdAt: string
 }
 
 const ROLE_CONFIG: Record<
@@ -112,83 +115,6 @@ const ROLE_CONFIG: Record<
   },
 }
 
-function generateMockMembers(): SiteMember[] {
-  return [
-    {
-      userId: 'u_001',
-      name: 'Kamail S.',
-      email: 'kamail@anertic.com',
-      picture: '',
-      role: '*',
-      joinedAt: '2025-08-15T10:00:00Z',
-    },
-    {
-      userId: 'u_002',
-      name: 'Prem T.',
-      email: 'prem@anertic.com',
-      picture: '',
-      role: 'editor',
-      joinedAt: '2025-09-01T08:00:00Z',
-    },
-    {
-      userId: 'u_003',
-      name: 'Jira W.',
-      email: 'jira@example.com',
-      picture: '',
-      role: 'editor',
-      joinedAt: '2026-01-10T14:00:00Z',
-    },
-    {
-      userId: 'u_004',
-      name: 'Nattawut K.',
-      email: 'nattawut@example.com',
-      picture: '',
-      role: 'viewer',
-      joinedAt: '2026-02-20T09:00:00Z',
-    },
-  ]
-}
-
-function generateMockInvites(): PendingInvite[] {
-  return [
-    {
-      id: 'inv_001',
-      email: 'new.member@example.com',
-      role: 'viewer',
-      invitedAt: '2026-03-11T16:00:00Z',
-    },
-  ]
-}
-
-// --- Mock Data ---
-
-function generateMockSettings(): SiteSettings {
-  return {
-    name: 'Bangkok HQ',
-    address: '123 Sukhumvit Rd, Klongtoey, Bangkok 10110',
-    timezone: 'Asia/Bangkok',
-    currency: 'THB',
-    gridImportRate: 4.15,
-    gridExportRate: 2.2,
-    touEnabled: false,
-    peakStartHour: 9,
-    peakEndHour: 22,
-    peakRate: 5.28,
-    offPeakRate: 2.63,
-    emailAlerts: true,
-    pushAlerts: true,
-    alertOffline: true,
-    alertFault: true,
-    alertHighConsumption: true,
-    alertLowSolar: false,
-    offlineThresholdMinutes: 30,
-    consumptionThresholdKwh: 50,
-    apiKey: 'anertic_test_0000000000000000',
-    webhookUrl: '',
-    createdAt: '2025-11-15T08:00:00Z',
-    updatedAt: '2026-03-10T14:30:00Z',
-  }
-}
 
 // --- Toggle Switch ---
 
@@ -249,6 +175,7 @@ function SectionHeader({
 export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
   const siteId = useSiteId()
+  const currentUser = getUser()
   const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<SiteSettings>({
     name: '',
@@ -282,9 +209,7 @@ export default function Settings() {
   const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [members, setMembers] = useState<SiteMember[]>([])
-  const [invites, setInvites] = useState<PendingInvite[]>(() =>
-    generateMockInvites()
-  )
+  const [invites, setInvites] = useState<PendingInvite[]>([])
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<MemberRole>('viewer')
@@ -305,6 +230,12 @@ export default function Settings() {
   const { data: membersData, mutate: mutateMembers } = useSWR(
     siteId ? ['site.listMembers', siteId] : null,
     () => api<{ items: SiteMember[] }>('site.listMembers', { siteId })
+  )
+
+  // Fetch invites
+  const { data: invitesData, mutate: mutateInvites } = useSWR(
+    siteId ? ['site.listInvites', siteId] : null,
+    () => api<{ items: PendingInvite[] }>('site.listInvites', { siteId })
   )
 
   // Sync site data to settings state
@@ -338,8 +269,28 @@ export default function Settings() {
     }
   }, [membersData])
 
+  // Sync invites data
+  useEffect(() => {
+    if (invitesData?.items) {
+      setInvites(invitesData.items)
+    }
+  }, [invitesData])
+
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-dropdown]')) {
+        setRoleDropdownOpen(null)
+        setMemberMenuOpen(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   function update<K extends keyof SiteSettings>(
@@ -394,27 +345,39 @@ export default function Settings() {
 
   function handleInvite() {
     if (!inviteEmail.trim()) return
-    api('site.addMember', { siteId, email: inviteEmail.trim() })
+    api('site.inviteMember', { siteId, email: inviteEmail.trim(), role: inviteRole })
       .then(() => {
-        toast.success('Member added')
+        toast.success('Invitation sent')
         setInviteEmail('')
         setInviteRole('viewer')
         setShowInviteForm(false)
-        mutateMembers()
+        mutateInvites()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to add member')
+        toast.error(err instanceof Error ? err.message : 'Failed to send invitation')
       })
   }
 
   function handleRevokeInvite(id: string) {
-    setInvites((prev) => prev.filter((i) => i.id !== id))
+    api('site.revokeInvite', { id })
+      .then(() => {
+        toast.success('Invitation revoked')
+        mutateInvites()
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to revoke invitation')
+      })
   }
 
   function handleChangeMemberRole(userId: string, role: MemberRole) {
-    setMembers((prev) =>
-      prev.map((m) => (m.userId === userId ? { ...m, role } : m))
-    )
+    api('site.updateMemberRole', { siteId, userId, role })
+      .then(() => {
+        toast.success('Role updated')
+        mutateMembers()
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to update role')
+      })
     setRoleDropdownOpen(null)
   }
 
@@ -902,7 +865,7 @@ export default function Settings() {
                 </div>
                 <div className="w-full space-y-1.5 sm:w-36">
                   <Label className="text-xs text-muted-foreground">Role</Label>
-                  <div className="relative">
+                  <div className="relative" data-dropdown>
                     <button
                       onClick={() =>
                         setRoleDropdownOpen(
@@ -969,7 +932,7 @@ export default function Settings() {
                         </p>
                         <p className="text-[10px] text-muted-foreground/60">
                           Invited{' '}
-                          {new Date(invite.invitedAt).toLocaleDateString(
+                          {new Date(invite.createdAt).toLocaleDateString(
                             'en-US',
                             { month: 'short', day: 'numeric' }
                           )}
@@ -1004,6 +967,8 @@ export default function Settings() {
           <div className="mt-5 space-y-1">
             {members.map((member) => {
               const isOwner = member.role === '*'
+              const isSelf = member.userId === currentUser?.id
+              const canRemove = !isOwner && !isSelf
               const initials = member.name
                 .split(' ')
                 .map((w) => w[0])
@@ -1046,15 +1011,16 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     {/* Role selector (not for owner) */}
                     {!isOwner ? (
-                      <div className="relative">
+                      <div className="relative" data-dropdown>
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            setMemberMenuOpen(null)
                             setRoleDropdownOpen(
                               roleDropdownOpen === member.userId
                                 ? null
                                 : member.userId
                             )
-                          }
+                          }}
                           className={cn(
                             'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
                             ROLE_CONFIG[member.role].color,
@@ -1097,17 +1063,18 @@ export default function Settings() {
                       </span>
                     )}
 
-                    {/* Actions menu (not for owner) */}
-                    {!isOwner && (
-                      <div className="relative">
+                    {/* Actions menu */}
+                    <div className="relative" data-dropdown>
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            setRoleDropdownOpen(null)
+                            setConfirmRemove(null)
                             setMemberMenuOpen(
                               memberMenuOpen === member.userId
                                 ? null
                                 : member.userId
                             )
-                          }
+                          }}
                           className="rounded p-1 text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-muted-foreground"
                         >
                           <RiMore2Line className="size-4" />
@@ -1145,8 +1112,14 @@ export default function Settings() {
                               </div>
                             ) : (
                               <button
-                                onClick={() => setConfirmRemove(member.userId)}
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-500/10"
+                                onClick={() => canRemove && setConfirmRemove(member.userId)}
+                                disabled={!canRemove}
+                                className={cn(
+                                  'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+                                  canRemove
+                                    ? 'text-red-600 hover:bg-red-500/10'
+                                    : 'cursor-not-allowed text-muted-foreground/40'
+                                )}
                               >
                                 <RiUserUnfollowLine className="size-3.5" />
                                 Remove member
@@ -1155,7 +1128,6 @@ export default function Settings() {
                           </div>
                         )}
                       </div>
-                    )}
                   </div>
                 </div>
               )

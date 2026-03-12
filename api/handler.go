@@ -70,6 +70,8 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /site.listInvites", am.Handler(site.ListInvites))
 	a.Handle("POST /site.revokeInvite", am.Handler(site.RevokeInvite))
 	a.Handle("POST /site.acceptInvite", am.Handler(site.AcceptInvite))
+	a.Handle("POST /site.declineInvite", am.Handler(site.DeclineInvite))
+	a.Handle("POST /site.myInvites", am.Handler(site.MyInvites))
 
 	// Devices
 	a.Handle("POST /device.list", am.Handler(device.List))

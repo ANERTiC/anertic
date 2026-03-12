@@ -20,7 +20,9 @@ func Handler(hub *Hub) http.Handler {
 		}
 
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			Subprotocols: []string{"ocpp2.0.1", "ocpp1.6"},
+			Subprotocols:       []string{"ocpp2.0.1", "ocpp1.6"},
+			OriginPatterns:     []string{"ocpp.anertic.com", "localhost"},
+			InsecureSkipVerify: true,
 		})
 		if err != nil {
 			slog.ErrorContext(r.Context(), "ocpp ws accept error", "error", err, "chargePointID", chargePointID)

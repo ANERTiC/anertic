@@ -33,6 +33,7 @@ export default [
       route("devices/:deviceId", "routes/device-detail.tsx"),
       route("rooms", "routes/rooms.tsx"),
       route("insights", "routes/insights.tsx"),
+      route("integrations", "routes/integrations.tsx"),
       route("settings", "routes/settings.tsx"),
     ]),
   ]),

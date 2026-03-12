@@ -13,6 +13,7 @@ import {
   RiAddLine,
   RiLogoutBoxLine,
   RiArrowLeftLine,
+  RiPlugLine,
 } from "@remixicon/react"
 import { api } from "~/lib/api"
 import { getCookie, setCookie } from "~/lib/cookie"
@@ -69,10 +70,11 @@ function getSiteColor(index: number) {
 
 const siteNavItems = [
   { to: "/overview", icon: RiDashboardLine, label: "Overview" },
+  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
   { to: "/chargers", icon: RiChargingPile2Line, label: "Chargers" },
   { to: "/rooms", icon: RiDoorOpenLine, label: "Rooms" },
-  { to: "/insights", icon: RiLightbulbFlashLine, label: "Insights" },
   { to: "/devices", icon: RiCpuLine, label: "Devices" },
+  { to: "/integrations", icon: RiPlugLine, label: "Integrations" },
 ]
 
 function SiteSwitcher({

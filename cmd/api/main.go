@@ -20,9 +20,10 @@ import (
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/api/auth/provider"
-	"github.com/anertic/anertic/schema"
 	"github.com/anertic/anertic/api/conf"
+	"github.com/anertic/anertic/pkg/ops"
 	"github.com/anertic/anertic/pkg/rdctx"
+	"github.com/anertic/anertic/schema"
 )
 
 func main() {
@@ -38,6 +39,11 @@ func run() error {
 	}
 
 	cfg := configfile.NewEnvReader()
+
+	if err := ops.Init(context.Background()); err != nil {
+		return err
+	}
+	defer ops.Close()
 
 	srv := parapet.NewBackend()
 	ctx, cancel := context.WithCancel(context.Background())

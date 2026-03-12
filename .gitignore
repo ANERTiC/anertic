@@ -19,6 +19,7 @@ go.work.local
 # Environment
 .env
 .env.*
+!.env.example
 
 # IDE / Editor
 .idea/

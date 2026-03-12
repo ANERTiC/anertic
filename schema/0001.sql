@@ -41,6 +41,17 @@ create table if not exists sites
     updated_at timestamptz             not null default now()
 );
 
+create table if not exists site_members
+(
+    site_id    varchar(20) not null references sites (id),
+    user_id    varchar(20) not null references users (id),
+    roles      varchar[]   not null default '{*}',
+    created_at timestamptz not null default now(),
+    primary key (site_id, user_id)
+);
+
+create index if not exists idx_site_members_user_id on site_members (user_id);
+
 create table if not exists devices
 (
     id         varchar(20) primary key not null,

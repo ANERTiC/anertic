@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/acoshift/pgsql/pgctx"
 	"github.com/coder/websocket"
 )
 
@@ -19,6 +20,21 @@ func Handler(hub *Hub) http.Handler {
 			return
 		}
 
+		var exists bool
+		err := pgctx.QueryRow(r.Context(), `
+			select exists(select 1 from ev_chargers where charge_point_id = $1)
+		`, chargePointID).Scan(&exists)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "ocpp db check error", "error", err, "chargePointID", chargePointID)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if !exists {
+			slog.WarnContext(r.Context(), "ocpp rejected unknown charger", "chargePointID", chargePointID)
+			http.Error(w, "unknown charge point", http.StatusNotFound)
+			return
+		}
+
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			Subprotocols:       []string{"ocpp2.0.1", "ocpp1.6"},
 			OriginPatterns:     []string{"ocpp.anertic.com", "localhost"},
@@ -26,6 +42,7 @@ func Handler(hub *Hub) http.Handler {
 		})
 		if err != nil {
 			slog.ErrorContext(r.Context(), "ocpp ws accept error", "error", err, "chargePointID", chargePointID)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer conn.CloseNow()

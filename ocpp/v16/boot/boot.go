@@ -25,9 +25,9 @@ type Params struct {
 
 // Result matches OCPP 1.6 BootNotification.conf
 type Result struct {
-	Status      string `json:"status"`
-	CurrentTime string `json:"currentTime"`
-	Interval    int    `json:"interval"`
+	Status      string `json:"status"`      // Accepted, Pending, Rejected
+	CurrentTime string `json:"currentTime"` // RFC3339
+	Interval    int    `json:"interval"`    // heartbeat interval in seconds
 }
 
 func BootNotification(ctx context.Context, p *Params) (*Result, error) {
@@ -67,15 +67,7 @@ func BootNotification(ctx context.Context, p *Params) (*Result, error) {
 		&heartbeatInterval,
 	)
 	if err != nil {
-		slog.ErrorContext(ctx, "boot notification: update charger failed",
-			"error", err,
-			"chargePointID", chargePointID,
-		)
-		return &Result{
-			Status:      "Rejected",
-			CurrentTime: time.Now().UTC().Format(time.RFC3339),
-			Interval:    60,
-		}, nil
+		return nil, err
 	}
 
 	slog.InfoContext(ctx, "boot notification",

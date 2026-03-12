@@ -47,6 +47,7 @@ interface SiteSettings {
   // Tariffs
   gridImportRate: number
   gridExportRate: number
+  touEnabled: boolean
   peakStartHour: number
   peakEndHour: number
   peakRate: number
@@ -151,6 +152,7 @@ function generateMockSettings(): SiteSettings {
     currency: "THB",
     gridImportRate: 4.15,
     gridExportRate: 2.2,
+    touEnabled: false,
     peakStartHour: 9,
     peakEndHour: 22,
     peakRate: 5.28,
@@ -467,76 +469,101 @@ export default function Settings() {
 
             <Separator />
 
-            {/* TOU Rates */}
+            {/* TOU Rates — optional */}
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Time-of-Use Rates
-                </h4>
-                <Badge variant="outline" className="text-[10px]">
-                  TOU
-                </Badge>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Time-of-Use Rates
+                  </h4>
+                  <Badge variant="outline" className="text-[10px]">
+                    TOU
+                  </Badge>
+                </div>
+                <Toggle
+                  checked={settings.touEnabled}
+                  onChange={(v) => update("touEnabled", v)}
+                />
               </div>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border bg-amber-500/5 p-4">
-                  <div className="flex items-center gap-2">
-                    <RiSunLine className="size-4 text-amber-500" />
-                    <span className="text-xs font-medium">Peak</span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Hours</span>
-                      <span className="font-medium tabular-nums">
-                        {String(settings.peakStartHour).padStart(2, "0")}:00 –{" "}
-                        {String(settings.peakEndHour).padStart(2, "0")}:00
-                      </span>
+
+              {settings.touEnabled ? (
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border bg-amber-500/5 p-4">
+                    <div className="flex items-center gap-2">
+                      <RiSunLine className="size-4 text-amber-500" />
+                      <span className="text-xs font-medium">Peak</span>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">
-                        Rate ({settings.currency}/kWh)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={settings.peakRate}
-                        onChange={(e) =>
-                          update("peakRate", parseFloat(e.target.value) || 0)
-                        }
-                        className="h-8 text-sm"
-                      />
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Hours</span>
+                        <span className="font-medium tabular-nums">
+                          {String(settings.peakStartHour).padStart(2, "0")}:00 –{" "}
+                          {String(settings.peakEndHour).padStart(2, "0")}:00
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Rate ({settings.currency}/kWh)
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={settings.peakRate}
+                          onChange={(e) =>
+                            update("peakRate", parseFloat(e.target.value) || 0)
+                          }
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border bg-blue-500/5 p-4">
+                    <div className="flex items-center gap-2">
+                      <RiMoonLine className="size-4 text-blue-500" />
+                      <span className="text-xs font-medium">Off-Peak</span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Hours</span>
+                        <span className="font-medium tabular-nums">
+                          {String(settings.peakEndHour).padStart(2, "0")}:00 –{" "}
+                          {String(settings.peakStartHour).padStart(2, "0")}:00
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Rate ({settings.currency}/kWh)
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={settings.offPeakRate}
+                          onChange={(e) =>
+                            update("offPeakRate", parseFloat(e.target.value) || 0)
+                          }
+                          className="h-8 text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="rounded-lg border bg-blue-500/5 p-4">
-                  <div className="flex items-center gap-2">
-                    <RiMoonLine className="size-4 text-blue-500" />
-                    <span className="text-xs font-medium">Off-Peak</span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Hours</span>
-                      <span className="font-medium tabular-nums">
-                        {String(settings.peakEndHour).padStart(2, "0")}:00 –{" "}
-                        {String(settings.peakStartHour).padStart(2, "0")}:00
-                      </span>
+              ) : (
+                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <RiTimeLine className="size-4 text-muted-foreground/60" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">
-                        Rate ({settings.currency}/kWh)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={settings.offPeakRate}
-                        onChange={(e) =>
-                          update("offPeakRate", parseFloat(e.target.value) || 0)
-                        }
-                        className="h-8 text-sm"
-                      />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No TOU meter configured
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground/60">
+                        Enable this if your site has a Time-of-Use meter with different peak and off-peak electricity rates. This helps calculate more accurate energy costs.
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex justify-end">

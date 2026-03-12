@@ -537,69 +537,82 @@ export default function ChargerDetail() {
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mb-2 -ml-2"
-            onClick={() =>
-              navigate(`/chargers${siteId ? `?site=${siteId}` : ""}`)
-            }
-          >
-            <RiArrowLeftLine className="mr-1 size-4" />
-            Chargers
-          </Button>
-          <div className="flex items-center gap-3">
-            <span className="relative flex size-3">
-              {isCharging && (
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
-              )}
-              {isFaulted && (
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
-              )}
-              <span
-                className={cn(
-                  "relative inline-flex size-3 rounded-full",
-                  statusDot(charger.status),
-                )}
-              />
-            </span>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {charger.chargePointId}
-            </h1>
-          </div>
-          <div className="mt-1.5 flex items-center gap-2">
-            <Badge className={cn("text-[10px]", statusColor(charger.status))}>
-              {charger.status}
-            </Badge>
-            <Badge
-              className={cn(
-                "text-[10px]",
-                registrationColor(charger.registrationStatus),
-              )}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-2 -ml-2"
+              onClick={() =>
+                navigate(`/chargers${siteId ? `?site=${siteId}` : ""}`)
+              }
             >
-              {charger.registrationStatus}
-            </Badge>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              {isOnline ? (
-                <RiSignalWifiLine className="size-3 text-emerald-500" />
-              ) : (
-                <RiSignalWifiOffLine className="size-3 text-red-400" />
-              )}
-              {timeAgo(charger.lastHeartbeatAt)}
-            </span>
+              <RiArrowLeftLine className="mr-1 size-4" />
+              Chargers
+            </Button>
+            <div className="flex items-center gap-3">
+              <span className="relative flex size-3">
+                {isCharging && (
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                )}
+                {isFaulted && (
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
+                )}
+                <span
+                  className={cn(
+                    "relative inline-flex size-3 rounded-full",
+                    statusDot(charger.status),
+                  )}
+                />
+              </span>
+              <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                {charger.chargePointId}
+              </h1>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <Badge className={cn("text-[10px]", statusColor(charger.status))}>
+                {charger.status}
+              </Badge>
+              <Badge
+                className={cn(
+                  "text-[10px]",
+                  registrationColor(charger.registrationStatus),
+                )}
+              >
+                {charger.registrationStatus}
+              </Badge>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                {isOnline ? (
+                  <RiSignalWifiLine className="size-3 text-emerald-500" />
+                ) : (
+                  <RiSignalWifiOffLine className="size-3 text-red-400" />
+                )}
+                {timeAgo(charger.lastHeartbeatAt)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {charger.vendor} {charger.model}
+            </p>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {charger.vendor} {charger.model}
-          </p>
+          <div className="hidden gap-2 sm:flex">
+            <Button variant="outline" size="sm">
+              <RiRestartLine className="mr-1.5 size-3.5" />
+              Reset
+            </Button>
+            <Button variant="outline" size="sm">
+              <RiShutDownLine className="mr-1.5 size-3.5" />
+              Reboot
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+        {/* Mobile action buttons */}
+        <div className="flex gap-2 sm:hidden">
+          <Button variant="outline" size="sm" className="flex-1">
             <RiRestartLine className="mr-1.5 size-3.5" />
             Reset
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="flex-1">
             <RiShutDownLine className="mr-1.5 size-3.5" />
             Reboot
           </Button>
@@ -620,28 +633,30 @@ export default function ChargerDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="analytics">
-        <TabsList>
-          <TabsTrigger value="analytics">
-            <RiBarChartBoxLine className="mr-1.5 size-3.5" />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="sessions">
-            <RiHistoryLine className="mr-1.5 size-3.5" />
-            Sessions
-          </TabsTrigger>
-          <TabsTrigger value="info">
-            <RiInformationLine className="mr-1.5 size-3.5" />
-            Device Info
-          </TabsTrigger>
-          <TabsTrigger value="settings">
-            <RiSettings3Line className="mr-1.5 size-3.5" />
-            Settings
-          </TabsTrigger>
-          <TabsTrigger value="log">
-            <RiHistoryLine className="mr-1.5 size-3.5" />
-            OCPP Logs
-          </TabsTrigger>
-        </TabsList>
+        <div>
+          <TabsList className="w-full sm:w-fit">
+            <TabsTrigger value="analytics">
+              <RiBarChartBoxLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="sessions">
+              <RiHistoryLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Sessions</span>
+            </TabsTrigger>
+            <TabsTrigger value="info">
+              <RiInformationLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Device Info</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              <RiSettings3Line className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
+            <TabsTrigger value="log">
+              <RiHistoryLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">OCPP Logs</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Analytics */}
         <TabsContent value="analytics" className="mt-4">

@@ -414,23 +414,23 @@ export default function Chargers() {
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Chargers</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Chargers</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Fleet management and monitoring
           </p>
         </div>
-        <Button onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
-          <RiAddLine className="mr-1.5 size-4" />
-          Add Charger
+        <Button size="sm" className="shrink-0 sm:size-default" onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
+          <RiAddLine className="size-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Charger</span>
         </Button>
       </div>
 
       {/* Fleet Summary Strip */}
       <Card className="overflow-hidden py-0">
         <CardContent className="p-0">
-          <div className="grid grid-cols-3 divide-x lg:grid-cols-6">
+          <div className="grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-6">
             <FleetCell
               icon={RiFlashlightLine}
               label="Live Power"
@@ -478,7 +478,7 @@ export default function Chargers() {
       </Card>
 
       {/* Search + Filter */}
-      <div className="flex items-center gap-3">
+      <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
         <div className="relative flex-1">
           <RiSearchLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -488,7 +488,7 @@ export default function Chargers() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {[
             { label: "All", value: null, count: fleet.total },
             { label: "Charging", value: "Charging", count: fleet.charging },
@@ -499,7 +499,7 @@ export default function Chargers() {
               key={f.label}
               onClick={() => setStatusFilter(f.value)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === f.value
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-muted",

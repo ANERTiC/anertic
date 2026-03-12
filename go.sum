@@ -16,6 +16,8 @@ github.com/acoshift/configfile v1.9.0 h1:/t8DhgBdYIr15f4BkkM4bDSBWi0+ImKwWgJN/M5
 github.com/acoshift/configfile v1.9.0/go.mod h1:4T3q2BRRhEW4lcS0vc1Pruv0/TuBVKOb7F5vUp6ZyAY=
 github.com/acoshift/pgsql v0.16.0 h1:ak+fwy8Xnx0uZBhSmvFhGGk3a7EQNu8IiRLpnP99IT4=
 github.com/acoshift/pgsql v0.16.0/go.mod h1:HtdMa77CYeRb9pD6+cT/ZPjpudiUVQ2OIKv6QXjgEZw=
+github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
+github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=

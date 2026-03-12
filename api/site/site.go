@@ -5,11 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/acoshift/arpc/v2"
 	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
+
+	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/iam"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 )
@@ -25,11 +29,12 @@ type ListParams struct {
 }
 
 type Item struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Address   string    `json:"address"`
-	Timezone  string    `json:"timezone"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Address   string         `json:"address"`
+	Timezone  string         `json:"timezone"`
+	Metadata  map[string]any `json:"metadata"`
+	CreatedAt time.Time      `json:"createdAt"`
 }
 
 type ListResult struct {
@@ -39,23 +44,32 @@ type ListResult struct {
 func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	items := make([]Item, 0)
 
+	userID := auth.AccountID(ctx)
+
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
-			"id",
-			"name",
-			"address",
-			"timezone",
-			"created_at",
+			"s.id",
+			"s.name",
+			"s.address",
+			"s.timezone",
+			"s.metadata",
+			"s.created_at",
 		)
-		b.From("sites")
+		b.From("sites s")
+		b.Join("site_members sm").On(func(c pgstmt.Cond) {
+			c.EqRaw("sm.site_id", "s.id")
+		})
+		b.Where(func(c pgstmt.Cond) {
+			c.Eq("sm.user_id", userID)
+		})
 		if p.Search != "" {
 			b.Where(func(c pgstmt.Cond) {
 				c.Mode().Or()
-				c.ILike("name", "%"+p.Search+"%")
-				c.ILike("address", "%"+p.Search+"%")
+				c.ILike("s.name", "%"+p.Search+"%")
+				c.ILike("s.address", "%"+p.Search+"%")
 			})
 		}
-		b.OrderBy("created_at DESC")
+		b.OrderBy("s.created_at DESC")
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item
 		err := scan(
@@ -63,6 +77,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.Name,
 			&it.Address,
 			&it.Timezone,
+			pgsql.JSON(&it.Metadata),
 			&it.CreatedAt,
 		)
 		if err != nil {
@@ -89,6 +104,8 @@ type CreateParams struct {
 func (p *CreateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.Name != "", "name is required")
+	v.Must(p.Timezone != "", "timezone is required")
+	v.Must(utf8.RuneCountInString(p.Address) < 200, "address must be less than 200 characters")
 	return v.Error()
 }
 
@@ -109,6 +126,8 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, arpc.NewErrorCode("site/invalid-timezone", "invalid timezone")
 	}
 
+	userID := auth.AccountID(ctx)
+
 	id := xid.New().String()
 	_, err := pgctx.Exec(ctx, `
 		insert into sites (
@@ -122,6 +141,20 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		p.Name,
 		p.Address,
 		tz,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = pgctx.Exec(ctx, `
+		insert into site_members (
+			site_id,
+			user_id,
+			role
+		) values ($1, $2, '*')
+	`,
+		id,
+		userID,
 	)
 	if err != nil {
 		return nil, err
@@ -144,11 +177,14 @@ func (p *GetParams) Valid() error {
 
 type GetResult struct {
 	Item
-	Metadata map[string]any `json:"metadata"`
 }
 
 func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	if err := iam.InSite(ctx, p.ID); err != nil {
 		return nil, err
 	}
 
@@ -159,6 +195,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			name,
 			address,
 			timezone,
+			metadata,
 			created_at
 		from sites
 		where id = $1
@@ -167,6 +204,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.Name,
 		&r.Address,
 		&r.Timezone,
+		pgsql.JSON(&r.Metadata),
 		&r.CreatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -196,6 +234,10 @@ func (p *UpdateParams) Valid() error {
 
 func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	if err := iam.InSite(ctx, p.ID); err != nil {
 		return nil, err
 	}
 

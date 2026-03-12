@@ -9,6 +9,8 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
+
+	"github.com/anertic/anertic/api/iam"
 )
 
 var (
@@ -45,6 +47,9 @@ type ListResult struct {
 
 func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 
@@ -119,6 +124,9 @@ type CreateResult struct {
 
 func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 

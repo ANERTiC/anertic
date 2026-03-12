@@ -63,7 +63,7 @@ create table if not exists site_members
 (
     site_id    varchar(20) not null references sites (id),
     user_id    varchar(20) not null references users (id),
-    role       varchar[]   not null default '{*}',
+    role       text        not null default 'viewer',
     created_at timestamptz not null default now(),
     primary key (site_id, user_id)
 );
@@ -75,7 +75,7 @@ create table if not exists site_member_invitations
     id         varchar(20) primary key not null,
     site_id    varchar(20) not null references sites (id),
     email      text        not null,
-    role       varchar[]   not null default '{*}',
+    role       text        not null default 'viewer',
     invited_by varchar(20) not null references users (id),
     status     text        not null default 'pending', -- 'pending', 'accepted', 'expired'
     expires_at timestamptz not null,

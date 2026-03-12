@@ -421,7 +421,7 @@ export default function Chargers() {
             Fleet management and monitoring
           </p>
         </div>
-        <Button size="sm" className="shrink-0 sm:size-default" onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
+        <Button size="sm" className="shrink-0" onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
           <RiAddLine className="size-4 sm:mr-1.5" />
           <span className="hidden sm:inline">Add Charger</span>
         </Button>

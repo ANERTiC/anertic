@@ -99,6 +99,13 @@ export default function Dashboard() {
     api<DashboardSummary>("dashboard.summary"),
   )
 
+  // Redirect to sites page if user has no sites
+  useEffect(() => {
+    if (!sitesLoading && sitesData && sites.length === 0) {
+      navigate("/sites/create", { replace: true })
+    }
+  }, [sitesLoading, sitesData, sites.length, navigate])
+
   function handleSelectSite(site: Site) {
     setCookie("anertic_current_site", site.id)
     navigate(`/overview?site=${site.id}`)

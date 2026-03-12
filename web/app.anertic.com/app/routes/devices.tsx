@@ -232,16 +232,16 @@ export default function Devices() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Devices</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Devices</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Manage device connections, protocols, and API integrations
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => navigate("/devices/new")}>
-          <RiAddLine className="size-4" />
-          Add device
+        <Button size="sm" className="shrink-0" onClick={() => navigate("/devices/new")}>
+          <RiAddLine className="size-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Device</span>
         </Button>
       </div>
 

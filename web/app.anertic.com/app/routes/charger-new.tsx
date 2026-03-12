@@ -47,6 +47,7 @@ export default function ChargerNew() {
   const [ocppVersion, setOcppVersion] = useState("1.6")
   const [connectorCount, setConnectorCount] = useState("2")
   const [maxPowerKw, setMaxPowerKw] = useState("22")
+  const [chargerType, setChargerType] = useState<"ac" | "dc">("ac")
 
   const wsUrl = chargePointId
     ? `wss://ocpp.anertic.com/ws/${encodeURIComponent(chargePointId)}`
@@ -149,7 +150,7 @@ export default function ChargerNew() {
 
       {/* Step 1: Identify */}
       {step === 1 && (
-        <Card>
+        <Card className="py-0">
           <CardContent className="space-y-6 py-6">
             <div className="flex items-start gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -202,7 +203,7 @@ export default function ChargerNew() {
 
       {/* Step 2: Configure */}
       {step === 2 && (
-        <Card>
+        <Card className="py-0">
           <CardContent className="space-y-6 py-6">
             <div className="flex items-start gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
@@ -226,9 +227,9 @@ export default function ChargerNew() {
                 {[
                   {
                     v: "1.6",
-                    title: "OCPP 1.6",
+                    title: "OCPP 1.6-J",
                     desc: "Most widely supported",
-                    sub: "JSON / SOAP",
+                    sub: "JSON only",
                   },
                   {
                     v: "2.0.1",
@@ -244,6 +245,50 @@ export default function ChargerNew() {
                     className={cn(
                       "flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-all",
                       ocppVersion === v
+                        ? "border-foreground bg-foreground/[0.03] shadow-sm"
+                        : "border-border hover:border-foreground/20",
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {desc}
+                    </span>
+                    <span className="mt-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      {sub}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Charger Type */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Charger Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  {
+                    t: "ac" as const,
+                    title: "AC",
+                    desc: "Level 2 charging",
+                    sub: "3.7 – 22 kW",
+                  },
+                  {
+                    t: "dc" as const,
+                    title: "DC",
+                    desc: "Fast charging",
+                    sub: "50 – 350 kW",
+                  },
+                ].map(({ t, title, desc, sub }) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      setChargerType(t)
+                      setMaxPowerKw(t === "ac" ? "22" : "150")
+                    }}
+                    className={cn(
+                      "flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-all",
+                      chargerType === t
                         ? "border-foreground bg-foreground/[0.03] shadow-sm"
                         : "border-border hover:border-foreground/20",
                     )}
@@ -326,7 +371,7 @@ export default function ChargerNew() {
           {/* Connection status card */}
           <Card
             className={cn(
-              "overflow-hidden transition-colors",
+              "overflow-hidden py-0 transition-colors",
               connectionStatus === "connected" && "border-emerald-200",
             )}
           >
@@ -419,7 +464,7 @@ export default function ChargerNew() {
 
           {/* Configuration reference */}
           {connectionStatus === "waiting" && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="py-5">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <RiSettings3Line className="size-4 text-muted-foreground" />

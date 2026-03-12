@@ -457,28 +457,28 @@ export default function Rooms() {
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rooms</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Rooms</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Organize devices by floor and room to monitor energy usage spatially
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setAddFloorOpen(true)}
           >
-            <RiBuilding2Line className="mr-1.5 size-4" />
-            Add Floor
+            <RiBuilding2Line className="size-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Add Floor</span>
           </Button>
           <Button
             size="sm"
             onClick={() => setAddRoomOpen(true)}
           >
-            <RiAddLine className="mr-1.5 size-4" />
-            Add Room
+            <RiAddLine className="size-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Add Room</span>
           </Button>
         </div>
       </div>

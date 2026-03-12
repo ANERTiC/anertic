@@ -20,6 +20,7 @@ export default [
     layout("layouts/global.tsx", [
       index("routes/dashboard.tsx"),
       route("sites", "routes/sites.tsx"),
+      route("sites/create", "routes/site-create.tsx"),
     ]),
 
     // Site-scoped pages (sidebar)

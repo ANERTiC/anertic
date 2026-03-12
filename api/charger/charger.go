@@ -10,6 +10,7 @@ import (
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
+	"github.com/shopspring/decimal"
 
 	"github.com/anertic/anertic/api/iam"
 )
@@ -37,8 +38,8 @@ type Item struct {
 	OcppVersion        string     `json:"ocppVersion"`
 	Status             string     `json:"status"`
 	RegistrationStatus string     `json:"registrationStatus"`
-	ConnectorCount     int        `json:"connectorCount"`
-	MaxPowerKW         float64    `json:"maxPowerKw"`
+	ConnectorCount     decimal.Decimal `json:"connectorCount"`
+	MaxPowerKW         decimal.Decimal `json:"maxPowerKw"`
 	Vendor             string     `json:"vendor"`
 	Model              string     `json:"model"`
 	SerialNumber       string     `json:"serialNumber"`
@@ -120,14 +121,24 @@ type CreateParams struct {
 	SiteID         string  `json:"siteId"`
 	ChargePointID  string  `json:"chargePointId"`
 	OcppVersion    string  `json:"ocppVersion"`
-	ConnectorCount int     `json:"connectorCount"`
-	MaxPowerKW     float64 `json:"maxPowerKw"`
+	ConnectorCount decimal.Decimal `json:"connectorCount"`
+	MaxPowerKW     decimal.Decimal `json:"maxPowerKw"`
 }
 
 func (p *CreateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.ChargePointID != "", "chargePointId is required")
+	if p.OcppVersion == "" {
+		p.OcppVersion = "1.6"
+	}
+	v.Must(p.OcppVersion == "1.6" || p.OcppVersion == "2.0.1", "ocpp version must be 1.6 or 2.0.1")
+	if p.ConnectorCount.LessThanOrEqual(decimal.Zero) {
+		p.ConnectorCount = decimal.NewFromInt(1)
+	}
+	if p.MaxPowerKW.LessThanOrEqual(decimal.Zero) {
+		p.MaxPowerKW = decimal.NewFromInt(22)
+	}
 	return v.Error()
 }
 
@@ -141,15 +152,6 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	}
 	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
-	}
-
-	ocppVersion := p.OcppVersion
-	if ocppVersion == "" {
-		ocppVersion = "1.6"
-	}
-	connectorCount := p.ConnectorCount
-	if connectorCount <= 0 {
-		connectorCount = 1
 	}
 
 	id := xid.New().String()
@@ -166,8 +168,8 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		id,
 		p.SiteID,
 		p.ChargePointID,
-		ocppVersion,
-		connectorCount,
+		p.OcppVersion,
+		p.ConnectorCount,
 		p.MaxPowerKW,
 	)
 	if err != nil {
@@ -256,8 +258,8 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 
 type UpdateParams struct {
 	ID             string   `json:"id"`
-	ConnectorCount *int     `json:"connectorCount"`
-	MaxPowerKW     *float64 `json:"maxPowerKw"`
+	ConnectorCount *decimal.Decimal `json:"connectorCount"`
+	MaxPowerKW     *decimal.Decimal `json:"maxPowerKw"`
 }
 
 func (p *UpdateParams) Valid() error {

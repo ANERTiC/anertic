@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { RiAddLine, RiMapPinLine, RiSearchLine } from '@remixicon/react'
+import { RiAddLine, RiArrowRightLine, RiBuilding2Line, RiMapPinLine, RiSearchLine } from '@remixicon/react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 
 import { api } from '~/lib/api'
 import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Skeleton } from '~/components/ui/skeleton'
+import { cn } from '~/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,21 @@ interface ListResult {
 
 interface CreateResult {
   id: string
+}
+
+const SITE_ACCENTS = [
+  { bg: "bg-amber-500/10", text: "text-amber-600", ring: "ring-amber-500/20", dot: "bg-amber-500" },
+  { bg: "bg-emerald-500/10", text: "text-emerald-600", ring: "ring-emerald-500/20", dot: "bg-emerald-500" },
+  { bg: "bg-cyan-500/10", text: "text-cyan-600", ring: "ring-cyan-500/20", dot: "bg-cyan-500" },
+  { bg: "bg-violet-500/10", text: "text-violet-600", ring: "ring-violet-500/20", dot: "bg-violet-500" },
+  { bg: "bg-rose-500/10", text: "text-rose-600", ring: "ring-rose-500/20", dot: "bg-rose-500" },
+  { bg: "bg-blue-500/10", text: "text-blue-600", ring: "ring-blue-500/20", dot: "bg-blue-500" },
+  { bg: "bg-teal-500/10", text: "text-teal-600", ring: "ring-teal-500/20", dot: "bg-teal-500" },
+  { bg: "bg-orange-500/10", text: "text-orange-600", ring: "ring-orange-500/20", dot: "bg-orange-500" },
+]
+
+function getSiteAccent(index: number) {
+  return SITE_ACCENTS[index % SITE_ACCENTS.length]
 }
 
 const timezones = Intl.supportedValuesOf('timeZone')
@@ -187,44 +202,75 @@ export default function Sites() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-lg" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       ) : sites.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <RiMapPinLine className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            {search
-              ? 'No sites found'
-              : 'No sites yet. Create your first site to get started.'}
-          </p>
-        </div>
+        <button
+          onClick={() => setOpen(true)}
+          className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-all hover:border-primary/30 hover:bg-primary/5"
+        >
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">
+            <RiBuilding2Line className="size-6 text-muted-foreground transition-colors group-hover:text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">
+              {search ? 'No sites found' : 'Create your first site'}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {search
+                ? 'Try a different search term'
+                : 'Add a location to start monitoring energy production, consumption, and EV charging.'}
+            </p>
+          </div>
+          {!search && (
+            <RiArrowRightLine className="ml-auto size-5 text-muted-foreground/40 transition-all group-hover:translate-x-1 group-hover:text-primary" />
+          )}
+        </button>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {sites.map((site) => (
-            <Card
-              key={site.id}
-              className="cursor-pointer transition-colors hover:bg-muted/50"
-              onClick={() => {
-                setCookie("anertic_current_site", site.id)
-                navigate(`/chargers?site=${site.id}`)
-              }}
-            >
-              <CardContent className="pt-6">
-                <h3 className="font-medium">{site.name}</h3>
-                {site.address && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {site.address}
-                  </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {sites.map((site, index) => {
+            const accent = getSiteAccent(index)
+            return (
+              <button
+                key={site.id}
+                onClick={() => {
+                  setCookie("anertic_current_site", site.id)
+                  navigate(`/overview?site=${site.id}`)
+                }}
+                className={cn(
+                  "group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-all",
+                  "hover:border-border hover:shadow-md hover:-translate-y-0.5",
                 )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {site.timezone}
+              >
+                <div className="flex w-full items-start justify-between">
+                  <div
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1",
+                      accent.bg,
+                      accent.text,
+                      accent.ring,
+                    )}
+                  >
+                    {site.name.charAt(0).toUpperCase()}
+                  </div>
+                  <RiArrowRightLine className="size-4 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-foreground/60" />
+                </div>
+                <p className="mt-3 text-sm font-semibold">{site.name}</p>
+                <p className="mt-0.5 max-w-full truncate text-xs text-muted-foreground">
+                  {site.address || site.timezone}
                 </p>
-              </CardContent>
-            </Card>
-          ))}
+                <div
+                  className={cn(
+                    "absolute bottom-0 left-5 right-5 h-0.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
+                    accent.dot,
+                  )}
+                />
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

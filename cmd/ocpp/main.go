@@ -1,29 +1,27 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/acoshift/configfile"
 	"github.com/acoshift/pgsql/pgctx"
 	_ "github.com/lib/pq"
+	"github.com/moonrhythm/httpmux"
+	"github.com/moonrhythm/parapet"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/ocpp"
 	"github.com/anertic/anertic/ocpp/v16"
 	"github.com/anertic/anertic/ocpp/v201"
+	"github.com/anertic/anertic/pkg/rdctx"
 )
 
 func main() {
 	if err := run(); err != nil {
 		slog.Error("ocpp: exited", "error", err)
-		os.Exit(1)
 	}
 }
 
@@ -46,7 +44,7 @@ func run() error {
 	}
 	opt.PoolSize = 20
 	opt.MinIdleConns = 5
-	opt.ReadTimeout = 35 * time.Second  // > OCPP Call timeout (30s)
+	opt.ReadTimeout = 35 * time.Second // > OCPP Call timeout (30s)
 	opt.WriteTimeout = 10 * time.Second
 	opt.DialTimeout = 5 * time.Second
 	rdb := redis.NewClient(opt)
@@ -56,38 +54,22 @@ func run() error {
 	hub.RegisterRouter("ocpp1.6", v16.NewRouter())
 	hub.RegisterRouter("ocpp2.0.1", v201.NewRouter())
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	ctx = pgctx.NewContext(ctx, db)
-
-	mux := http.NewServeMux()
+	mux := httpmux.New()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	mux.Handle("GET /ocpp/{chargePointID}", pgctx.Middleware(db)(ocpp.Handler(hub)))
+	mux.Handle("GET /ocpp/{chargePointID}", ocpp.Handler(hub))
 
-	addr := cfg.StringDefault("OCPP_ADDR", ":8081")
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
-		ReadTimeout:  0,
-		WriteTimeout: 0,
-		IdleTimeout:  120 * time.Second,
-	}
+	srv := parapet.NewBackend()
+	srv.Handler = mux
+	srv.UseFunc(pgctx.Middleware(db))
+	srv.UseFunc(rdctx.Middleware(rdb))
+	srv.Addr = cfg.StringDefault("OCPP_ADDR", ":8081")
+	srv.ReadTimeout = 0
+	srv.WriteTimeout = 0
+	srv.IdleTimeout = 120 * time.Second
 
-	go func() {
-		slog.Info("starting ocpp server", "addr", addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("ocpp server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	<-ctx.Done()
-	slog.Info("shutting down ocpp server...")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	slog.Info("starting ocpp server", "addr", srv.Addr)
+	return srv.ListenAndServe()
 }

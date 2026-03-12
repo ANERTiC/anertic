@@ -16,6 +16,7 @@ import (
 	"github.com/anertic/anertic/api/iam"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
+	"github.com/shopspring/decimal"
 )
 
 var (
@@ -255,6 +256,71 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		}
 		if p.Currency != nil {
 			b.Set("currency").To(*p.Currency)
+		}
+		b.Set("updated_at").ToRaw("NOW()")
+		b.Where(func(c pgstmt.Cond) {
+			c.Eq("id", p.ID)
+		})
+	}).ExecWith(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
+// UpdateTariff
+
+type UpdateTariffParams struct {
+	ID             string           `json:"id"`
+	GridImportRate *decimal.Decimal `json:"gridImportRate"`
+	GridExportRate *decimal.Decimal `json:"gridExportRate"`
+	PeakStartHour  *int            `json:"peakStartHour"`
+	PeakEndHour    *int            `json:"peakEndHour"`
+	PeakRate       *decimal.Decimal `json:"peakRate"`
+	OffPeakRate    *decimal.Decimal `json:"offPeakRate"`
+}
+
+func (p *UpdateTariffParams) Valid() error {
+	v := validator.New()
+	v.Must(p.ID != "", "id is required")
+	if p.PeakStartHour != nil {
+		v.Must(*p.PeakStartHour >= 0 && *p.PeakStartHour <= 23, "peakStartHour must be 0-23")
+	}
+	if p.PeakEndHour != nil {
+		v.Must(*p.PeakEndHour >= 0 && *p.PeakEndHour <= 23, "peakEndHour must be 0-23")
+	}
+	return v.Error()
+}
+
+func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	if err := iam.InSite(ctx, p.ID); err != nil {
+		return nil, err
+	}
+
+	_, err := pgstmt.Update(func(b pgstmt.UpdateStatement) {
+		b.Table("sites")
+		if p.GridImportRate != nil {
+			b.Set("grid_import_rate").To(*p.GridImportRate)
+		}
+		if p.GridExportRate != nil {
+			b.Set("grid_export_rate").To(*p.GridExportRate)
+		}
+		if p.PeakStartHour != nil {
+			b.Set("peak_start_hour").To(*p.PeakStartHour)
+		}
+		if p.PeakEndHour != nil {
+			b.Set("peak_end_hour").To(*p.PeakEndHour)
+		}
+		if p.PeakRate != nil {
+			b.Set("peak_rate").To(*p.PeakRate)
+		}
+		if p.OffPeakRate != nil {
+			b.Set("off_peak_rate").To(*p.OffPeakRate)
 		}
 		b.Set("updated_at").ToRaw("NOW()")
 		b.Where(func(c pgstmt.Cond) {

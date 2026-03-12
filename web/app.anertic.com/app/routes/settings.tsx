@@ -317,7 +317,7 @@ export default function Settings() {
       toast.success("Site settings saved")
       setEditingGeneral(false)
       mutateSite()
-      globalMutate("site.list")
+      globalMutate(["site.list", ""])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save")
     } finally {
@@ -339,7 +339,7 @@ export default function Settings() {
       })
       toast.success("Tariff settings saved")
       mutateSite()
-      globalMutate("site.list")
+      globalMutate(["site.list", ""])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save")
     } finally {

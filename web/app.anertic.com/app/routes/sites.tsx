@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { RiAddLine, RiArrowRightLine, RiBuilding2Line, RiMapPinLine, RiSearchLine } from '@remixicon/react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
@@ -56,8 +56,8 @@ const timezones = Intl.supportedValuesOf('timeZone')
 
 export default function Sites() {
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get('q') || ''
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -65,19 +65,9 @@ export default function Sites() {
   const [address, setAddress] = useState('')
   const [timezone, setTimezone] = useState('Asia/Bangkok')
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
-  useEffect(() => {
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 300)
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [search])
-
   const { data, isLoading, mutate } = useSWR(
-    ['site.list', debouncedSearch],
-    () => api<ListResult>('site.list', { search: debouncedSearch }),
+    ['site.list', search],
+    () => api<ListResult>('site.list', { search: search }),
     {
       onError(err) {
         toast.error(err instanceof Error ? err.message : 'Failed to load sites')
@@ -197,8 +187,18 @@ export default function Sites() {
         <Input
           placeholder="Search sites..."
           className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          defaultValue={search}
+          onChange={(e) => {
+            const v = e.target.value
+            setSearchParams(prev => {
+              if (v) {
+                prev.set('q', v)
+              } else {
+                prev.delete('q')
+              }
+              return prev
+            }, { replace: true })
+          }}
         />
       </div>
 

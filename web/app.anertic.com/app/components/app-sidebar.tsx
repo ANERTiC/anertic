@@ -177,7 +177,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchParams] = useSearchParams()
   const user = getUser()
 
-  const { data, isLoading } = useSWR("site.list", () =>
+  const { data, isLoading } = useSWR(["site.list", ""], () =>
     api<{ items: Site[] }>("site.list"),
   )
   const sites = data?.items || []

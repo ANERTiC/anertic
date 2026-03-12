@@ -90,7 +90,7 @@ export default function Dashboard() {
   const user = getUser()
   const power = useLivePower()
 
-  const { data: sitesData, isLoading: sitesLoading } = useSWR("site.list", () =>
+  const { data: sitesData, isLoading: sitesLoading } = useSWR(["site.list", ""], () =>
     api<{ items: Site[] }>("site.list"),
   )
   const sites = sitesData?.items || []
@@ -114,22 +114,13 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60 sm:text-xs">
-            {formatDate()}
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            {getGreeting()}, {user?.name?.split(" ")[0] || "there"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-1.5 self-start rounded-full bg-emerald-500/10 px-3 py-1.5">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="text-xs font-medium text-emerald-700">System Online</span>
-        </div>
+      <div className="mb-8">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60 sm:text-xs">
+          {formatDate()}
+        </p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+          {getGreeting()}, {user?.name?.split(" ")[0] || "there"}
+        </h1>
       </div>
 
       {/* Energy Flow Hero — Desktop */}
@@ -256,9 +247,9 @@ export default function Dashboard() {
       {/* Two columns: Total Energy + AI Insight */}
       <div className="mb-8 grid gap-4 md:grid-cols-5">
         {/* Total Energy */}
-        <Card className="md:col-span-3 overflow-hidden border-border/50">
-          <CardContent className="p-0">
-            <div className="flex items-stretch">
+        <Card className="md:col-span-3 overflow-hidden border-border/50 py-0">
+          <CardContent className="h-full p-0">
+            <div className="flex h-full items-stretch">
               <div className="flex-1 p-5">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">
                   Total Consumption
@@ -317,7 +308,7 @@ export default function Dashboard() {
         </Card>
 
         {/* AI Insight */}
-        <Card className="md:col-span-2 border-border/50 bg-gradient-to-br from-primary/5 via-background to-violet-500/5">
+        <Card className="md:col-span-2 border-border/50 bg-gradient-to-br from-primary/5 via-background to-violet-500/5 py-0">
           <CardContent className="flex h-full flex-col p-5">
             <div className="flex items-center gap-2">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">

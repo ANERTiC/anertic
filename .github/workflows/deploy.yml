@@ -43,8 +43,10 @@ jobs:
         with:
           filters: |
             api:
+              - 'api/**'
               - 'cmd/api/**'
               - 'pkg/**'
+              - 'schema/**'
               - 'go.mod'
               - 'go.sum'
               - 'build/api/**'
@@ -52,18 +54,21 @@ jobs:
               - 'cmd/ocpp/**'
               - 'ocpp/**'
               - 'pkg/**'
+              - 'schema/**'
               - 'go.mod'
               - 'go.sum'
               - 'build/ocpp/**'
             worker:
               - 'cmd/worker/**'
               - 'pkg/**'
+              - 'schema/**'
               - 'go.mod'
               - 'go.sum'
               - 'build/worker/**'
             ingester:
               - 'cmd/ingester/**'
               - 'pkg/**'
+              - 'schema/**'
               - 'go.mod'
               - 'go.sum'
               - 'build/ingester/**'

@@ -224,6 +224,7 @@ type UpdateParams struct {
 	Name     *string `json:"name"`
 	Address  *string `json:"address"`
 	Timezone *string `json:"timezone"`
+	Currency *string `json:"currency"`
 }
 
 func (p *UpdateParams) Valid() error {
@@ -251,6 +252,9 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		}
 		if p.Timezone != nil {
 			b.Set("timezone").To(*p.Timezone)
+		}
+		if p.Currency != nil {
+			b.Set("currency").To(*p.Currency)
 		}
 		b.Set("updated_at").ToRaw("NOW()")
 		b.Where(func(c pgstmt.Cond) {

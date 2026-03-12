@@ -95,8 +95,8 @@ interface AnomalyEvent {
 interface InsightsData {
   aiConfidence: number
   dailySummary: string
-  totalSavingsThisMonth: number
-  savingsTarget: number
+  totalConsumption30d: number
+  prevConsumption30d: number
   co2AvoidedKg: number
   selfSufficiencyAvg: number
   insights: AIInsight[]
@@ -150,8 +150,8 @@ function generateMockInsights(): InsightsData {
     aiConfidence: 87,
     dailySummary:
       "Your site is running 23% more efficiently than last week. Solar self-consumption improved after shifting EV charging to midday slots. Grid dependency dropped to its lowest in 30 days. I detect an opportunity to further reduce costs by pre-charging the battery before the evening TOU peak.",
-    totalSavingsThisMonth: 342.5,
-    savingsTarget: 500,
+    totalConsumption30d: 342.5,
+    prevConsumption30d: 389.2,
     co2AvoidedKg: 186,
     selfSufficiencyAvg: 64,
     insights: [
@@ -421,7 +421,10 @@ export default function Insights() {
     activeFilter === "all" ? data.insights : data.insights.filter((i) => i.type === activeFilter)
 
   const newCount = data.insights.filter((i) => i.status === "new").length
-  const savingsPercent = Math.min(100, (data.totalSavingsThisMonth / data.savingsTarget) * 100)
+  const consumptionChange = data.prevConsumption30d > 0
+    ? ((data.totalConsumption30d - data.prevConsumption30d) / data.prevConsumption30d) * 100
+    : 0
+  const consumptionImproved = consumptionChange <= 0
 
   // Heatmap color intensity
   const allHeatValues = data.weeklyPattern.flatMap((h) => [h.mon, h.tue, h.wed, h.thu, h.fri, h.sat, h.sun])
@@ -460,7 +463,7 @@ export default function Insights() {
         </div>
 
         <div className="relative p-6 lg:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
             {/* Confidence Ring */}
             <div className="flex flex-col items-center lg:shrink-0">
               <div className="flex items-center gap-2">
@@ -470,7 +473,7 @@ export default function Insights() {
                 </span>
               </div>
               <div className="relative mt-3">
-                <ConfidenceRing value={data.aiConfidence} size={140} />
+                <ConfidenceRing value={data.aiConfidence} size={160} />
               </div>
               <p className="mt-2 text-[10px] text-muted-foreground/60">
                 Based on 30 days of data
@@ -493,10 +496,10 @@ export default function Insights() {
               <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <PulseStat
                   icon={RiMoneyDollarCircleLine}
-                  label="Savings this month"
-                  value={`${data.totalSavingsThisMonth.toFixed(0)} kWh`}
-                  sub={`${savingsPercent.toFixed(0)}% of target`}
-                  color="text-emerald-500"
+                  label="Grid consumption"
+                  value={`${data.totalConsumption30d.toFixed(0)} kWh`}
+                  sub={`${consumptionChange > 0 ? "+" : ""}${consumptionChange.toFixed(1)}% vs prev 30d`}
+                  color={consumptionImproved ? "text-emerald-500" : "text-red-500"}
                 />
                 <PulseStat
                   icon={RiLeafLine}
@@ -523,21 +526,70 @@ export default function Insights() {
             </div>
           </div>
 
-          {/* Savings progress bar */}
+          {/* 30-day comparison */}
           <div className="mt-6 border-t border-border/50 pt-5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-muted-foreground">
-                Monthly savings progress
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                Grid consumption — 30 day comparison
               </span>
-              <span className="tabular-nums text-muted-foreground">
-                {data.totalSavingsThisMonth.toFixed(0)} / {data.savingsTarget} kWh
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums",
+                  consumptionImproved
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-red-500/10 text-red-600",
+                )}
+              >
+                {consumptionImproved ? (
+                  <RiArrowDownSLine className="size-3.5" />
+                ) : (
+                  <RiArrowUpSLine className="size-3.5" />
+                )}
+                {Math.abs(consumptionChange).toFixed(1)}%
               </span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000"
-                style={{ width: `${savingsPercent}%` }}
-              />
+
+            <div className="mt-3 space-y-2">
+              {/* Current period */}
+              <div className="flex items-center gap-3">
+                <span className="w-20 text-right text-[11px] tabular-nums text-foreground/80">
+                  {data.totalConsumption30d.toFixed(0)} <span className="text-muted-foreground/50">kWh</span>
+                </span>
+                <div className="relative h-3 flex-1 overflow-hidden rounded bg-muted/60">
+                  <div
+                    className={cn(
+                      "h-full rounded transition-all duration-1000 ease-out",
+                      consumptionImproved
+                        ? "bg-emerald-500"
+                        : "bg-red-400",
+                    )}
+                    style={{
+                      width: `${Math.min(100, (data.totalConsumption30d / Math.max(data.totalConsumption30d, data.prevConsumption30d)) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <span className="w-12 text-[10px] font-medium text-muted-foreground/60">
+                  Current
+                </span>
+              </div>
+
+              {/* Previous period */}
+              <div className="flex items-center gap-3">
+                <span className="w-20 text-right text-[11px] tabular-nums text-muted-foreground/60">
+                  {data.prevConsumption30d.toFixed(0)} <span className="text-muted-foreground/40">kWh</span>
+                </span>
+                <div className="relative h-3 flex-1 overflow-hidden rounded bg-muted/60">
+                  <div
+                    className="h-full rounded bg-foreground/10 transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${Math.min(100, (data.prevConsumption30d / Math.max(data.totalConsumption30d, data.prevConsumption30d)) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <span className="w-12 text-[10px] text-muted-foreground/40">
+                  Prev 30d
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -547,8 +599,7 @@ export default function Insights() {
           COST OPTIMIZATION CHART
           ═══════════════════════ */}
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardContent className="p-5">
+        <div className="rounded-xl border border-border/50 p-5 lg:col-span-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Energy Optimization</h3>
@@ -618,12 +669,10 @@ export default function Insights() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Weekly consumption heatmap */}
-        <Card className="lg:col-span-2">
-          <CardContent className="p-5">
+        <div className="rounded-xl border border-border/50 p-5 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Consumption Patterns</h3>
@@ -685,8 +734,7 @@ export default function Insights() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       {/* ═══════════════════
@@ -881,7 +929,7 @@ export default function Insights() {
 // --- Sub-components ---
 
 function ConfidenceRing({ value, size }: { value: number; size: number }) {
-  const strokeWidth = 10
+  const strokeWidth = 12
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const filled = (value / 100) * circumference

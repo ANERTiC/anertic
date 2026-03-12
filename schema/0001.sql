@@ -90,9 +90,11 @@ create table if not exists devices
     id         varchar(20) primary key not null,
     site_id    varchar(20) references sites (id),
     name       text                    not null,
-    type       text                    not null, -- 'appliance', 'inverter', 'solar_panel', 'ev_charger'
-    brand      text                    not null default '',
-    model      text                    not null default '',
+    type    text not null, -- 'meter', 'inverter', 'solar_panel', 'appliance'
+    subtype text not null default '', -- meter: 'main_db', 'floor_sub_db', 'electrical_device'
+    tag               text not null default '', -- free text describing what the meter measures
+    brand             text not null default '',
+    model             text not null default '',
     metadata   jsonb                   not null default '{}',
     is_active  boolean                 not null default true,
     created_at timestamptz             not null default now(),
@@ -107,8 +109,10 @@ create table if not exists meters
     id            varchar(20) primary key not null,
     device_id     varchar(20) references devices (id),
     serial_number text                    not null unique,
-    protocol      text                    not null default 'mqtt', -- 'mqtt', 'http', 'modbus'
+    protocol      text                    not null default 'mqtt', -- 'mqtt', 'http'
     vendor        text                    not null default '',
+    phase         smallint                not null default 0, -- 0: unassigned, 1: L1, 2: L2, 3: L3
+    channel       text                    not null default '', -- 'pv', 'grid', 'battery', 'load', '' (general)
     config        jsonb                   not null default '{}',
     is_online     boolean                 not null default false,
     last_seen_at  timestamptz,
@@ -118,20 +122,27 @@ create table if not exists meters
 
 create index if not exists idx_meters_device_id on meters (device_id);
 
-create table if not exists readings
+create table if not exists meter_readings
 (
     time       timestamptz    not null,
     meter_id   varchar(20)    not null,
-    power_w    numeric(12, 3),
-    energy_kwh numeric(12, 6),
-    voltage_v  numeric(8, 2),
-    current_a  numeric(8, 3),
-    frequency  numeric(6, 2),
-    pf         numeric(4, 3),
-    metadata   jsonb          not null default '{}'
+    power_w              numeric(12, 3),
+    energy_kwh           numeric(12, 6),
+    voltage_v            numeric(8, 2),
+    current_a            numeric(8, 3),
+    frequency            numeric(6, 2),
+    pf                   numeric(4, 3),
+    apparent_power_va    numeric(12, 3),
+    reactive_power_var   numeric(12, 3),
+    apparent_energy_kvah numeric(12, 6),
+    reactive_energy_kvarh numeric(12, 6),
+    thd_v                numeric(5, 2),
+    thd_i                numeric(5, 2),
+    temperature_c        numeric(6, 2),
+    metadata             jsonb          not null default '{}'
 );
 
-create index if not exists idx_readings_meter_id_time on readings (meter_id, time desc);
+create index if not exists idx_meter_readings_meter_id_time on meter_readings (meter_id, time desc);
 
 create table if not exists insights
 (

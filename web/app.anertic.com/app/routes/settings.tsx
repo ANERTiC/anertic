@@ -589,7 +589,7 @@ export default function Settings() {
                   Grid Import Rate ({settings.currency || '—'}/kWh)
                 </Label>
                 {isLoadingSite ? (
-                  <Skeleton className="h-9 w-full rounded-md" />
+                  <Skeleton className="h-8 w-full rounded-lg" />
                 ) : (
                   <Input
                     type="number"
@@ -606,7 +606,7 @@ export default function Settings() {
                   Grid Export Rate ({settings.currency || '—'}/kWh)
                 </Label>
                 {isLoadingSite ? (
-                  <Skeleton className="h-9 w-full rounded-md" />
+                  <Skeleton className="h-8 w-full rounded-lg" />
                 ) : (
                   <Input
                     type="number"
@@ -623,6 +623,24 @@ export default function Settings() {
             <Separator />
 
             {/* TOU Rates — optional */}
+            {isLoadingSite ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-9 rounded-full" />
+                </div>
+                <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="size-8 shrink-0 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -723,8 +741,13 @@ export default function Settings() {
                 </div>
               )}
             </div>
+            )}
 
-            {!isLoadingSite && (
+            {isLoadingSite ? (
+              <div className="flex justify-end">
+                <Skeleton className="h-8 w-28 rounded-md" />
+              </div>
+            ) : (
               <div className="flex justify-end">
                 <Button
                   size="sm"

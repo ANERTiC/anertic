@@ -2,6 +2,11 @@ package authorize
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"time"
+
+	"github.com/acoshift/pgsql/pgctx"
 
 	"github.com/anertic/anertic/ocpp"
 )
@@ -25,10 +30,59 @@ type IdTagInfo struct {
 func Authorize(ctx context.Context, p *Params) (*Result, error) {
 	_ = ocpp.ChargePointID(ctx)
 
-	// TODO: validate idTag against authorization list / backend
-	// TODO: check if tag is blocked, expired, etc.
+	info, err := ValidateIdTag(ctx, p.IdTag)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Result{
-		IdTagInfo: IdTagInfo{Status: "Accepted"},
+		IdTagInfo: *info,
 	}, nil
+}
+
+// ValidateIdTag looks up an idTag in ev_authorization_tags and returns its status.
+// Returns Invalid if the tag does not exist.
+func ValidateIdTag(ctx context.Context, idTag string) (*IdTagInfo, error) {
+	var status string
+	var expiryDate sql.NullTime
+	var parentIdTag sql.NullString
+
+	err := pgctx.QueryRow(ctx, `
+		select
+			status,
+			expiry_date,
+			parent_id_tag
+		from ev_authorization_tags
+		where id_tag = $1
+	`,
+		idTag,
+	).Scan(
+		&status,
+		&expiryDate,
+		&parentIdTag,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return &IdTagInfo{Status: "Invalid"}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// check expiry
+	if expiryDate.Valid && expiryDate.Time.Before(time.Now()) {
+		status = "Expired"
+	}
+
+	info := &IdTagInfo{
+		Status: status,
+	}
+	if expiryDate.Valid {
+		info.ExpiryDate = expiryDate.Time.UTC().Format(time.RFC3339)
+	}
+	if parentIdTag.Valid {
+		info.ParentIdTag = parentIdTag.String
+	}
+
+	return info, nil
 }

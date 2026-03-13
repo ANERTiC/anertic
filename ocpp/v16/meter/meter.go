@@ -2,13 +2,12 @@ package meter
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
+	"github.com/shopspring/decimal"
 
 	"github.com/anertic/anertic/ocpp"
 )
@@ -77,7 +76,7 @@ func MeterValues(ctx context.Context, p *Params) (*Result, error) {
 // insertEVMeterValues writes raw sampled values to ev_meter_values (OCPP audit log).
 func insertEVMeterValues(ctx context.Context, chargerID string, connectorID int, transactionID *int, ts time.Time, samples []SampledValue) {
 	for _, sv := range samples {
-		value, err := strconv.ParseFloat(sv.Value, 64)
+		value, err := decimal.NewFromString(sv.Value)
 		if err != nil {
 			slog.ErrorContext(ctx, "invalid meter value",
 				"error", err,
@@ -152,16 +151,16 @@ func insertEVMeterValues(ctx context.Context, chargerID string, connectorID int,
 
 // reading collects mapped OCPP measurands into meter_readings columns.
 type reading struct {
-	PowerW             sql.NullFloat64
-	EnergyKwh          sql.NullFloat64
-	VoltageV           sql.NullFloat64
-	CurrentA           sql.NullFloat64
-	Frequency          sql.NullFloat64
-	PF                 sql.NullFloat64
-	ApparentPowerVA    sql.NullFloat64
-	ReactivePowerVar   sql.NullFloat64
-	ReactiveEnergyKvarh sql.NullFloat64
-	TemperatureC       sql.NullFloat64
+	PowerW              *decimal.Decimal
+	EnergyKwh           *decimal.Decimal
+	VoltageV            *decimal.Decimal
+	CurrentA            *decimal.Decimal
+	Frequency           *decimal.Decimal
+	PF                  *decimal.Decimal
+	ApparentPowerVA     *decimal.Decimal
+	ReactivePowerVar    *decimal.Decimal
+	ReactiveEnergyKvarh *decimal.Decimal
+	TemperatureC        *decimal.Decimal
 }
 
 // insertMeterReadings maps OCPP sampled values to the unified meter_readings table.
@@ -171,7 +170,7 @@ func insertMeterReadings(ctx context.Context, chargePointID string, ts time.Time
 	readings := make(map[string]*reading)
 
 	for _, sv := range samples {
-		value, err := strconv.ParseFloat(sv.Value, 64)
+		value, err := decimal.NewFromString(sv.Value)
 		if err != nil {
 			continue
 		}
@@ -247,52 +246,58 @@ func insertMeterReadings(ctx context.Context, chargePointID string, ts time.Time
 	}
 }
 
+var (
+	thousand = decimal.NewFromInt(1000)
+)
+
 // mapMeasurand maps an OCPP measurand value to the corresponding reading field.
-func mapMeasurand(r *reading, measurand string, value float64) {
+func mapMeasurand(r *reading, measurand string, value decimal.Decimal) {
 	switch measurand {
 	case "Power.Active.Import":
-		r.PowerW = sql.NullFloat64{Float64: value, Valid: true}
+		r.PowerW = &value
 	case "Power.Active.Export":
-		r.PowerW = sql.NullFloat64{Float64: -value, Valid: true}
+		neg := value.Neg()
+		r.PowerW = &neg
 	case "Energy.Active.Import.Register":
-		r.EnergyKwh = sql.NullFloat64{Float64: value, Valid: true}
+		r.EnergyKwh = &value
 	case "Energy.Reactive.Import.Register":
-		r.ReactiveEnergyKvarh = sql.NullFloat64{Float64: value, Valid: true}
+		r.ReactiveEnergyKvarh = &value
 	case "Power.Reactive.Import":
-		r.ReactivePowerVar = sql.NullFloat64{Float64: value, Valid: true}
+		r.ReactivePowerVar = &value
 	case "Voltage":
-		r.VoltageV = sql.NullFloat64{Float64: value, Valid: true}
+		r.VoltageV = &value
 	case "Current.Import":
-		r.CurrentA = sql.NullFloat64{Float64: value, Valid: true}
+		r.CurrentA = &value
 	case "Current.Export":
-		r.CurrentA = sql.NullFloat64{Float64: -value, Valid: true}
+		neg := value.Neg()
+		r.CurrentA = &neg
 	case "Frequency":
-		r.Frequency = sql.NullFloat64{Float64: value, Valid: true}
+		r.Frequency = &value
 	case "Power.Factor":
-		r.PF = sql.NullFloat64{Float64: value, Valid: true}
+		r.PF = &value
 	case "Temperature":
-		r.TemperatureC = sql.NullFloat64{Float64: value, Valid: true}
+		r.TemperatureC = &value
 	}
 }
 
 // normalizeValue converts OCPP values to base units used in meter_readings.
 // Power → W, Energy → kWh, Voltage → V, Current → A.
-func normalizeValue(value float64, unit string) float64 {
+func normalizeValue(value decimal.Decimal, unit string) decimal.Decimal {
 	switch unit {
 	case "kW":
-		return value * 1000 // → W
+		return value.Mul(thousand) // → W
 	case "kWh":
 		return value // already kWh
 	case "Wh":
-		return value / 1000 // → kWh
+		return value.Div(thousand) // → kWh
 	case "kVA":
-		return value * 1000 // → VA
+		return value.Mul(thousand) // → VA
 	case "kvar":
-		return value * 1000 // → var
+		return value.Mul(thousand) // → var
 	case "kvarh":
 		return value // already kvarh
 	case "varh":
-		return value / 1000 // → kvarh
+		return value.Div(thousand) // → kvarh
 	case "kVARh":
 		return value // already kvarh
 	default:

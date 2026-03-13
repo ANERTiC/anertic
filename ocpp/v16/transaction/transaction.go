@@ -3,11 +3,11 @@ package transaction
 import (
 	"context"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/rs/xid"
+	"github.com/shopspring/decimal"
 
 	"github.com/anertic/anertic/ocpp"
 	"github.com/anertic/anertic/ocpp/v16/authorize"
@@ -55,17 +55,17 @@ func Start(ctx context.Context, p *StartParams) (*StartResult, error) {
 	chargePointID := ocpp.ChargePointID(ctx)
 
 	// validate idTag
-	authInfo, err := authorize.ValidateIdTag(ctx, p.IdTag)
+	authResult, err := authorize.Authorize(ctx, &authorize.Params{IdTag: p.IdTag})
 	if err != nil {
 		return nil, err
 	}
-	if authInfo.Status != "Accepted" {
+	if authResult.IdTagInfo.Status != "Accepted" {
 		return &StartResult{
 			TransactionID: 0,
 			IdTagInfo: IdTagInfo{
-				Status:      authInfo.Status,
-				ExpiryDate:  authInfo.ExpiryDate,
-				ParentIdTag: authInfo.ParentIdTag,
+				Status:      authResult.IdTagInfo.Status,
+				ExpiryDate:  authResult.IdTagInfo.ExpiryDate,
+				ParentIdTag: authResult.IdTagInfo.ParentIdTag,
 			},
 		}, nil
 	}
@@ -168,9 +168,9 @@ func Start(ctx context.Context, p *StartParams) (*StartResult, error) {
 	return &StartResult{
 		TransactionID: transactionID,
 		IdTagInfo: IdTagInfo{
-			Status:      authInfo.Status,
-			ExpiryDate:  authInfo.ExpiryDate,
-			ParentIdTag: authInfo.ParentIdTag,
+			Status:      authResult.IdTagInfo.Status,
+			ExpiryDate:  authResult.IdTagInfo.ExpiryDate,
+			ParentIdTag: authResult.IdTagInfo.ParentIdTag,
 		},
 	}, nil
 }
@@ -227,7 +227,7 @@ func Stop(ctx context.Context, p *StopParams) (*StopResult, error) {
 		return nil, err
 	}
 
-	energyKwh := float64(p.MeterStop-meterStart) / 1000.0
+	energyKwh := decimal.NewFromInt(int64(p.MeterStop - meterStart)).Div(decimal.NewFromInt(1000))
 
 	// update connector status to Available
 	_, err = pgctx.Exec(ctx, `
@@ -256,7 +256,7 @@ func Stop(ctx context.Context, p *StopParams) (*StopResult, error) {
 	// validate idTag if provided
 	var idTagInfo *IdTagInfo
 	if p.IdTag != "" {
-		authInfo, err := authorize.ValidateIdTag(ctx, p.IdTag)
+		authResult, err := authorize.Authorize(ctx, &authorize.Params{IdTag: p.IdTag})
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to validate idTag on stop",
 				"error", err,
@@ -265,9 +265,9 @@ func Stop(ctx context.Context, p *StopParams) (*StopResult, error) {
 			)
 		} else {
 			idTagInfo = &IdTagInfo{
-				Status:      authInfo.Status,
-				ExpiryDate:  authInfo.ExpiryDate,
-				ParentIdTag: authInfo.ParentIdTag,
+				Status:      authResult.IdTagInfo.Status,
+				ExpiryDate:  authResult.IdTagInfo.ExpiryDate,
+				ParentIdTag: authResult.IdTagInfo.ParentIdTag,
 			}
 		}
 	}
@@ -295,7 +295,7 @@ func insertMeterValues(ctx context.Context, chargerID string, connectorID, trans
 		}
 
 		for _, sv := range mv.SampledValue {
-			value, err := strconv.ParseFloat(sv.Value, 64)
+			value, err := decimal.NewFromString(sv.Value)
 			if err != nil {
 				slog.ErrorContext(ctx, "invalid meter value",
 					"error", err,

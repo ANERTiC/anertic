@@ -30,7 +30,7 @@ type IdTagInfo struct {
 func Authorize(ctx context.Context, p *Params) (*Result, error) {
 	_ = ocpp.ChargePointID(ctx)
 
-	info, err := ValidateIdTag(ctx, p.IdTag)
+	info, err := validateIdTag(ctx, p.IdTag)
 	if err != nil {
 		return nil, err
 	}
@@ -40,9 +40,9 @@ func Authorize(ctx context.Context, p *Params) (*Result, error) {
 	}, nil
 }
 
-// ValidateIdTag looks up an idTag in ev_authorization_tags and returns its status.
+// validateIdTag looks up an idTag in ev_authorization_tags and returns its status.
 // Returns Invalid if the tag does not exist.
-func ValidateIdTag(ctx context.Context, idTag string) (*IdTagInfo, error) {
+func validateIdTag(ctx context.Context, idTag string) (*IdTagInfo, error) {
 	var status string
 	var expiryDate sql.NullTime
 	var parentIdTag sql.NullString

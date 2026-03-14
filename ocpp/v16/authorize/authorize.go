@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 
 	"github.com/anertic/anertic/ocpp"
@@ -45,8 +46,8 @@ func Authorize(ctx context.Context, p *Params) (*Result, error) {
 // Returns Invalid if the tag does not exist.
 func validateIdTag(ctx context.Context, chargePointID, idTag string) (*IdTagInfo, error) {
 	var status string
-	var expiryDate sql.NullTime
-	var parentIdTag sql.NullString
+	var expiryDate *time.Time
+	var parentIdTag *string
 
 	// charger-scoped first, then global fallback
 	// order: charger-scoped match first (charger_id = charger.id), global second (charger_id IS NULL)
@@ -66,8 +67,8 @@ func validateIdTag(ctx context.Context, chargePointID, idTag string) (*IdTagInfo
 		chargePointID,
 	).Scan(
 		&status,
-		&expiryDate,
-		&parentIdTag,
+		pgsql.Null(&expiryDate),
+		pgsql.Null(&parentIdTag),
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -78,18 +79,18 @@ func validateIdTag(ctx context.Context, chargePointID, idTag string) (*IdTagInfo
 	}
 
 	// check expiry
-	if expiryDate.Valid && expiryDate.Time.Before(time.Now()) {
+	if expiryDate != nil && expiryDate.Before(time.Now()) {
 		status = "Expired"
 	}
 
 	info := &IdTagInfo{
 		Status: status,
 	}
-	if expiryDate.Valid {
-		info.ExpiryDate = expiryDate.Time.UTC().Format(time.RFC3339)
+	if expiryDate != nil {
+		info.ExpiryDate = expiryDate.UTC().Format(time.RFC3339)
 	}
-	if parentIdTag.Valid {
-		info.ParentIdTag = parentIdTag.String
+	if parentIdTag != nil {
+		info.ParentIdTag = *parentIdTag
 	}
 
 	return info, nil

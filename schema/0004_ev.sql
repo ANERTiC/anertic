@@ -47,17 +47,21 @@ create table if not exists ev_chargers
 create table if not exists ev_authorization_tags
 (
     id              varchar(20) primary key not null,
-    id_tag          text                    not null unique, -- RFID tag / token
+    charger_id      varchar(20) references ev_chargers (id), -- NULL = global (any charger), set = scoped to this charger
+    id_tag          text                    not null, -- RFID tag / token
     parent_id_tag   text, -- group/parent tag
     status          text                    not null default 'Accepted', -- Accepted, Blocked, Expired, Invalid
     expiry_date     timestamptz,
     -- local list management (SendLocalList)
     list_version    integer                 not null default 0,
     created_at      timestamptz             not null default now(),
-    updated_at      timestamptz             not null default now()
+    updated_at      timestamptz             not null default now(),
+
+    unique (charger_id, id_tag)
 );
 
 create index if not exists idx_ev_authorization_tags_id_tag on ev_authorization_tags (id_tag);
+create index if not exists idx_ev_authorization_tags_charger on ev_authorization_tags (charger_id) where charger_id is not null;
 create index if not exists idx_ev_authorization_tags_parent on ev_authorization_tags (parent_id_tag) where parent_id_tag is not null;
 
 -- ============================================================

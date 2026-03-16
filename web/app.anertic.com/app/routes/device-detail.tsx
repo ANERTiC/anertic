@@ -24,6 +24,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
+import { Switch } from "~/components/ui/switch"
 import { cn } from "~/lib/utils"
 import { api } from "~/lib/api"
 import { useSiteId } from "~/layouts/site"
@@ -69,7 +70,7 @@ export default function DeviceDetail() {
   const [showAddMeter, setShowAddMeter] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
 
-  const { data: device, isLoading: deviceLoading } = useSWR(
+  const { data: device, isLoading: deviceLoading, mutate: mutateDevice } = useSWR(
     deviceId ? ["device.get", deviceId] : null,
     () => api<Device>("device.get", { id: deviceId }),
   )
@@ -288,65 +289,14 @@ export default function DeviceDetail() {
       </div>
 
       {/* Edit Device Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md gap-0 p-0">
-          <div className="space-y-5 p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Edit Device</h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">Update device configuration</p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name" className="text-xs">Name</Label>
-                <Input id="edit-name" defaultValue={device.name} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="edit-tag" className="text-xs">Tag</Label>
-                <Input id="edit-tag" defaultValue={device.tag || ""} placeholder="e.g. Main grid import/export" className="mt-1.5" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="edit-brand" className="text-xs">Brand</Label>
-                  <Input id="edit-brand" defaultValue={device.brand} className="mt-1.5" />
-                </div>
-                <div>
-                  <Label htmlFor="edit-model" className="text-xs">Model</Label>
-                  <Input id="edit-model" defaultValue={device.model} className="mt-1.5" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between p-4 px-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setShowEditDialog(false)
-                handleDeleteDevice()
-              }}
-            >
-              <RiDeleteBinLine className="mr-1.5 size-3.5" />
-              Delete device
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={() => {
-                toast.success("Device updated")
-                setShowEditDialog(false)
-              }}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditDeviceDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        device={device}
+        siteId={siteId}
+        onUpdated={() => mutateDevice()}
+        onDelete={handleDeleteDevice}
+      />
 
       {/* Add Meter Dialog */}
       <AddMeterDialog
@@ -362,6 +312,133 @@ export default function DeviceDetail() {
 }
 
 // --- Sub-components ---
+
+function EditDeviceDialog({
+  open,
+  onOpenChange,
+  device,
+  siteId,
+  onUpdated,
+  onDelete,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  device: Device
+  siteId: string
+  onUpdated: () => void
+  onDelete: () => void
+}) {
+  const [name, setName] = useState(device.name)
+  const [tag, setTag] = useState(device.tag || "")
+  const [brand, setBrand] = useState(device.brand)
+  const [model, setModel] = useState(device.model)
+  const [isActive, setIsActive] = useState(device.isActive)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Sync form when device changes or dialog opens
+  const resetForm = () => {
+    setName(device.name)
+    setTag(device.tag || "")
+    setBrand(device.brand)
+    setModel(device.model)
+    setIsActive(device.isActive)
+  }
+
+  async function handleSave() {
+    setSubmitting(true)
+    try {
+      await api("device.update", {
+        id: device.id,
+        siteId,
+        name: name.trim() || undefined,
+        tag: tag.trim() || undefined,
+        brand: brand.trim() || undefined,
+        model: model.trim() || undefined,
+        isActive,
+      })
+      toast.success("Device updated")
+      onUpdated()
+      onOpenChange(false)
+    } catch (err: any) {
+      if (err?.message?.includes("forbidden")) {
+        toast.error("You don't have permission to update this device")
+      } else if (err?.message?.includes("not found")) {
+        toast.error("Device not found")
+      } else {
+        toast.error(err?.message || "Failed to update device")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm() }}>
+      <DialogContent className="max-w-md gap-0 p-0">
+        <div className="space-y-5 p-6">
+          <div>
+            <h2 className="text-lg font-semibold">Edit Device</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Update device configuration</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name" className="text-xs">Name</Label>
+              <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label htmlFor="edit-tag" className="text-xs">Tag</Label>
+              <Input id="edit-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Main grid import/export" className="mt-1.5" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-brand" className="text-xs">Brand</Label>
+                <Input id="edit-brand" value={brand} onChange={(e) => setBrand(e.target.value)} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="edit-model" className="text-xs">Model</Label>
+                <Input id="edit-model" value={model} onChange={(e) => setModel(e.target.value)} className="mt-1.5" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div>
+                <Label className="text-xs">Active</Label>
+                <p className="text-[11px] text-muted-foreground/60">Disabled devices stop collecting data</p>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center justify-between p-4 px-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10"
+            onClick={() => {
+              onOpenChange(false)
+              onDelete()
+            }}
+          >
+            <RiDeleteBinLine className="mr-1.5 size-3.5" />
+            Delete device
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={submitting}>
+              {submitting ? <RiLoader4Line className="mr-1.5 size-3.5 animate-spin" /> : null}
+              {submitting ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function MetricCard({
   label,

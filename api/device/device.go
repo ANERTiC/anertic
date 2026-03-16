@@ -2,13 +2,14 @@ package device
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
+	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 )
@@ -58,59 +59,58 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return nil, err
 	}
 
-	args := []any{p.SiteID}
-	argN := 1
-
-	q := `
-		select
-			d.id,
-			d.site_id,
-			d.name,
-			d.type,
-			d.tag,
-			d.brand,
-			d.model,
-			d.is_active,
-			d.created_at,
-			coalesce(m.meter_count, 0),
-			coalesce(m.online_count, 0),
-			m.last_seen_at
-		from devices d
-		left join lateral (
-			select
-				count(*) as meter_count,
-				count(*) filter (where is_online) as online_count,
-				max(last_seen_at) as last_seen_at
-			from meters
-			where device_id = d.id
-		) m on true
-		where d.site_id = $1
-	`
-
-	if p.Type != "" {
-		argN++
-		q += fmt.Sprintf(" and d.type = $%d", argN)
-		args = append(args, p.Type)
-	}
-	if p.Search != "" {
-		argN++
-		q += fmt.Sprintf(" and (d.name ilike $%d or d.brand ilike $%d or d.model ilike $%d)", argN, argN, argN)
-		args = append(args, "%"+p.Search+"%")
-	}
-
-	q += " order by d.created_at desc"
-
-	rows, err := pgctx.Query(ctx, q, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var items []Item
-	for rows.Next() {
+
+	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
+		b.Columns(
+			"d.id",
+			"d.site_id",
+			"d.name",
+			"d.type",
+			"d.tag",
+			"d.brand",
+			"d.model",
+			"d.is_active",
+			"d.created_at",
+			pgstmt.Raw("coalesce(m.meter_count, 0)"),
+			pgstmt.Raw("coalesce(m.online_count, 0)"),
+			"m.last_seen_at",
+		)
+		b.From("devices d")
+		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
+			b.Columns(
+				pgstmt.Raw("count(*) as meter_count"),
+				pgstmt.Raw("count(*) filter (where is_online) as online_count"),
+				pgstmt.Raw("max(last_seen_at) as last_seen_at"),
+			)
+			b.From("meters")
+			b.Where(func(c pgstmt.Cond) {
+				c.EqRaw("device_id", "d.id")
+			})
+		}, "m").On(func(c pgstmt.Cond) {
+			c.Raw("true")
+		})
+		b.Where(func(c pgstmt.Cond) {
+			c.Mode().And()
+			c.Eq("d.site_id", p.SiteID)
+			if p.Type != "" {
+				c.Eq("d.type", p.Type)
+			}
+			if p.Search != "" {
+				search := "%" + p.Search + "%"
+				c.And(func(b pgstmt.Cond) {
+					b.Mode().Or()
+					b.ILike("d.name", search)
+					b.ILike("d.brand", search)
+					b.ILike("d.model", search)
+				})
+			}
+		})
+		b.OrderBy("d.created_at").Desc()
+	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item
 		var onlineCount int
-		err := rows.Scan(
+		err := scan(
 			&it.ID,
 			&it.SiteID,
 			&it.Name,
@@ -125,12 +125,13 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.LastSeenAt,
 		)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
 		items = append(items, it)
-	}
-	if err := rows.Err(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -181,25 +182,26 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, err
 	}
 
-	var id string
-	err := pgctx.QueryRow(ctx, `
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
 		insert into devices (
+			id,
 			site_id,
 			name,
 			type,
 			tag,
 			brand,
 			model
-		) values ($1, $2, $3, $4, $5, $6)
-		returning id
+		) values ($1, $2, $3, $4, $5, $6, $7)
 	`,
+		id,
 		p.SiteID,
 		p.Name,
 		p.Type,
 		p.Tag,
 		p.Brand,
 		p.Model,
-	).Scan(&id)
+	)
 	if err != nil {
 		return nil, err
 	}

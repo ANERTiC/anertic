@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -15,6 +16,8 @@ import (
 
 var (
 	ErrNotFound = arpc.NewErrorCode("device/not-found", "device not found")
+
+	validDeviceTypes = []string{"meter", "inverter", "solar_panel", "appliance"}
 )
 
 // List
@@ -120,6 +123,7 @@ func (p *CreateParams) Valid() error {
 	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.Name != "", "name is required")
 	v.Must(p.Type != "", "type is required")
+	v.Must(slices.Contains(validDeviceTypes, p.Type), "type must be one of: meter, inverter, solar_panel, appliance")
 	return v.Error()
 }
 

@@ -29,6 +29,7 @@ import { Separator } from "~/components/ui/separator"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
 import { api } from "~/lib/api"
+import { useSiteId } from "~/layouts/site"
 import {
   MeterCard,
   CHANNEL_CONFIG,
@@ -108,6 +109,7 @@ interface MeterListResult {
 export default function DeviceDetail() {
   const navigate = useNavigate()
   const { deviceId } = useParams()
+  const siteId = useSiteId()
   const [expandedMeter, setExpandedMeter] = useState<string | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showAddMeter, setShowAddMeter] = useState(false)
@@ -119,8 +121,8 @@ export default function DeviceDetail() {
   )
 
   const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR(
-    deviceId ? ["meter.list", deviceId] : null,
-    () => api<MeterListResult>("meter.list", { deviceId }),
+    deviceId && siteId ? ["meter.list", deviceId, siteId] : null,
+    () => api<MeterListResult>("meter.list", { siteId, deviceId }),
   )
 
   if (deviceLoading || metersLoading) {
@@ -282,6 +284,7 @@ export default function DeviceDetail() {
               <MeterCard
                 key={meter.id}
                 meter={meter}
+                siteId={siteId}
                 expanded={expandedMeter === meter.id}
                 onToggle={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
                 onMutate={() => mutateMeters()}
@@ -383,6 +386,7 @@ export default function DeviceDetail() {
         onOpenChange={setShowAddMeter}
         deviceType={device.type}
         deviceId={device.id}
+        siteId={siteId}
         onCreated={() => mutateMeters()}
       />
     </div>
@@ -418,12 +422,14 @@ function AddMeterDialog({
   onOpenChange,
   deviceType,
   deviceId,
+  siteId,
   onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   deviceType: DeviceType
   deviceId: string
+  siteId: string
   onCreated: () => void
 }) {
   const [protocol, setProtocol] = useState<MeterProtocol>("mqtt")
@@ -441,6 +447,7 @@ function AddMeterDialog({
     setSubmitting(true)
     try {
       await api("meter.create", {
+        siteId,
         deviceId,
         serialNumber: serialNumber.trim(),
         protocol,

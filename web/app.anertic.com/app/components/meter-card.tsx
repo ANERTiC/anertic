@@ -91,11 +91,13 @@ type MeterCardMode = "readings" | "configure"
 
 export function MeterCard({
   meter,
+  siteId,
   expanded,
   onToggle,
   onMutate,
 }: {
   meter: Meter
+  siteId: string
   expanded: boolean
   onToggle: () => void
   onMutate?: () => void
@@ -222,7 +224,7 @@ export function MeterCard({
           {mode === "readings" ? (
             <ReadingsPanel meter={meter} />
           ) : (
-            <ConfigurePanel meter={meter} onSaved={onMutate} />
+            <ConfigurePanel meter={meter} siteId={siteId} onSaved={onMutate} />
           )}
 
           {/* Actions */}
@@ -241,7 +243,7 @@ export function MeterCard({
                 e.stopPropagation()
                 if (!confirm(`Remove meter ${meter.serialNumber}?`)) return
                 try {
-                  await api("meter.delete", { id: meter.id })
+                  await api("meter.delete", { siteId, id: meter.id })
                   toast.success("Meter removed")
                   onMutate?.()
                 } catch (err: any) {
@@ -370,7 +372,7 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
 
 // --- Configure Panel ---
 
-function ConfigurePanel({ meter, onSaved }: { meter: Meter; onSaved?: () => void }) {
+function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: string; onSaved?: () => void }) {
   const [vendor, setVendor] = useState(meter.vendor)
   const [channel, setChannel] = useState<MeterChannel>(meter.channel)
   const [phase, setPhase] = useState(meter.phase)
@@ -384,6 +386,7 @@ function ConfigurePanel({ meter, onSaved }: { meter: Meter; onSaved?: () => void
     setSaving(true)
     try {
       await api("meter.update", {
+        siteId,
         id: meter.id,
         vendor,
         phase,

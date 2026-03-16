@@ -13,23 +13,25 @@ import (
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 
-	"github.com/anertic/anertic/api/device"
 	"github.com/anertic/anertic/api/iam"
 )
 
 var (
-	ErrNotFound  = arpc.NewErrorCode("meter/not-found", "meter not found")
-	ErrDuplicate = arpc.NewErrorCode("meter/duplicate", "serial number already exists")
+	ErrNotFound       = arpc.NewErrorCode("meter/not-found", "meter not found")
+	ErrDeviceNotFound = arpc.NewErrorCode("meter/device-not-found", "device not found")
+	ErrDuplicate      = arpc.NewErrorCode("meter/duplicate", "serial number already exists")
 )
 
 // List
 
 type ListParams struct {
+	SiteID   string `json:"siteId"`
 	DeviceID string `json:"deviceId"`
 }
 
 func (p *ListParams) Valid() error {
 	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.DeviceID != "", "deviceId is required")
 	return v.Error()
 }
@@ -56,27 +58,17 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
-
-	var siteID string
-	err := pgctx.QueryRow(ctx, `
-		select site_id
-		from devices
-		where id = $1
-	`, p.DeviceID).Scan(&siteID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, device.ErrNotFound
-	}
-	if err != nil {
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 
-	if err := iam.InSite(ctx, siteID); err != nil {
+	if err := verifyDeviceInSite(ctx, p.DeviceID, p.SiteID); err != nil {
 		return nil, err
 	}
 
 	var items []Item
 
-	err = pgstmt.Select(func(b pgstmt.SelectStatement) {
+	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
 			"id",
 			"device_id",
@@ -126,6 +118,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
+	SiteID       string `json:"siteId"`
 	DeviceID     string `json:"deviceId"`
 	SerialNumber string `json:"serialNumber"`
 	Protocol     string `json:"protocol"`
@@ -136,9 +129,9 @@ type CreateParams struct {
 
 func (p *CreateParams) Valid() error {
 	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.DeviceID != "", "deviceId is required")
 	v.Must(p.SerialNumber != "", "serialNumber is required")
-	v.Must(p.Protocol != "", "protocol is required")
 	v.Must(p.Protocol == "mqtt" || p.Protocol == "http", "protocol must be mqtt or http")
 	return v.Error()
 }
@@ -151,26 +144,16 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
-
-	var siteID string
-	err := pgctx.QueryRow(ctx, `
-		select site_id
-		from devices
-		where id = $1
-	`, p.DeviceID).Scan(&siteID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, device.ErrNotFound
-	}
-	if err != nil {
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 
-	if err := iam.InSite(ctx, siteID); err != nil {
+	if err := verifyDeviceInSite(ctx, p.DeviceID, p.SiteID); err != nil {
 		return nil, err
 	}
 
 	id := xid.New().String()
-	_, err = pgctx.Exec(ctx, `
+	_, err := pgctx.Exec(ctx, `
 		insert into meters (
 			id,
 			device_id,
@@ -189,10 +172,10 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		p.Phase,
 		p.Channel,
 	)
+	if pgsql.IsUniqueViolation(err) {
+		return nil, ErrDuplicate
+	}
 	if err != nil {
-		if pgsql.IsUniqueViolation(err) {
-			return nil, ErrDuplicate
-		}
 		return nil, err
 	}
 
@@ -262,6 +245,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 // Update
 
 type UpdateParams struct {
+	SiteID  string  `json:"siteId"`
 	ID      string  `json:"id"`
 	Vendor  *string `json:"vendor"`
 	Phase   *int    `json:"phase"`
@@ -270,12 +254,16 @@ type UpdateParams struct {
 
 func (p *UpdateParams) Valid() error {
 	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.ID != "", "id is required")
 	return v.Error()
 }
 
 func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 
@@ -305,11 +293,13 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 // Delete
 
 type DeleteParams struct {
-	ID string `json:"id"`
+	SiteID string `json:"siteId"`
+	ID     string `json:"id"`
 }
 
 func (p *DeleteParams) Valid() error {
 	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.ID != "", "id is required")
 	return v.Error()
 }
@@ -318,26 +308,11 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
-
-	var siteID string
-	err := pgctx.QueryRow(ctx, `
-		select d.site_id
-		from meters m
-		join devices d on d.id = m.device_id
-		where m.id = $1
-	`, p.ID).Scan(&siteID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
 		return nil, err
 	}
 
-	if err := iam.InSite(ctx, siteID); err != nil {
-		return nil, err
-	}
-
-	_, err = pgctx.Exec(ctx, `
+	_, err := pgctx.Exec(ctx, `
 		delete from meters
 		where id = $1
 	`, p.ID)
@@ -346,4 +321,24 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 	}
 
 	return new(struct{}), nil
+}
+
+// verifyDeviceInSite checks that the device belongs to the given site.
+func verifyDeviceInSite(ctx context.Context, deviceID, siteID string) error {
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from devices
+			where id = $1
+			  and site_id = $2
+		)
+	`, deviceID, siteID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrDeviceNotFound
+	}
+	return nil
 }

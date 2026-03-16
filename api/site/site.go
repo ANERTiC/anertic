@@ -162,6 +162,11 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, err
 	}
 
+	// Create starter device + meter so new sites have sample data
+	if err := createStarterDevice(ctx, id); err != nil {
+		return nil, err
+	}
+
 	return &CreateResult{ID: id}, nil
 }
 
@@ -354,4 +359,43 @@ func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error)
 	}
 
 	return new(struct{}), nil
+}
+
+func createStarterDevice(ctx context.Context, siteID string) error {
+	deviceID := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Main Grid Meter', 'meter', 'Grid import/export', 'Eastron', 'SDM630-Modbus V2')
+	`,
+		deviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	meterID := xid.New().String()
+	serialNumber := "DEMO-" + meterID
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Eastron', 'grid')
+	`,
+		meterID,
+		deviceID,
+		serialNumber,
+	)
+	return err
 }

@@ -229,6 +229,68 @@ func (p *UpdateParams) Valid() error {
 	return v.Error()
 }
 
+// Delete
+
+type DeleteParams struct {
+	SiteID string `json:"siteId"`
+	ID     string `json:"id"`
+}
+
+func (p *DeleteParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	// verify device belongs to the site
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from devices
+			where id = $1
+			  and site_id = $2
+		)
+	`, p.ID, p.SiteID).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrNotFound
+	}
+
+	// delete associated meters first (FK constraint)
+	_, err = pgctx.Exec(ctx, `
+		delete from meters
+		where device_id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = pgctx.Exec(ctx, `
+		delete from devices
+		where id = $1
+		  and site_id = $2
+	`, p.ID, p.SiteID)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
+// Update
+
 func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err

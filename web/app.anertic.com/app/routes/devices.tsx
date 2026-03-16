@@ -4,11 +4,8 @@ import {
   RiAddLine,
   RiSearchLine,
   RiCpuLine,
-  RiSunLine,
-  RiPlugLine,
   RiArrowRightSLine,
   RiLink,
-  RiFlashlightLine,
   RiLoader4Line,
 } from "@remixicon/react"
 
@@ -20,42 +17,14 @@ import { Badge } from "~/components/ui/badge"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
-
-// --- Types ---
-
-interface Device {
-  id: string
-  siteId: string
-  name: string
-  type: DeviceType
-  tag: string
-  brand: string
-  model: string
-  isActive: boolean
-  connectionStatus: ConnectionStatus
-  lastSeenAt: string | null
-  meterCount: number
-  createdAt: string
-}
-
-type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type ConnectionStatus = "online" | "offline" | "degraded"
-
-const DEVICE_TYPE_CONFIG: Record<
-  DeviceType,
-  { label: string; icon: typeof RiCpuLine; color: string; bg: string }
-> = {
-  inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
-  solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-  meter: { label: "Meter", icon: RiCpuLine, color: "text-cyan-600", bg: "bg-cyan-500/10" },
-  appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-}
-
-const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
-  online: { label: "Online", color: "text-emerald-700", dot: "bg-emerald-500" },
-  offline: { label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  degraded: { label: "Degraded", color: "text-amber-700", dot: "bg-amber-500" },
-}
+import {
+  DEVICE_TYPE_CONFIG,
+  STATUS_CONFIG,
+  formatLastSeen,
+  type DeviceType,
+  type ConnectionStatus,
+  type DeviceListItem,
+} from "~/lib/device"
 
 // --- Component ---
 
@@ -65,8 +34,8 @@ export default function Devices() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<DeviceType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
-  const [allDevices, setAllDevices] = useState<Device[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<DeviceListItem | null>(null)
+  const [allDevices, setAllDevices] = useState<DeviceListItem[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchDevices = useCallback(async () => {
@@ -75,7 +44,7 @@ export default function Devices() {
       const params: Record<string, string> = { siteId }
       if (typeFilter !== "all") params.type = typeFilter
       if (search.trim()) params.search = search.trim()
-      const res = await api<{ items: Device[] }>("device.list", params)
+      const res = await api<{ items: DeviceListItem[] }>("device.list", params)
       setAllDevices(res.items ?? [])
     } catch {
       setAllDevices([])
@@ -262,7 +231,7 @@ function SummaryPill({
   )
 }
 
-function DeviceRow({ device, onClick }: { device: Device; onClick: () => void }) {
+function DeviceRow({ device, onClick }: { device: DeviceListItem; onClick: () => void }) {
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
@@ -306,7 +275,7 @@ function DeviceRow({ device, onClick }: { device: Device; onClick: () => void })
   )
 }
 
-function DeviceQuickView({ device }: { device: Device }) {
+function DeviceQuickView({ device }: { device: DeviceListItem }) {
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
@@ -375,15 +344,3 @@ function MetricBox({ label, value, color }: { label: string; value: string; colo
   )
 }
 
-function formatLastSeen(lastSeenAt: string | null): string {
-  if (!lastSeenAt) return "Never"
-  const diff = Date.now() - new Date(lastSeenAt).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}

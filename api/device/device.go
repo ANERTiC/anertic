@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -16,6 +17,8 @@ import (
 
 var (
 	ErrNotFound = arpc.NewErrorCode("device/not-found", "device not found")
+
+	validDeviceTypes = []string{"meter", "inverter", "solar_panel", "appliance"}
 )
 
 // List
@@ -168,6 +171,7 @@ func (p *CreateParams) Valid() error {
 	v.Must(p.SiteID != "", "siteId is required")
 	v.Must(p.Name != "", "name is required")
 	v.Must(p.Type != "", "type is required")
+	v.Must(slices.Contains(validDeviceTypes, p.Type), "type must be one of: meter, inverter, solar_panel, appliance")
 	return v.Error()
 }
 
@@ -261,21 +265,29 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		return nil, ErrNotFound
 	}
 
+	if err := iam.InSite(ctx, r.SiteID); err != nil {
+		return nil, err
+	}
+
 	return &r, nil
 }
 
 // Update
 
 type UpdateParams struct {
-	ID    string  `json:"id"`
-	Name  *string `json:"name"`
-	Brand *string `json:"brand"`
-	Model *string `json:"model"`
+	ID       string  `json:"id"`
+	SiteID   string  `json:"siteId"`
+	Name     *string `json:"name"`
+	Tag      *string `json:"tag"`
+	Brand    *string `json:"brand"`
+	Model    *string `json:"model"`
+	IsActive *bool   `json:"isActive"`
 }
 
 func (p *UpdateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.ID != "", "id is required")
+	v.Must(p.SiteID != "", "siteId is required")
 	return v.Error()
 }
 
@@ -329,11 +341,17 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
 
 	_, err := pgstmt.Update(func(b pgstmt.UpdateStatement) {
 		b.Table("devices")
 		if p.Name != nil {
 			b.Set("name").To(*p.Name)
+		}
+		if p.Tag != nil {
+			b.Set("tag").To(*p.Tag)
 		}
 		if p.Brand != nil {
 			b.Set("brand").To(*p.Brand)
@@ -341,9 +359,13 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		if p.Model != nil {
 			b.Set("model").To(*p.Model)
 		}
+		if p.IsActive != nil {
+			b.Set("is_active").To(*p.IsActive)
+		}
 		b.Set("updated_at").ToRaw("NOW()")
 		b.Where(func(c pgstmt.Cond) {
 			c.Eq("id", p.ID)
+			c.Eq("site_id", p.SiteID)
 		})
 	}).ExecWith(ctx)
 	if err != nil {

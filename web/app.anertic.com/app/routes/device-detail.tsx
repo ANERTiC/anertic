@@ -3,9 +3,6 @@ import { useNavigate, useParams } from "react-router"
 import useSWR from "swr"
 import {
   RiArrowLeftLine,
-  RiSunLine,
-  RiPlugLine,
-  RiFlashlightLine,
   RiSettings3Line,
   RiEditLine,
   RiDeleteBinLine,
@@ -40,65 +37,22 @@ import {
   formatPower,
   formatReadingValue,
   formatMetricLabel,
-  formatLastSeen,
   type Meter,
   type MeterReading,
   type MeterProtocol,
   type MeterChannel,
   CopyableField,
 } from "~/components/meter-card"
-
-// --- Types ---
-
-type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-
-interface Device {
-  id: string
-  siteId: string
-  name: string
-  type: DeviceType
-  tag: string
-  brand: string
-  model: string
-  isActive: boolean
-  createdAt: string
-}
-
-
-// --- Config ---
-
-const DEVICE_TYPE_CONFIG: Record<
-  DeviceType,
-  { label: string; icon: typeof RiPlugLine; color: string; bg: string }
-> = {
-  inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
-  solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-  meter: { label: "Energy Meter", icon: RiDashboard3Line, color: "text-cyan-600", bg: "bg-cyan-500/10" },
-  appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-}
-
-// Suggested channels per device type
-const DEVICE_CHANNEL_HINTS: Record<DeviceType, MeterChannel[]> = {
-  inverter: ["pv", "grid", "battery", "load"],
-  solar_panel: ["pv"],
-  appliance: ["load", "ev"],
-  meter: ["load", "grid"],
-}
+import {
+  DEVICE_TYPE_CONFIG,
+  DEVICE_CHANNEL_HINTS,
+  formatLastSeen,
+  type Device,
+  type DeviceType,
+} from "~/lib/device"
 
 
 // --- API Types ---
-
-interface DeviceGetResult {
-  id: string
-  siteId: string
-  name: string
-  type: DeviceType
-  tag: string
-  brand: string
-  model: string
-  isActive: boolean
-  createdAt: string
-}
 
 interface MeterListResult {
   items: Meter[]
@@ -117,7 +71,7 @@ export default function DeviceDetail() {
 
   const { data: device, isLoading: deviceLoading } = useSWR(
     deviceId ? ["device.get", deviceId] : null,
-    () => api<DeviceGetResult>("device.get", { id: deviceId }),
+    () => api<Device>("device.get", { id: deviceId }),
   )
 
   const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR(

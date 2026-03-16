@@ -81,6 +81,7 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /device.create", am.Handler(device.Create))
 	a.Handle("POST /device.get", am.Handler(device.Get))
 	a.Handle("POST /device.update", am.Handler(device.Update))
+	a.Handle("POST /device.delete", am.Handler(device.Delete))
 
 	// Meters
 	a.Handle("POST /meter.list", am.Handler(meter.List))

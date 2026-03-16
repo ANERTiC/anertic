@@ -72,6 +72,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("site_id", p.SiteID)
+			c.IsNull("deleted_at")
 			if p.Type != "" {
 				c.Eq("type", p.Type)
 			}
@@ -228,6 +229,52 @@ func (p *UpdateParams) Valid() error {
 	v.Must(p.ID != "", "id is required")
 	return v.Error()
 }
+
+// Delete
+
+type DeleteParams struct {
+	SiteID string `json:"siteId"`
+	ID     string `json:"id"`
+}
+
+func (p *DeleteParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	res, err := pgctx.Exec(ctx, `
+		update devices
+		set deleted_at = now(),
+		    updated_at = now()
+		where id = $1
+		  and site_id = $2
+		  and deleted_at is null
+	`, p.ID, p.SiteID)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return nil, ErrNotFound
+	}
+
+	return new(struct{}), nil
+}
+
+// Update
 
 func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {

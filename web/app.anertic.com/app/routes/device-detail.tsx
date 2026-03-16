@@ -144,6 +144,19 @@ export default function DeviceDetail() {
     )
   }
 
+  async function handleDeleteDevice() {
+    if (!confirm("Are you sure you want to delete this device? It will be deactivated and hidden from the device list.")) {
+      return
+    }
+    try {
+      await api("device.delete", { siteId, id: deviceId })
+      toast.success("Device deleted")
+      navigate("/devices")
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete device")
+    }
+  }
+
   const meters = metersData?.items ?? []
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
@@ -360,6 +373,7 @@ export default function DeviceDetail() {
               className="text-destructive hover:bg-destructive/10"
               onClick={() => {
                 setShowEditDialog(false)
+                handleDeleteDevice()
               }}
             >
               <RiDeleteBinLine className="mr-1.5 size-3.5" />

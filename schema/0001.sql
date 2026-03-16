@@ -98,7 +98,8 @@ create table if not exists devices
     metadata   jsonb                   not null default '{}',
     is_active  boolean                 not null default true,
     created_at timestamptz             not null default now(),
-    updated_at timestamptz             not null default now()
+    updated_at timestamptz             not null default now(),
+    deleted_at timestamptz
 );
 
 create index if not exists idx_devices_site_id on devices (site_id);

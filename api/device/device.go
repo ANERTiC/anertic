@@ -72,7 +72,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("site_id", p.SiteID)
-			c.Eq("is_active", true)
+			c.Raw("deleted_at is null")
 			if p.Type != "" {
 				c.Eq("type", p.Type)
 			}
@@ -254,11 +254,11 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 
 	res, err := pgctx.Exec(ctx, `
 		update devices
-		set is_active = false,
+		set deleted_at = now(),
 		    updated_at = now()
 		where id = $1
 		  and site_id = $2
-		  and is_active = true
+		  and deleted_at is null
 	`, p.ID, p.SiteID)
 	if err != nil {
 		return nil, err

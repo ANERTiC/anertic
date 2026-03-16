@@ -1,18 +1,14 @@
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
+import useSWR from "swr"
 import {
   RiArrowLeftLine,
-  RiCpuLine,
   RiSunLine,
   RiPlugLine,
   RiFlashlightLine,
-  RiSignalWifiOffLine,
   RiSettings3Line,
-  RiClipboardLine,
   RiEditLine,
   RiDeleteBinLine,
-  RiAlertLine,
-  RiCheckboxCircleLine,
   RiBarChartBoxLine,
   RiAddLine,
   RiSensorLine,
@@ -20,6 +16,7 @@ import {
   RiPulseLine,
   RiArrowDownSLine,
   RiArrowUpSLine,
+  RiLoader4Line,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -31,6 +28,7 @@ import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
+import { api } from "~/lib/api"
 import {
   MeterCard,
   CHANNEL_CONFIG,
@@ -52,7 +50,6 @@ import {
 // --- Types ---
 
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type ConnectionStatus = "online" | "offline" | "degraded"
 
 interface Device {
   id: string
@@ -66,20 +63,12 @@ interface Device {
   createdAt: string
 }
 
-interface EventLog {
-  id: string
-  timestamp: string
-  source: "device" | "meter"
-  sourceName: string
-  type: "connected" | "disconnected" | "error" | "config_changed" | "data_received"
-  message: string
-}
 
 // --- Config ---
 
 const DEVICE_TYPE_CONFIG: Record<
   DeviceType,
-  { label: string; icon: typeof RiCpuLine; color: string; bg: string }
+  { label: string; icon: typeof RiPlugLine; color: string; bg: string }
 > = {
   inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
   solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
@@ -95,88 +84,24 @@ const DEVICE_CHANNEL_HINTS: Record<DeviceType, MeterChannel[]> = {
   meter: ["load", "grid"],
 }
 
-const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
-  online: { label: "Online", color: "text-emerald-700", dot: "bg-emerald-500" },
-  offline: { label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  degraded: { label: "Degraded", color: "text-amber-700", dot: "bg-amber-500" },
+
+// --- API Types ---
+
+interface DeviceGetResult {
+  id: string
+  siteId: string
+  name: string
+  type: DeviceType
+  tag: string
+  brand: string
+  model: string
+  isActive: boolean
+  createdAt: string
 }
 
-// --- Mock Data ---
-
-function getMockDevice(id: string): Device {
-  return {
-    id,
-    siteId: "site_01",
-    name: "Grid Meter",
-    type: "meter",
-    tag: "Main grid import/export",
-    brand: "Eastron",
-    model: "SDM630-Modbus V2",
-    isActive: true,
-    createdAt: "2025-08-15T09:00:00Z",
-  }
+interface MeterListResult {
+  items: Meter[]
 }
-
-function getMockMeters(deviceId: string): Meter[] {
-  return [
-    {
-      id: "mtr_01",
-      deviceId,
-      serialNumber: "SDM-2030-4821",
-      protocol: "mqtt",
-      vendor: "Eastron",
-      phase: 1,
-      channel: "grid",
-      isOnline: true,
-      lastSeenAt: new Date(Date.now() - 5000).toISOString(),
-      config: {
-        topic: "meters/sdm-2030-4821/telemetry",
-        broker: "mqtt://broker.anertic.com:1883",
-        qos: "1",
-      },
-      createdAt: "2025-08-15T09:00:00Z",
-      latestReadings: [
-        { metric: "power_w", value: 2847.5, unit: "W", timestamp: new Date(Date.now() - 5000).toISOString() },
-        { metric: "energy_kwh", value: 12483.2, unit: "kWh", timestamp: new Date(Date.now() - 5000).toISOString() },
-        { metric: "voltage_v", value: 232.1, unit: "V", timestamp: new Date(Date.now() - 5000).toISOString() },
-        { metric: "current_a", value: 12.27, unit: "A", timestamp: new Date(Date.now() - 5000).toISOString() },
-        { metric: "frequency", value: 50.01, unit: "Hz", timestamp: new Date(Date.now() - 5000).toISOString() },
-        { metric: "pf", value: 0.98, unit: "", timestamp: new Date(Date.now() - 5000).toISOString() },
-      ],
-    },
-    {
-      id: "mtr_02",
-      deviceId,
-      serialNumber: "SDM-2030-4822",
-      protocol: "mqtt",
-      vendor: "Eastron",
-      phase: 2,
-      channel: "grid",
-      isOnline: true,
-      lastSeenAt: new Date(Date.now() - 8000).toISOString(),
-      config: {
-        broker: "mqtt://broker.anertic.com:1883",
-        topic: "meters/mtr_02/telemetry",
-        qos: "1",
-      },
-      createdAt: "2025-09-01T10:30:00Z",
-      latestReadings: [
-        { metric: "power_w", value: 1523.8, unit: "W", timestamp: new Date(Date.now() - 8000).toISOString() },
-        { metric: "energy_kwh", value: 5841.7, unit: "kWh", timestamp: new Date(Date.now() - 8000).toISOString() },
-        { metric: "voltage_v", value: 231.8, unit: "V", timestamp: new Date(Date.now() - 8000).toISOString() },
-        { metric: "current_a", value: 6.57, unit: "A", timestamp: new Date(Date.now() - 8000).toISOString() },
-      ],
-    },
-  ]
-}
-
-const MOCK_EVENTS: EventLog[] = [
-  { id: "e1", timestamp: new Date(Date.now() - 5000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "data_received", message: "Telemetry batch received (6 readings)" },
-  { id: "e2", timestamp: new Date(Date.now() - 8000).toISOString(), source: "meter", sourceName: "SDM-2030-4822", type: "data_received", message: "Telemetry batch received (4 readings)" },
-  { id: "e3", timestamp: new Date(Date.now() - 300000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "connected", message: "Meter reconnected via Modbus TCP" },
-  { id: "e4", timestamp: new Date(Date.now() - 360000).toISOString(), source: "meter", sourceName: "SDM-2030-4821", type: "disconnected", message: "Connection lost — timeout after 30s" },
-  { id: "e5", timestamp: new Date(Date.now() - 3600000).toISOString(), source: "device", sourceName: "Grid Meter", type: "config_changed", message: "Device tag updated" },
-]
 
 // --- Component ---
 
@@ -188,8 +113,36 @@ export default function DeviceDetail() {
   const [showAddMeter, setShowAddMeter] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
 
-  const device = getMockDevice(deviceId || "dev_01")
-  const meters = getMockMeters(device.id)
+  const { data: device, isLoading: deviceLoading } = useSWR(
+    deviceId ? ["device.get", deviceId] : null,
+    () => api<DeviceGetResult>("device.get", { id: deviceId }),
+  )
+
+  const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR(
+    deviceId ? ["meter.list", deviceId] : null,
+    () => api<MeterListResult>("meter.list", { deviceId }),
+  )
+
+  if (deviceLoading || metersLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <RiLoader4Line className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!device) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <p className="text-sm text-muted-foreground">Device not found</p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate("/devices")}>
+          Back to devices
+        </Button>
+      </div>
+    )
+  }
+
+  const meters = metersData?.items ?? []
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
 
@@ -331,13 +284,14 @@ export default function DeviceDetail() {
                 meter={meter}
                 expanded={expandedMeter === meter.id}
                 onToggle={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
+                onMutate={() => mutateMeters()}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity — placeholder */}
       <div>
         <button
           onClick={() => setShowEvents(!showEvents)}
@@ -346,7 +300,6 @@ export default function DeviceDetail() {
           <div className="flex items-center gap-2">
             <RiBarChartBoxLine className="size-4 text-muted-foreground/50" />
             <h3 className="text-sm font-semibold">Recent Activity</h3>
-            <span className="text-xs text-muted-foreground">{MOCK_EVENTS.length}</span>
           </div>
           {showEvents ? (
             <RiArrowUpSLine className="size-4 text-muted-foreground" />
@@ -357,27 +310,8 @@ export default function DeviceDetail() {
 
         {showEvents && (
           <Card className="border-border/50">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/30">
-                {MOCK_EVENTS.map((event) => (
-                  <div key={event.id} className="flex items-start gap-3 px-4 py-3">
-                    <div className="mt-0.5">
-                      <EventIcon type={event.type} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm">{event.message}</p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground/60">
-                          {event.source === "meter" ? event.sourceName : "Device"}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {formatRelativeTime(event.timestamp)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <p className="text-sm text-muted-foreground">No recent activity</p>
             </CardContent>
           </Card>
         )}
@@ -448,6 +382,8 @@ export default function DeviceDetail() {
         open={showAddMeter}
         onOpenChange={setShowAddMeter}
         deviceType={device.type}
+        deviceId={device.id}
+        onCreated={() => mutateMeters()}
       />
     </div>
   )
@@ -477,49 +413,52 @@ function MetricCard({
   )
 }
 
-function EventIcon({ type }: { type: EventLog["type"] }) {
-  const config: Record<EventLog["type"], { icon: typeof RiCheckboxCircleLine; color: string; bg: string }> = {
-    connected: { icon: RiCheckboxCircleLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-    disconnected: { icon: RiSignalWifiOffLine, color: "text-red-600", bg: "bg-red-500/10" },
-    error: { icon: RiAlertLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-    config_changed: { icon: RiSettings3Line, color: "text-blue-600", bg: "bg-blue-500/10" },
-    data_received: { icon: RiBarChartBoxLine, color: "text-muted-foreground", bg: "bg-muted/50" },
-  }
-  const c = config[type]
-  const Icon = c.icon
-  return (
-    <div className={cn("flex size-7 items-center justify-center rounded-lg", c.bg)}>
-      <Icon className={cn("size-3.5", c.color)} />
-    </div>
-  )
-}
-
 function AddMeterDialog({
   open,
   onOpenChange,
   deviceType,
+  deviceId,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   deviceType: DeviceType
+  deviceId: string
+  onCreated: () => void
 }) {
   const [protocol, setProtocol] = useState<MeterProtocol>("mqtt")
   const [channel, setChannel] = useState<MeterChannel>(DEVICE_CHANNEL_HINTS[deviceType][0] ?? "load")
   const [phase, setPhase] = useState(0)
   const [serialNumber, setSerialNumber] = useState("")
   const [vendor, setVendor] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
-
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!serialNumber.trim()) {
       toast.error("Serial number is required")
       return
     }
-    toast.success("Meter added", {
-      description: `${serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
-    })
-    onOpenChange(false)
-    resetForm()
+    setSubmitting(true)
+    try {
+      await api("meter.create", {
+        deviceId,
+        serialNumber: serialNumber.trim(),
+        protocol,
+        vendor: vendor.trim(),
+        phase,
+        channel,
+      })
+      toast.success("Meter added", {
+        description: `${serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
+      })
+      onCreated()
+      onOpenChange(false)
+      resetForm()
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create meter")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function resetForm() {
@@ -715,9 +654,9 @@ function AddMeterDialog({
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSubmit} className="gap-1.5">
-            <RiAddLine className="size-3.5" />
-            Add Meter
+          <Button size="sm" onClick={handleSubmit} disabled={submitting} className="gap-1.5">
+            {submitting ? <RiLoader4Line className="size-3.5 animate-spin" /> : <RiAddLine className="size-3.5" />}
+            {submitting ? "Adding..." : "Add Meter"}
           </Button>
         </div>
       </DialogContent>
@@ -754,14 +693,3 @@ function aggregateReadings(meters: Meter[]): MeterReading[] {
   }))
 }
 
-function formatRelativeTime(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}

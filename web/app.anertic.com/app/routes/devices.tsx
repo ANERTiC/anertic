@@ -4,11 +4,8 @@ import {
   RiAddLine,
   RiSearchLine,
   RiCpuLine,
-  RiSunLine,
-  RiPlugLine,
   RiArrowRightSLine,
   RiLink,
-  RiFlashlightLine,
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
@@ -19,31 +16,18 @@ import { Badge } from "~/components/ui/badge"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
-
-// --- Types ---
-
-interface Device {
-  id: string
-  siteId: string
-  name: string
-  type: DeviceType
-  tag: string
-  brand: string
-  model: string
-  isActive: boolean
-  connectionStatus: ConnectionStatus
-  lastSeenAt: string | null
-  meterCount: number
-  dataPointsToday: number
-  createdAt: string
-}
-
-type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type ConnectionStatus = "online" | "offline" | "degraded"
+import {
+  DEVICE_TYPE_CONFIG,
+  STATUS_CONFIG,
+  formatLastSeen,
+  type DeviceType,
+  type ConnectionStatus,
+  type DeviceListItem,
+} from "~/lib/device"
 
 // --- Mock Data ---
 
-const MOCK_DEVICES: Device[] = [
+const MOCK_DEVICES: DeviceListItem[] = [
   {
     id: "dev_01",
     siteId: "site_01",
@@ -151,22 +135,6 @@ const MOCK_DEVICES: Device[] = [
   },
 ]
 
-const DEVICE_TYPE_CONFIG: Record<
-  DeviceType,
-  { label: string; icon: typeof RiCpuLine; color: string; bg: string }
-> = {
-  inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
-  solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-  meter: { label: "Meter", icon: RiCpuLine, color: "text-cyan-600", bg: "bg-cyan-500/10" },
-  appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-}
-
-const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
-  online: { label: "Online", color: "text-emerald-700", dot: "bg-emerald-500" },
-  offline: { label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  degraded: { label: "Degraded", color: "text-amber-700", dot: "bg-amber-500" },
-}
-
 // --- Component ---
 
 export default function Devices() {
@@ -175,7 +143,7 @@ export default function Devices() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<DeviceType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
+  const [selectedDevice, setSelectedDevice] = useState<DeviceListItem | null>(null)
 
   const devices = MOCK_DEVICES.filter((d) => {
     if (typeFilter !== "all" && d.type !== typeFilter) return false
@@ -355,7 +323,7 @@ function SummaryPill({
   )
 }
 
-function DeviceRow({ device, onClick }: { device: Device; onClick: () => void }) {
+function DeviceRow({ device, onClick }: { device: DeviceListItem; onClick: () => void }) {
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
@@ -403,7 +371,7 @@ function DeviceRow({ device, onClick }: { device: Device; onClick: () => void })
   )
 }
 
-function DeviceQuickView({ device }: { device: Device }) {
+function DeviceQuickView({ device }: { device: DeviceListItem }) {
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
@@ -472,15 +440,3 @@ function MetricBox({ label, value, color }: { label: string; value: string; colo
   )
 }
 
-function formatLastSeen(lastSeenAt: string | null): string {
-  if (!lastSeenAt) return "Never"
-  const diff = Date.now() - new Date(lastSeenAt).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}

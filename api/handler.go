@@ -13,6 +13,7 @@ import (
 	"github.com/anertic/anertic/api/connector"
 	"github.com/anertic/anertic/api/device"
 	"github.com/anertic/anertic/api/insight"
+	"github.com/anertic/anertic/api/meter"
 	"github.com/anertic/anertic/api/reading"
 	"github.com/anertic/anertic/api/site"
 )
@@ -80,6 +81,13 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /device.create", am.Handler(device.Create))
 	a.Handle("POST /device.get", am.Handler(device.Get))
 	a.Handle("POST /device.update", am.Handler(device.Update))
+
+	// Meters
+	a.Handle("POST /meter.list", am.Handler(meter.List))
+	a.Handle("POST /meter.create", am.Handler(meter.Create))
+	a.Handle("POST /meter.get", am.Handler(meter.Get))
+	a.Handle("POST /meter.update", am.Handler(meter.Update))
+	a.Handle("POST /meter.delete", am.Handler(meter.Delete))
 
 	// Chargers
 	a.Handle("POST /charger.list", am.Handler(charger.List))

@@ -13,6 +13,7 @@ import {
   RiEBikeLine,
   RiGridLine,
   RiHome4Line,
+  RiLoader4Line,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -21,6 +22,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
+import { api } from "~/lib/api"
 
 // --- Types ---
 
@@ -89,12 +91,16 @@ type MeterCardMode = "readings" | "configure"
 
 export function MeterCard({
   meter,
+  siteId,
   expanded,
   onToggle,
+  onMutate,
 }: {
   meter: Meter
+  siteId: string
   expanded: boolean
   onToggle: () => void
+  onMutate?: () => void
 }) {
   const [mode, setMode] = useState<MeterCardMode>("readings")
 
@@ -218,7 +224,7 @@ export function MeterCard({
           {mode === "readings" ? (
             <ReadingsPanel meter={meter} />
           ) : (
-            <ConfigurePanel meter={meter} />
+            <ConfigurePanel meter={meter} siteId={siteId} onSaved={onMutate} />
           )}
 
           {/* Actions */}
@@ -229,7 +235,22 @@ export function MeterCard({
                 Ping
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2.5 text-xs text-destructive/70 hover:bg-destructive/5 hover:text-destructive">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2.5 text-xs text-destructive/70 hover:bg-destructive/5 hover:text-destructive"
+              onClick={async (e) => {
+                e.stopPropagation()
+                if (!confirm(`Remove meter ${meter.serialNumber}?`)) return
+                try {
+                  await api("meter.delete", { siteId, id: meter.id })
+                  toast.success("Meter removed")
+                  onMutate?.()
+                } catch (err: any) {
+                  toast.error(err?.message || "Failed to remove meter")
+                }
+              }}
+            >
               <RiDeleteBinLine className="size-3" />
               Remove
             </Button>
@@ -351,19 +372,35 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
 
 // --- Configure Panel ---
 
-function ConfigurePanel({ meter }: { meter: Meter }) {
+function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: string; onSaved?: () => void }) {
   const [vendor, setVendor] = useState(meter.vendor)
   const [channel, setChannel] = useState<MeterChannel>(meter.channel)
   const [phase, setPhase] = useState(meter.phase)
+  const [saving, setSaving] = useState(false)
 
   const proto = PROTOCOL_CONFIG[meter.protocol]
   const ProtoIcon = proto.icon
   const allChannels: MeterChannel[] = ["pv", "grid", "battery", "ev", "load"]
 
-  function handleSave() {
-    toast.success("Meter updated", {
-      description: `${meter.serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
-    })
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await api("meter.update", {
+        siteId,
+        id: meter.id,
+        vendor,
+        phase,
+        channel,
+      })
+      toast.success("Meter updated", {
+        description: `${meter.serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
+      })
+      onSaved?.()
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update meter")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -492,8 +529,9 @@ function ConfigurePanel({ meter }: { meter: Meter }) {
 
         {/* Save */}
         <div className="flex justify-end">
-          <Button size="sm" onClick={handleSave}>
-            Save Changes
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving && <RiLoader4Line className="mr-1.5 size-3 animate-spin" />}
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>

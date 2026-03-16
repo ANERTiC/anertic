@@ -12,6 +12,7 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { api } from "~/lib/api"
 import { useSiteId } from "~/layouts/site"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -112,6 +113,7 @@ export default function DeviceNew() {
   const [tag, setTag] = useState("")
   const [brand, setBrand] = useState("")
   const [model, setModel] = useState("")
+  const [creating, setCreating] = useState(false)
 
   const stepIndex = STEPS.indexOf(step)
   const hints = selectedType ? DETAIL_HINTS[selectedType] : DETAIL_HINTS.meter
@@ -122,9 +124,24 @@ export default function DeviceNew() {
     return false
   })()
 
-  function handleCreate() {
-    toast.success(`Device "${name}" created`)
-    navigate("/devices")
+  async function handleCreate() {
+    setCreating(true)
+    try {
+      const result = await api<{ id: string }>("device.create", {
+        siteId,
+        name: name.trim(),
+        type: selectedType,
+        tag: tag.trim(),
+        brand: brand.trim(),
+        model: model.trim(),
+      })
+      toast.success(`Device "${name}" created`)
+      navigate(`/devices/${result.id}?site=${siteId}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create device")
+    } finally {
+      setCreating(false)
+    }
   }
 
   function goNext() {
@@ -322,9 +339,9 @@ export default function DeviceNew() {
               <RiArrowLeftSLine className="size-4" />
               Back
             </Button>
-            <Button disabled={!canContinue} onClick={handleCreate} className="gap-1.5">
+            <Button disabled={!canContinue || creating} onClick={handleCreate} className="gap-1.5">
               <RiCheckLine className="size-4" />
-              Create Device
+              {creating ? "Creating…" : "Create Device"}
             </Button>
           </div>
         </div>

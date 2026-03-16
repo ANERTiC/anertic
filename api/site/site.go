@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -159,6 +160,11 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		userID,
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	// Create starter device + meter so new sites have sample data
+	if err := createStarterDevice(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -354,4 +360,160 @@ func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error)
 	}
 
 	return new(struct{}), nil
+}
+
+func createStarterDevice(ctx context.Context, siteID string) error {
+	// Grid meter
+	gridDeviceID := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Grid Meter', 'meter', 'Grid import/export', 'Eastron', 'SDM630-Modbus V2')
+	`,
+		gridDeviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	gridMeterID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Eastron', 'grid')
+	`,
+		gridMeterID,
+		gridDeviceID,
+		"DEMO-"+strings.ToUpper(gridMeterID),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Solar inverter
+	solarDeviceID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Solar Inverter', 'inverter', 'Rooftop PV system', 'Huawei', 'SUN2000-10KTL-M1')
+	`,
+		solarDeviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	solarMeterID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Huawei', 'pv')
+	`,
+		solarMeterID,
+		solarDeviceID,
+		"DEMO-"+strings.ToUpper(solarMeterID),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Floor 0 sub-distribution board
+	floorDeviceID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Floor 0 SDB', 'meter', 'Sub-distribution board ground floor', 'Eastron', 'SDM120-Modbus')
+	`,
+		floorDeviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	floorMeterID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Eastron', 'load')
+	`,
+		floorMeterID,
+		floorDeviceID,
+		"DEMO-"+strings.ToUpper(floorMeterID),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Battery storage
+	batteryDeviceID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Battery Storage', 'appliance', 'Home battery system', 'Tesla', 'Powerwall 3')
+	`,
+		batteryDeviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	batteryMeterID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Tesla', 'battery')
+	`,
+		batteryMeterID,
+		batteryDeviceID,
+		"DEMO-"+strings.ToUpper(batteryMeterID),
+	)
+	return err
 }

@@ -23,11 +23,12 @@ import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
 import { api } from "~/lib/api"
+import { formatLastSeen, type MeterChannel } from "~/lib/device"
 
 // --- Types ---
 
+export type { MeterChannel }
 export type MeterProtocol = "mqtt" | "http"
-export type MeterChannel = "pv" | "grid" | "battery" | "ev" | "load"
 
 export interface MeterReading {
   metric: string
@@ -601,15 +602,4 @@ export function formatMetricLabel(metric: string): string {
   return labels[metric] || metric.replace(/_/g, " ")
 }
 
-export function formatLastSeen(lastSeenAt: string | null): string {
-  if (!lastSeenAt) return "Never"
-  const diff = Date.now() - new Date(lastSeenAt).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
+export { formatLastSeen }

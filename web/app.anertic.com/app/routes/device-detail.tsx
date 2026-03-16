@@ -145,7 +145,7 @@ export default function DeviceDetail() {
   }
 
   async function handleDeleteDevice() {
-    if (!confirm("Are you sure you want to delete this device? All associated meters will also be deleted. This action cannot be undone.")) {
+    if (!confirm("Are you sure you want to delete this device? It will be deactivated and hidden from the device list.")) {
       return
     }
     try {

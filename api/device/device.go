@@ -72,6 +72,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("site_id", p.SiteID)
+			c.Eq("is_active", true)
 			if p.Type != "" {
 				c.Eq("type", p.Type)
 			}
@@ -251,39 +252,23 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	// verify device belongs to the site
-	var exists bool
-	err := pgctx.QueryRow(ctx, `
-		select exists (
-			select 1
-			from devices
-			where id = $1
-			  and site_id = $2
-		)
-	`, p.ID, p.SiteID).Scan(&exists)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrNotFound
-	}
-
-	// delete associated meters first (FK constraint)
-	_, err = pgctx.Exec(ctx, `
-		delete from meters
-		where device_id = $1
-	`, p.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = pgctx.Exec(ctx, `
-		delete from devices
+	res, err := pgctx.Exec(ctx, `
+		update devices
+		set is_active = false,
+		    updated_at = now()
 		where id = $1
 		  and site_id = $2
+		  and is_active = true
 	`, p.ID, p.SiteID)
 	if err != nil {
 		return nil, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return nil, ErrNotFound
 	}
 
 	return new(struct{}), nil

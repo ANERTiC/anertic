@@ -67,7 +67,6 @@ interface SiteSettings {
   offlineThresholdMinutes: number
   consumptionThresholdKwh: number
   // API
-  apiKey: string
   webhookUrl: string
   // Meta
   createdAt: string
@@ -197,13 +196,14 @@ export default function Settings() {
     alertLowSolar: false,
     offlineThresholdMinutes: 30,
     consumptionThresholdKwh: 50,
-    apiKey: '',
     webhookUrl: '',
     createdAt: '',
     updatedAt: '',
   })
   const [showApiKey, setShowApiKey] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
+  const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
   const [editingGeneral, setEditingGeneral] = useState(false)
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingTariffs, setSavingTariffs] = useState(false)
@@ -236,6 +236,15 @@ export default function Settings() {
   const { data: invitesData, mutate: mutateInvites } = useSWR(
     siteId ? ['site.listInvites', siteId] : null,
     () => api<{ items: PendingInvite[] }>('site.listInvites', { siteId })
+  )
+
+  // Fetch API key status
+  const { data: apiKeyData, mutate: mutateApiKey } = useSWR(
+    siteId ? ['site.getApiKey', siteId] : null,
+    () =>
+      api<{ hasKey: boolean; createdAt: string | null }>('site.getApiKey', {
+        siteId,
+      })
   )
 
   // Sync site data to settings state
@@ -397,13 +406,30 @@ export default function Settings() {
   }
 
   function handleCopyApiKey() {
-    navigator.clipboard.writeText(settings.apiKey)
+    if (!generatedApiKey) return
+    navigator.clipboard.writeText(generatedApiKey)
     setCopiedKey(true)
     setTimeout(() => setCopiedKey(false), 2000)
   }
 
-  const maskedKey =
-    settings.apiKey.slice(0, 8) + '...' + settings.apiKey.slice(-4)
+  async function handleRegenerateApiKey() {
+    setRegenerating(true)
+    try {
+      const result = await api<{ apiKey: string }>('site.regenerateApiKey', {
+        siteId,
+      })
+      setGeneratedApiKey(result.apiKey)
+      setShowApiKey(true)
+      mutateApiKey()
+      toast.success('API key regenerated')
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to regenerate API key'
+      )
+    } finally {
+      setRegenerating(false)
+    }
+  }
 
   return (
     <div
@@ -1159,42 +1185,98 @@ export default function Settings() {
             {/* API Key */}
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">API Key</Label>
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 items-center rounded-md border bg-muted/30 px-3 py-2">
-                  <code className="flex-1 text-xs">
-                    {showApiKey ? settings.apiKey : maskedKey}
-                  </code>
-                  <button
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
+              {generatedApiKey ? (
+                <>
+                  <div className="rounded-lg border border-amber-200/50 bg-amber-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                      <RiAlertLine className="size-3.5" />
+                      Copy this key now — it won't be shown again
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-1 items-center rounded-md border bg-muted/30 px-3 py-2">
+                        <code className="flex-1 font-mono text-xs">
+                          {showApiKey
+                            ? generatedApiKey
+                            : 'anr_' + '•'.repeat(32)}
+                        </code>
+                        <button
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          {showApiKey ? (
+                            <RiEyeOffLine className="size-3.5" />
+                          ) : (
+                            <RiEyeLine className="size-3.5" />
+                          )}
+                        </button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={handleCopyApiKey}
+                      >
+                        {copiedKey ? (
+                          <RiCheckLine className="size-3.5 text-emerald-500" />
+                        ) : (
+                          <RiFileCopyLine className="size-3.5" />
+                        )}
+                        {copiedKey ? 'Copied' : 'Copy'}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : apiKeyData?.hasKey ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 items-center rounded-md border bg-muted/30 px-3 py-2">
+                    <code className="flex-1 font-mono text-xs text-muted-foreground">
+                      anr_{'•'.repeat(32)}
+                    </code>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={handleRegenerateApiKey}
+                    disabled={regenerating}
                   >
-                    {showApiKey ? (
-                      <RiEyeOffLine className="size-3.5" />
-                    ) : (
-                      <RiEyeLine className="size-3.5" />
-                    )}
-                  </button>
+                    <RiRefreshLine
+                      className={cn(
+                        'size-3.5',
+                        regenerating && 'animate-spin'
+                      )}
+                    />
+                    {regenerating ? 'Regenerating...' : 'Regenerate'}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={handleCopyApiKey}
-                >
-                  {copiedKey ? (
-                    <RiCheckLine className="size-3.5 text-emerald-500" />
-                  ) : (
-                    <RiFileCopyLine className="size-3.5" />
-                  )}
-                  {copiedKey ? 'Copied' : 'Copy'}
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  <RiRefreshLine className="size-3.5" />
-                  Regenerate
-                </Button>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 items-center rounded-md border border-dashed bg-muted/10 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">
+                      No API key generated
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={handleRegenerateApiKey}
+                    disabled={regenerating}
+                  >
+                    <RiKeyLine
+                      className={cn(
+                        'size-3.5',
+                        regenerating && 'animate-spin'
+                      )}
+                    />
+                    {regenerating ? 'Generating...' : 'Generate Key'}
+                  </Button>
+                </div>
+              )}
               <p className="text-[10px] text-muted-foreground">
-                Use this key to authenticate API requests for this site.
+                {apiKeyData?.hasKey && apiKeyData.createdAt
+                  ? `Key created ${new Date(apiKeyData.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                  : 'Use this key to authenticate meter data ingestion for this site.'}
               </p>
             </div>
 
@@ -1213,13 +1295,6 @@ export default function Settings() {
               <p className="text-[10px] text-muted-foreground">
                 We'll send POST requests with event payloads to this URL.
               </p>
-            </div>
-
-            <div className="flex justify-end">
-              <Button size="sm" className="gap-1.5">
-                <RiCheckLine className="size-3.5" />
-                Save Integration
-              </Button>
             </div>
           </div>
         </CardContent>

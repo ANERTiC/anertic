@@ -72,7 +72,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("site_id", p.SiteID)
-			c.Raw("deleted_at is null")
+			c.IsNull("deleted_at")
 			if p.Type != "" {
 				c.Eq("type", p.Type)
 			}

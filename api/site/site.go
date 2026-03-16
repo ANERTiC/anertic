@@ -475,5 +475,44 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 		floorDeviceID,
 		"DEMO-"+floorMeterID,
 	)
+	if err != nil {
+		return err
+	}
+
+	// Battery storage
+	batteryDeviceID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into devices (
+			id,
+			site_id,
+			name,
+			type,
+			tag,
+			brand,
+			model
+		) values ($1, $2, 'Battery Storage', 'appliance', 'Home battery system', 'Tesla', 'Powerwall 3')
+	`,
+		batteryDeviceID,
+		siteID,
+	)
+	if err != nil {
+		return err
+	}
+
+	batteryMeterID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into meters (
+			id,
+			device_id,
+			serial_number,
+			protocol,
+			vendor,
+			channel
+		) values ($1, $2, $3, 'mqtt', 'Tesla', 'battery')
+	`,
+		batteryMeterID,
+		batteryDeviceID,
+		"DEMO-"+batteryMeterID,
+	)
 	return err
 }

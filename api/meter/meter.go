@@ -13,6 +13,7 @@ import (
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 
+	"github.com/anertic/anertic/api/device"
 	"github.com/anertic/anertic/api/iam"
 )
 
@@ -63,7 +64,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		where id = $1
 	`, p.DeviceID).Scan(&siteID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, arpc.NewErrorCode("device/not-found", "device not found")
+		return nil, device.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -158,7 +159,7 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		where id = $1
 	`, p.DeviceID).Scan(&siteID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, arpc.NewErrorCode("device/not-found", "device not found")
+		return nil, device.ErrNotFound
 	}
 	if err != nil {
 		return nil, err

@@ -7,7 +7,6 @@ import {
   RiSunLine,
   RiPlugLine,
   RiArrowRightSLine,
-  RiRefreshLine,
   RiLink,
   RiFlashlightLine,
 } from "@remixicon/react"
@@ -28,22 +27,18 @@ interface Device {
   siteId: string
   name: string
   type: DeviceType
+  tag: string
   brand: string
   model: string
   isActive: boolean
-  protocol: Protocol
   connectionStatus: ConnectionStatus
   lastSeenAt: string | null
-  ipAddress: string | null
-  firmwareVersion: string | null
-  apiKeyPrefix: string | null
+  meterCount: number
   dataPointsToday: number
-  uptimePercent: number
   createdAt: string
 }
 
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type Protocol = "mqtt" | "rest"
 type ConnectionStatus = "online" | "offline" | "degraded"
 
 // --- Mock Data ---
@@ -52,55 +47,46 @@ const MOCK_DEVICES: Device[] = [
   {
     id: "dev_01",
     siteId: "site_01",
-    name: "Main Inverter",
+    name: "Huawei SUN2000-10KTL",
     type: "inverter",
-    brand: "SMA",
-    model: "Sunny Tripower 10.0",
+    tag: "",
+    brand: "Huawei",
+    model: "SUN2000-10KTL",
     isActive: true,
-    protocol: "mqtt",
     connectionStatus: "online",
     lastSeenAt: new Date(Date.now() - 15000).toISOString(),
-    ipAddress: "192.168.1.40",
-    firmwareVersion: "3.10.18.R",
-    apiKeyPrefix: "anertic_inv_",
+    meterCount: 6,
     dataPointsToday: 2847,
-    uptimePercent: 99.8,
     createdAt: "2025-08-15T10:00:00Z",
   },
   {
     id: "dev_02",
     siteId: "site_01",
-    name: "Roof Array East",
+    name: "Rooftop PV Array",
     type: "solar_panel",
+    tag: "",
     brand: "JA Solar",
     model: "JAM72S30-545/MR",
     isActive: true,
-    protocol: "mqtt",
     connectionStatus: "online",
     lastSeenAt: new Date(Date.now() - 8000).toISOString(),
-    ipAddress: null,
-    firmwareVersion: null,
-    apiKeyPrefix: "anertic_sol_",
+    meterCount: 1,
     dataPointsToday: 1420,
-    uptimePercent: 99.2,
     createdAt: "2025-08-15T10:30:00Z",
   },
   {
     id: "dev_03",
     siteId: "site_01",
-    name: "Grid Meter",
+    name: "Building MDB",
     type: "meter",
+    tag: "Main distribution board",
     brand: "Eastron",
     model: "SDM630",
     isActive: true,
-    protocol: "rest",
     connectionStatus: "online",
     lastSeenAt: new Date(Date.now() - 5000).toISOString(),
-    ipAddress: "192.168.1.41",
-    firmwareVersion: "1.037",
-    apiKeyPrefix: "anertic_mtr_",
+    meterCount: 3,
     dataPointsToday: 4320,
-    uptimePercent: 100,
     createdAt: "2025-08-15T09:00:00Z",
   },
   {
@@ -108,71 +94,59 @@ const MOCK_DEVICES: Device[] = [
     siteId: "site_01",
     name: "Battery Storage",
     type: "appliance",
+    tag: "Garage",
     brand: "BYD",
     model: "Battery-Box Premium HVS",
     isActive: true,
-    protocol: "mqtt",
     connectionStatus: "degraded",
     lastSeenAt: new Date(Date.now() - 180000).toISOString(),
-    ipAddress: null,
-    firmwareVersion: "2.4.1",
-    apiKeyPrefix: "anertic_bat_",
+    meterCount: 1,
     dataPointsToday: 890,
-    uptimePercent: 87.3,
     createdAt: "2025-09-01T14:00:00Z",
   },
   {
     id: "dev_05",
     siteId: "site_01",
-    name: "Roof Array West",
-    type: "solar_panel",
-    brand: "JA Solar",
-    model: "JAM72S30-545/MR",
+    name: "Floor 2 SDB",
+    type: "meter",
+    tag: "Floor 2 sub-distribution board",
+    brand: "Eastron",
+    model: "SDM630",
     isActive: true,
-    protocol: "mqtt",
     connectionStatus: "online",
     lastSeenAt: new Date(Date.now() - 12000).toISOString(),
-    ipAddress: null,
-    firmwareVersion: null,
-    apiKeyPrefix: "anertic_sol_",
+    meterCount: 3,
     dataPointsToday: 1380,
-    uptimePercent: 98.9,
     createdAt: "2025-08-16T08:00:00Z",
   },
   {
     id: "dev_06",
     siteId: "site_01",
-    name: "HVAC Controller",
+    name: "HVAC Unit",
     type: "appliance",
+    tag: "2nd floor lobby",
     brand: "Daikin",
     model: "BRP069C4x",
     isActive: false,
-    protocol: "rest",
     connectionStatus: "offline",
     lastSeenAt: new Date(Date.now() - 86400000).toISOString(),
-    ipAddress: "192.168.1.55",
-    firmwareVersion: "1.2.68",
-    apiKeyPrefix: "anertic_hvc_",
+    meterCount: 1,
     dataPointsToday: 0,
-    uptimePercent: 0,
     createdAt: "2025-10-05T16:00:00Z",
   },
   {
     id: "dev_07",
     siteId: "site_01",
-    name: "Solar Meter",
-    type: "meter",
-    brand: "Eastron",
-    model: "SDM120",
+    name: "Wallbox Pulsar Plus",
+    type: "appliance",
+    tag: "Garage EV charger",
+    brand: "Wallbox",
+    model: "Pulsar Plus",
     isActive: true,
-    protocol: "mqtt",
     connectionStatus: "online",
     lastSeenAt: new Date(Date.now() - 3000).toISOString(),
-    ipAddress: "192.168.1.42",
-    firmwareVersion: "1.031",
-    apiKeyPrefix: "anertic_mtr_",
+    meterCount: 1,
     dataPointsToday: 4310,
-    uptimePercent: 100,
     createdAt: "2025-08-15T09:15:00Z",
   },
 ]
@@ -185,11 +159,6 @@ const DEVICE_TYPE_CONFIG: Record<
   solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
   meter: { label: "Meter", icon: RiCpuLine, color: "text-cyan-600", bg: "bg-cyan-500/10" },
   appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-}
-
-const PROTOCOL_CONFIG: Record<Protocol, { label: string; color: string }> = {
-  mqtt: { label: "MQTT", color: "text-purple-700 bg-purple-500/10" },
-  rest: { label: "REST API", color: "text-blue-700 bg-blue-500/10" },
 }
 
 const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
@@ -390,7 +359,6 @@ function DeviceRow({ device, onClick }: { device: Device; onClick: () => void })
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
-  const protocolConfig = PROTOCOL_CONFIG[device.protocol]
 
   return (
     <button
@@ -408,11 +376,11 @@ function DeviceRow({ device, onClick }: { device: Device; onClick: () => void })
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground truncate">
-          {device.brand} {device.model}
+          {device.tag || `${device.brand} ${device.model}`}
         </p>
       </div>
-      <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold", protocolConfig.color)}>
-        {protocolConfig.label}
+      <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+        {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
       </span>
       <div className="hidden shrink-0 text-right sm:block" style={{ minWidth: 80 }}>
         <p className="text-xs font-semibold tabular-nums">{device.dataPointsToday.toLocaleString()}</p>
@@ -439,7 +407,6 @@ function DeviceQuickView({ device }: { device: Device }) {
   const typeConfig = DEVICE_TYPE_CONFIG[device.type]
   const TypeIcon = typeConfig.icon
   const statusConfig = STATUS_CONFIG[device.connectionStatus]
-  const protocolConfig = PROTOCOL_CONFIG[device.protocol]
 
   return (
     <div>
@@ -450,6 +417,9 @@ function DeviceQuickView({ device }: { device: Device }) {
         <div className="min-w-0 flex-1">
           <h3 className="text-lg font-semibold tracking-tight">{device.name}</h3>
           <p className="text-sm text-muted-foreground">{device.brand} {device.model}</p>
+          {device.tag && (
+            <p className="mt-0.5 text-xs text-muted-foreground/60">{device.tag}</p>
+          )}
           <div className="mt-2 flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <span className="relative flex size-2">
@@ -460,20 +430,15 @@ function DeviceQuickView({ device }: { device: Device }) {
               </span>
               <span className={cn("text-xs font-medium", statusConfig.color)}>{statusConfig.label}</span>
             </div>
-            <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-semibold", protocolConfig.color)}>
-              {protocolConfig.label}
+            <span className="rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
             </span>
           </div>
         </div>
       </div>
       <Separator />
       <div className="space-y-4 p-6">
-        <div className="grid grid-cols-3 gap-3">
-          <MetricBox
-            label="Uptime"
-            value={`${device.uptimePercent}%`}
-            color={device.uptimePercent >= 99 ? "text-emerald-600" : device.uptimePercent >= 90 ? "text-amber-600" : "text-red-600"}
-          />
+        <div className="grid grid-cols-2 gap-3">
           <MetricBox label="Data Points" value={device.dataPointsToday.toLocaleString()} color="text-foreground" />
           <MetricBox
             label="Last Seen"
@@ -483,16 +448,10 @@ function DeviceQuickView({ device }: { device: Device }) {
         </div>
         <div className="text-xs text-muted-foreground">
           <span className="font-mono">{device.id}</span>
-          {device.ipAddress && <span className="ml-3">{device.ipAddress}</span>}
-          {device.firmwareVersion && <span className="ml-3">v{device.firmwareVersion}</span>}
         </div>
       </div>
       <Separator />
-      <div className="flex items-center justify-between p-4 px-6">
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <RiRefreshLine className="size-3.5" />
-          Ping
-        </Button>
+      <div className="flex items-center justify-end p-4 px-6">
         <Link to={`/devices/${device.id}`}>
           <Button size="sm" className="gap-1.5 text-xs">
             View details

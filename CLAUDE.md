@@ -89,3 +89,7 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth |
 | `GOOGLE_REDIRECT_URL` | `http://localhost:8080/auth/google/callback` | OAuth callback |
 | `APP_URL` | `http://localhost:5173` | Frontend URL for auth redirects |
+
+## MCP Servers
+
+- **mem0** — AI memory for storing and retrieving long-term context. Always save to mem0 when exploring/learning codebases.

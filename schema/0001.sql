@@ -53,6 +53,7 @@ create table if not exists sites
     offline_threshold_minutes int                     not null default 30,
     consumption_threshold_kwh numeric                 not null default 50,
     api_key                   text                    not null default '',
+    api_key_created_at        timestamptz,
     webhook_url               text                    not null default '',
     metadata                  jsonb                   not null default '{}',
     created_at                timestamptz             not null default now(),

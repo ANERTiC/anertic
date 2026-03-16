@@ -8,27 +8,21 @@ import {
   RiFlashlightLine,
   RiSignalWifiOffLine,
   RiSettings3Line,
-  RiRefreshLine,
   RiClipboardLine,
   RiEditLine,
   RiDeleteBinLine,
   RiAlertLine,
   RiCheckboxCircleLine,
   RiBarChartBoxLine,
-  RiLink,
   RiAddLine,
   RiSensorLine,
-  RiWifiLine,
-  RiArrowRightSLine,
   RiDashboard3Line,
   RiPulseLine,
-  RiCloseLine,
   RiArrowDownSLine,
   RiArrowUpSLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { useSiteId } from "~/layouts/site"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -37,12 +31,29 @@ import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { cn } from "~/lib/utils"
+import {
+  MeterCard,
+  CHANNEL_CONFIG,
+  PROTOCOL_CONFIG,
+  PHASE_OPTIONS,
+  ANERTIC_MQTT_BROKER,
+  ANERTIC_INGEST_URL,
+  formatPower,
+  formatReadingValue,
+  formatMetricLabel,
+  formatLastSeen,
+  type Meter,
+  type MeterReading,
+  type MeterProtocol,
+  type MeterChannel,
+  CopyableField,
+} from "~/components/meter-card"
 
 // --- Types ---
 
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-type MeterProtocol = "mqtt" | "http" | "modbus"
 type ConnectionStatus = "online" | "offline" | "degraded"
+
 interface Device {
   id: string
   siteId: string
@@ -53,26 +64,6 @@ interface Device {
   model: string
   isActive: boolean
   createdAt: string
-}
-
-interface Meter {
-  id: string
-  deviceId: string
-  serialNumber: string
-  protocol: MeterProtocol
-  vendor: string
-  isOnline: boolean
-  lastSeenAt: string | null
-  config: Record<string, string>
-  createdAt: string
-  latestReadings: MeterReading[]
-}
-
-interface MeterReading {
-  metric: string
-  value: number
-  unit: string
-  timestamp: string
 }
 
 interface EventLog {
@@ -96,10 +87,12 @@ const DEVICE_TYPE_CONFIG: Record<
   appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
 }
 
-const PROTOCOL_CONFIG: Record<MeterProtocol, { label: string; color: string; bg: string; icon: typeof RiWifiLine }> = {
-  mqtt: { label: "MQTT", color: "text-purple-700", bg: "bg-purple-500/10", icon: RiWifiLine },
-  http: { label: "HTTP", color: "text-blue-700", bg: "bg-blue-500/10", icon: RiLink },
-  modbus: { label: "Modbus", color: "text-orange-700", bg: "bg-orange-500/10", icon: RiPulseLine },
+// Suggested channels per device type
+const DEVICE_CHANNEL_HINTS: Record<DeviceType, MeterChannel[]> = {
+  inverter: ["pv", "grid", "battery", "load"],
+  solar_panel: ["pv"],
+  appliance: ["load", "ev"],
+  meter: ["load", "grid"],
 }
 
 const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
@@ -130,16 +123,16 @@ function getMockMeters(deviceId: string): Meter[] {
       id: "mtr_01",
       deviceId,
       serialNumber: "SDM-2030-4821",
-      protocol: "modbus",
+      protocol: "mqtt",
       vendor: "Eastron",
+      phase: 1,
+      channel: "grid",
       isOnline: true,
       lastSeenAt: new Date(Date.now() - 5000).toISOString(),
       config: {
-        address: "192.168.1.41",
-        port: "502",
-        slave_id: "1",
-        baud_rate: "9600",
-        register_map: "eastron_sdm630",
+        topic: "meters/sdm-2030-4821/telemetry",
+        broker: "mqtt://broker.anertic.com:1883",
+        qos: "1",
       },
       createdAt: "2025-08-15T09:00:00Z",
       latestReadings: [
@@ -157,6 +150,8 @@ function getMockMeters(deviceId: string): Meter[] {
       serialNumber: "SDM-2030-4822",
       protocol: "mqtt",
       vendor: "Eastron",
+      phase: 2,
+      channel: "grid",
       isOnline: true,
       lastSeenAt: new Date(Date.now() - 8000).toISOString(),
       config: {
@@ -190,6 +185,7 @@ export default function DeviceDetail() {
   const { deviceId } = useParams()
   const [expandedMeter, setExpandedMeter] = useState<string | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showAddMeter, setShowAddMeter] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
 
   const device = getMockDevice(deviceId || "dev_01")
@@ -198,11 +194,6 @@ export default function DeviceDetail() {
   const TypeIcon = typeConfig.icon
 
   const onlineMeters = meters.filter((m) => m.isOnline).length
-
-  function handleCopy(text: string, label: string) {
-    navigator.clipboard.writeText(text)
-    toast.success(`${label} copied to clipboard`)
-  }
 
   return (
     <div className="space-y-6">
@@ -312,7 +303,7 @@ export default function DeviceDetail() {
             <h3 className="text-sm font-semibold">Meters</h3>
             <span className="text-xs text-muted-foreground">{meters.length}</span>
           </div>
-          <Button size="sm" variant="outline" className="gap-1.5">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddMeter(true)}>
             <RiAddLine className="size-3.5" />
             Add Meter
           </Button>
@@ -326,7 +317,7 @@ export default function DeviceDetail() {
               <p className="mt-1 text-xs text-muted-foreground/60">
                 Add a meter to start collecting energy data
               </p>
-              <Button size="sm" className="mt-4 gap-1.5">
+              <Button size="sm" className="mt-4 gap-1.5" onClick={() => setShowAddMeter(true)}>
                 <RiAddLine className="size-3.5" />
                 Add Meter
               </Button>
@@ -340,7 +331,6 @@ export default function DeviceDetail() {
                 meter={meter}
                 expanded={expandedMeter === meter.id}
                 onToggle={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
-                onCopy={handleCopy}
               />
             ))}
           </div>
@@ -452,6 +442,13 @@ export default function DeviceDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Meter Dialog */}
+      <AddMeterDialog
+        open={showAddMeter}
+        onOpenChange={setShowAddMeter}
+        deviceType={device.type}
+      />
     </div>
   )
 }
@@ -480,143 +477,6 @@ function MetricCard({
   )
 }
 
-function MeterCard({
-  meter,
-  expanded,
-  onToggle,
-  onCopy,
-}: {
-  meter: Meter
-  expanded: boolean
-  onToggle: () => void
-  onCopy: (text: string, label: string) => void
-}) {
-  const proto = PROTOCOL_CONFIG[meter.protocol]
-  const ProtoIcon = proto.icon
-  const power = meter.latestReadings.find((r) => r.metric === "power_w")
-
-  return (
-    <Card className={cn("border-border/50 transition-all", expanded && "ring-1 ring-border")}>
-      {/* Header — always visible */}
-      <button onClick={onToggle} className="flex w-full items-center gap-4 p-4 text-left">
-        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", proto.bg)}>
-          <ProtoIcon className={cn("size-5", proto.color)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold">{meter.serialNumber}</p>
-            <StatusDot status={meter.isOnline ? "online" : "offline"} />
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {meter.vendor} · {proto.label}
-            {meter.lastSeenAt && ` · ${formatLastSeen(meter.lastSeenAt)}`}
-          </p>
-        </div>
-        {power && (
-          <div className="hidden shrink-0 text-right sm:block">
-            <p className="text-sm font-bold tabular-nums text-cyan-600">{formatPower(power.value)}</p>
-            <p className="text-[10px] text-muted-foreground">live</p>
-          </div>
-        )}
-        <RiArrowRightSLine
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground/30 transition-transform",
-            expanded && "rotate-90",
-          )}
-        />
-      </button>
-
-      {/* Expanded — readings + config */}
-      {expanded && (
-        <div className="border-t border-border/50">
-          {/* Readings */}
-          <div className="px-4 py-4">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-              Latest Readings
-            </p>
-            <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
-              {meter.latestReadings.map((reading) => (
-                <div key={reading.metric} className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                    {formatMetricLabel(reading.metric)}
-                  </p>
-                  <p className="mt-0.5 text-sm font-bold tabular-nums">
-                    {formatReadingValue(reading.value, reading.metric)}
-                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">{reading.unit}</span>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Config */}
-          <div className="px-4 py-4">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-              Configuration
-            </p>
-            <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-3">
-                <InfoRow label="Serial" value={meter.serialNumber} mono />
-                <InfoRow label="Protocol" value={proto.label} />
-                <InfoRow label="Vendor" value={meter.vendor} />
-                {Object.entries(meter.config).map(([key, value]) => (
-                  <InfoRow key={key} label={key.replace(/_/g, " ")} value={value} />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Actions */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="xs" className="gap-1 text-xs">
-                <RiRefreshLine className="size-3" />
-                Ping
-              </Button>
-              <Button variant="outline" size="xs" className="gap-1 text-xs">
-                <RiSettings3Line className="size-3" />
-                Configure
-              </Button>
-            </div>
-            <Button variant="ghost" size="xs" className="gap-1 text-xs text-destructive hover:bg-destructive/10">
-              <RiDeleteBinLine className="size-3" />
-              Remove
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-function StatusDot({ status }: { status: "online" | "offline" | "degraded" }) {
-  const config = STATUS_CONFIG[status]
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="relative flex size-1.5">
-        {status === "online" && (
-          <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", config.dot)} />
-        )}
-        <span className={cn("relative inline-flex size-1.5 rounded-full", config.dot)} />
-      </span>
-      <span className={cn("text-[11px] font-medium", config.color)}>{config.label}</span>
-    </span>
-  )
-}
-
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</p>
-      <p className={cn("mt-0.5 text-sm", mono && "font-mono text-xs")}>{value}</p>
-    </div>
-  )
-}
-
 function EventIcon({ type }: { type: EventLog["type"] }) {
   const config: Record<EventLog["type"], { icon: typeof RiCheckboxCircleLine; color: string; bg: string }> = {
     connected: { icon: RiCheckboxCircleLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
@@ -631,6 +491,237 @@ function EventIcon({ type }: { type: EventLog["type"] }) {
     <div className={cn("flex size-7 items-center justify-center rounded-lg", c.bg)}>
       <Icon className={cn("size-3.5", c.color)} />
     </div>
+  )
+}
+
+function AddMeterDialog({
+  open,
+  onOpenChange,
+  deviceType,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  deviceType: DeviceType
+}) {
+  const [protocol, setProtocol] = useState<MeterProtocol>("mqtt")
+  const [channel, setChannel] = useState<MeterChannel>(DEVICE_CHANNEL_HINTS[deviceType][0] ?? "load")
+  const [phase, setPhase] = useState(0)
+  const [serialNumber, setSerialNumber] = useState("")
+  const [vendor, setVendor] = useState("")
+
+
+  function handleSubmit() {
+    if (!serialNumber.trim()) {
+      toast.error("Serial number is required")
+      return
+    }
+    toast.success("Meter added", {
+      description: `${serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
+    })
+    onOpenChange(false)
+    resetForm()
+  }
+
+  function resetForm() {
+    setSerialNumber("")
+    setVendor("")
+    setProtocol("mqtt")
+    setChannel(DEVICE_CHANNEL_HINTS[deviceType][0] ?? "load")
+    setPhase(0)
+  }
+
+  const suggestedChannels = DEVICE_CHANNEL_HINTS[deviceType]
+  const allChannels: MeterChannel[] = ["pv", "grid", "battery", "ev", "load"]
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm() }}>
+      <DialogContent className="sm:max-w-5xl gap-0 overflow-hidden p-0">
+        {/* Header */}
+        <div className="p-6 pb-0">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10">
+              <RiDashboard3Line className="size-5 text-cyan-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Add Meter</h2>
+              <p className="text-xs text-muted-foreground">
+                Configure a data source for this {DEVICE_TYPE_CONFIG[deviceType].label.toLowerCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="max-h-[65vh] overflow-y-auto">
+          <div className="space-y-5 p-6">
+            {/* Serial & Vendor */}
+            <div className="grid grid-cols-5 gap-3">
+              <div className="col-span-3">
+                <Label className="text-xs text-muted-foreground">Serial Number</Label>
+                <Input
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="e.g. SDM-2030-4821"
+                  className="mt-1.5 font-mono text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs text-muted-foreground">Vendor</Label>
+                <Input
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  placeholder="e.g. Eastron"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {/* Channel */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Channel</Label>
+              <p className="mb-2 text-[11px] text-muted-foreground/60">
+                What this meter measures — determines dashboard category
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {allChannels.map((ch) => {
+                  const config = CHANNEL_CONFIG[ch]
+                  const Icon = config.icon
+                  const isSuggested = suggestedChannels.includes(ch)
+                  const isActive = channel === ch
+                  return (
+                    <button
+                      key={ch}
+                      onClick={() => setChannel(ch)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
+                        isActive
+                          ? "border-foreground/20 bg-foreground/5 text-foreground shadow-sm"
+                          : isSuggested
+                            ? "border-border/60 text-foreground/80 hover:border-foreground/20 hover:bg-muted/50"
+                            : "border-transparent text-muted-foreground/50 hover:border-border/40 hover:text-muted-foreground",
+                      )}
+                    >
+                      <Icon className={cn("size-3.5", isActive ? config.color : "")} />
+                      {config.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Phase */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Phase</Label>
+              <p className="mb-2 text-[11px] text-muted-foreground/60">
+                Electrical line — use Auto for single-phase or DC measurements
+              </p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {PHASE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPhase(opt.value)}
+                    className={cn(
+                      "flex flex-col items-center rounded-lg border px-3 py-2.5 transition-all",
+                      phase === opt.value
+                        ? "border-foreground/20 bg-foreground/5 shadow-sm"
+                        : "border-border/50 hover:border-foreground/15 hover:bg-muted/30",
+                    )}
+                  >
+                    <span className={cn(
+                      "text-sm font-bold tabular-nums",
+                      phase === opt.value ? "text-foreground" : "text-muted-foreground",
+                    )}>
+                      {opt.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">{opt.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Protocol */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Protocol</Label>
+              <select
+                value={protocol}
+                onChange={(e) => setProtocol(e.target.value as MeterProtocol)}
+                className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {(Object.keys(PROTOCOL_CONFIG) as MeterProtocol[]).map((proto) => (
+                  <option key={proto} value={proto}>
+                    {PROTOCOL_CONFIG[proto].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Connection Info */}
+            {serialNumber.trim() && (
+              <div className="rounded-xl border border-border/50 bg-muted/10 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <RiSettings3Line className="size-3.5 text-muted-foreground/50" />
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                    Connection Info
+                  </p>
+                  <span className="text-[10px] text-muted-foreground/40">— configure your meter to push data here</span>
+                </div>
+
+                {protocol === "mqtt" ? (
+                  <div className="space-y-2.5">
+                    <CopyableField
+                      label="Broker"
+                      value={ANERTIC_MQTT_BROKER}
+                    />
+                    <CopyableField
+                      label="Topic"
+                      value={`meters/${serialNumber.trim()}/telemetry`}
+                    />
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">QoS</p>
+                        <p className="mt-0.5 text-sm font-mono">1</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <CopyableField
+                      label="Webhook URL"
+                      value={`${ANERTIC_INGEST_URL}/${serialNumber.trim()}`}
+                    />
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Method</p>
+                        <p className="mt-0.5 text-sm font-mono">POST</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Content-Type</p>
+                        <p className="mt-0.5 text-sm font-mono">application/json</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 p-4 px-6">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={handleSubmit} className="gap-1.5">
+            <RiAddLine className="size-3.5" />
+            Add Meter
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -661,44 +752,6 @@ function aggregateReadings(meters: Meter[]): MeterReading[] {
     unit: data.unit,
     timestamp: data.timestamp,
   }))
-}
-
-function formatPower(watts: number): string {
-  if (watts >= 1000) return `${(watts / 1000).toFixed(1)} kW`
-  return `${watts.toFixed(0)} W`
-}
-
-function formatReadingValue(value: number, metric: string): string {
-  if (metric === "pf") return value.toFixed(2)
-  if (metric === "energy_kwh") return value.toLocaleString(undefined, { maximumFractionDigits: 1 })
-  if (metric === "frequency") return value.toFixed(2)
-  if (value >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 1 })
-  return value.toFixed(1)
-}
-
-function formatMetricLabel(metric: string): string {
-  const labels: Record<string, string> = {
-    power_w: "Power",
-    energy_kwh: "Energy",
-    voltage_v: "Voltage",
-    current_a: "Current",
-    frequency: "Frequency",
-    pf: "Power Factor",
-  }
-  return labels[metric] || metric.replace(/_/g, " ")
-}
-
-function formatLastSeen(lastSeenAt: string | null): string {
-  if (!lastSeenAt) return "Never"
-  const diff = Date.now() - new Date(lastSeenAt).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
 }
 
 function formatRelativeTime(isoStr: string): string {

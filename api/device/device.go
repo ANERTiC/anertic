@@ -2,10 +2,10 @@ package device
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
-	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
@@ -22,6 +22,7 @@ var (
 type ListParams struct {
 	SiteID string `json:"siteId"`
 	Type   string `json:"type"`
+	Search string `json:"search"`
 }
 
 func (p *ListParams) Valid() error {
@@ -31,15 +32,18 @@ func (p *ListParams) Valid() error {
 }
 
 type Item struct {
-	ID        string    `json:"id"`
-	SiteID    string    `json:"siteId"`
-	Name      string    `json:"name"`
-	Type      string    `json:"type"`
-	Tag       string    `json:"tag"`
-	Brand     string    `json:"brand"`
-	Model     string    `json:"model"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID               string     `json:"id"`
+	SiteID           string     `json:"siteId"`
+	Name             string     `json:"name"`
+	Type             string     `json:"type"`
+	Tag              string     `json:"tag"`
+	Brand            string     `json:"brand"`
+	Model            string     `json:"model"`
+	IsActive         bool       `json:"isActive"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	MeterCount       int        `json:"meterCount"`
+	ConnectionStatus string     `json:"connectionStatus"`
+	LastSeenAt       *time.Time `json:"lastSeenAt"`
 }
 
 type ListResult struct {
@@ -54,32 +58,59 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return nil, err
 	}
 
-	var items []Item
+	args := []any{p.SiteID}
+	argN := 1
 
-	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
-		b.Columns(
-			"id",
-			"site_id",
-			"name",
-			"type",
-			"tag",
-			"brand",
-			"model",
-			"is_active",
-			"created_at",
-		)
-		b.From("devices")
-		b.Where(func(c pgstmt.Cond) {
-			c.Mode().And()
-			c.Eq("site_id", p.SiteID)
-			if p.Type != "" {
-				c.Eq("type", p.Type)
-			}
-		})
-		b.OrderBy("created_at desc")
-	}).IterWith(ctx, func(scan pgsql.Scanner) error {
+	q := `
+		select
+			d.id,
+			d.site_id,
+			d.name,
+			d.type,
+			d.tag,
+			d.brand,
+			d.model,
+			d.is_active,
+			d.created_at,
+			coalesce(m.meter_count, 0),
+			coalesce(m.online_count, 0),
+			m.last_seen_at
+		from devices d
+		left join lateral (
+			select
+				count(*) as meter_count,
+				count(*) filter (where is_online) as online_count,
+				max(last_seen_at) as last_seen_at
+			from meters
+			where device_id = d.id
+		) m on true
+		where d.site_id = $1
+	`
+
+	if p.Type != "" {
+		argN++
+		q += fmt.Sprintf(" and d.type = $%d", argN)
+		args = append(args, p.Type)
+	}
+	if p.Search != "" {
+		argN++
+		q += fmt.Sprintf(" and (d.name ilike $%d or d.brand ilike $%d or d.model ilike $%d)", argN, argN, argN)
+		args = append(args, "%"+p.Search+"%")
+	}
+
+	q += " order by d.created_at desc"
+
+	rows, err := pgctx.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []Item
+	for rows.Next() {
 		var it Item
-		err := scan(
+		var onlineCount int
+		err := rows.Scan(
 			&it.ID,
 			&it.SiteID,
 			&it.Name,
@@ -89,18 +120,34 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.Model,
 			&it.IsActive,
 			&it.CreatedAt,
+			&it.MeterCount,
+			&onlineCount,
+			&it.LastSeenAt,
 		)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
 		items = append(items, it)
-		return nil
-	})
-	if err != nil {
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
 	return &ListResult{Items: items}, nil
+}
+
+func deriveConnectionStatus(meterCount, onlineCount int, lastSeenAt *time.Time) string {
+	if meterCount == 0 {
+		return "offline"
+	}
+	if onlineCount > 0 {
+		return "online"
+	}
+	if lastSeenAt != nil && time.Since(*lastSeenAt) < 30*time.Minute {
+		return "degraded"
+	}
+	return "offline"
 }
 
 // Create

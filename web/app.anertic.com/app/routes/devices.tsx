@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate, Link } from "react-router"
 import {
   RiAddLine,
@@ -9,11 +9,12 @@ import {
   RiArrowRightSLine,
   RiLink,
   RiFlashlightLine,
+  RiLoader4Line,
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
+import { api } from "~/lib/api"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Badge } from "~/components/ui/badge"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
@@ -34,122 +35,11 @@ interface Device {
   connectionStatus: ConnectionStatus
   lastSeenAt: string | null
   meterCount: number
-  dataPointsToday: number
   createdAt: string
 }
 
 type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
 type ConnectionStatus = "online" | "offline" | "degraded"
-
-// --- Mock Data ---
-
-const MOCK_DEVICES: Device[] = [
-  {
-    id: "dev_01",
-    siteId: "site_01",
-    name: "Huawei SUN2000-10KTL",
-    type: "inverter",
-    tag: "",
-    brand: "Huawei",
-    model: "SUN2000-10KTL",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 15000).toISOString(),
-    meterCount: 6,
-    dataPointsToday: 2847,
-    createdAt: "2025-08-15T10:00:00Z",
-  },
-  {
-    id: "dev_02",
-    siteId: "site_01",
-    name: "Rooftop PV Array",
-    type: "solar_panel",
-    tag: "",
-    brand: "JA Solar",
-    model: "JAM72S30-545/MR",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 8000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 1420,
-    createdAt: "2025-08-15T10:30:00Z",
-  },
-  {
-    id: "dev_03",
-    siteId: "site_01",
-    name: "Building MDB",
-    type: "meter",
-    tag: "Main distribution board",
-    brand: "Eastron",
-    model: "SDM630",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 5000).toISOString(),
-    meterCount: 3,
-    dataPointsToday: 4320,
-    createdAt: "2025-08-15T09:00:00Z",
-  },
-  {
-    id: "dev_04",
-    siteId: "site_01",
-    name: "Battery Storage",
-    type: "appliance",
-    tag: "Garage",
-    brand: "BYD",
-    model: "Battery-Box Premium HVS",
-    isActive: true,
-    connectionStatus: "degraded",
-    lastSeenAt: new Date(Date.now() - 180000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 890,
-    createdAt: "2025-09-01T14:00:00Z",
-  },
-  {
-    id: "dev_05",
-    siteId: "site_01",
-    name: "Floor 2 SDB",
-    type: "meter",
-    tag: "Floor 2 sub-distribution board",
-    brand: "Eastron",
-    model: "SDM630",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 12000).toISOString(),
-    meterCount: 3,
-    dataPointsToday: 1380,
-    createdAt: "2025-08-16T08:00:00Z",
-  },
-  {
-    id: "dev_06",
-    siteId: "site_01",
-    name: "HVAC Unit",
-    type: "appliance",
-    tag: "2nd floor lobby",
-    brand: "Daikin",
-    model: "BRP069C4x",
-    isActive: false,
-    connectionStatus: "offline",
-    lastSeenAt: new Date(Date.now() - 86400000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 0,
-    createdAt: "2025-10-05T16:00:00Z",
-  },
-  {
-    id: "dev_07",
-    siteId: "site_01",
-    name: "Wallbox Pulsar Plus",
-    type: "appliance",
-    tag: "Garage EV charger",
-    brand: "Wallbox",
-    model: "Pulsar Plus",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 3000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 4310,
-    createdAt: "2025-08-15T09:15:00Z",
-  },
-]
 
 const DEVICE_TYPE_CONFIG: Record<
   DeviceType,
@@ -176,26 +66,38 @@ export default function Devices() {
   const [typeFilter, setTypeFilter] = useState<DeviceType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
+  const [allDevices, setAllDevices] = useState<Device[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const devices = MOCK_DEVICES.filter((d) => {
-    if (typeFilter !== "all" && d.type !== typeFilter) return false
-    if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.brand.toLowerCase().includes(q) ||
-        d.model.toLowerCase().includes(q)
-      )
+  const fetchDevices = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params: Record<string, string> = { siteId }
+      if (typeFilter !== "all") params.type = typeFilter
+      if (search.trim()) params.search = search.trim()
+      const res = await api<{ items: Device[] }>("device.list", params)
+      setAllDevices(res.items ?? [])
+    } catch {
+      setAllDevices([])
+    } finally {
+      setLoading(false)
     }
-    return true
-  })
+  }, [siteId, typeFilter, search])
+
+  useEffect(() => {
+    const timer = setTimeout(fetchDevices, search ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [fetchDevices, search])
+
+  const devices = statusFilter === "all"
+    ? allDevices
+    : allDevices.filter((d) => d.connectionStatus === statusFilter)
 
   const summary = {
-    total: MOCK_DEVICES.length,
-    online: MOCK_DEVICES.filter((d) => d.connectionStatus === "online").length,
-    degraded: MOCK_DEVICES.filter((d) => d.connectionStatus === "degraded").length,
-    offline: MOCK_DEVICES.filter((d) => d.connectionStatus === "offline").length,
+    total: allDevices.length,
+    online: allDevices.filter((d) => d.connectionStatus === "online").length,
+    degraded: allDevices.filter((d) => d.connectionStatus === "degraded").length,
+    offline: allDevices.filter((d) => d.connectionStatus === "offline").length,
   }
 
   return (
@@ -285,7 +187,12 @@ export default function Devices() {
       </div>
 
       {/* Device List */}
-      {devices.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <RiLoader4Line className="size-6 animate-spin text-muted-foreground/50" />
+          <p className="mt-3 text-sm text-muted-foreground">Loading devices...</p>
+        </div>
+      ) : devices.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16">
           <RiCpuLine className="size-8 text-muted-foreground/30" />
           <p className="mt-3 text-sm font-medium text-muted-foreground">No devices found</p>
@@ -382,10 +289,6 @@ function DeviceRow({ device, onClick }: { device: Device; onClick: () => void })
       <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
         {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
       </span>
-      <div className="hidden shrink-0 text-right sm:block" style={{ minWidth: 80 }}>
-        <p className="text-xs font-semibold tabular-nums">{device.dataPointsToday.toLocaleString()}</p>
-        <p className="text-[10px] text-muted-foreground">points today</p>
-      </div>
       <div className="flex shrink-0 items-center gap-2" style={{ minWidth: 90 }}>
         <span className="relative flex size-2">
           {device.connectionStatus === "online" && (
@@ -439,7 +342,7 @@ function DeviceQuickView({ device }: { device: Device }) {
       <Separator />
       <div className="space-y-4 p-6">
         <div className="grid grid-cols-2 gap-3">
-          <MetricBox label="Data Points" value={device.dataPointsToday.toLocaleString()} color="text-foreground" />
+          <MetricBox label="Meters" value={String(device.meterCount)} color="text-foreground" />
           <MetricBox
             label="Last Seen"
             value={formatLastSeen(device.lastSeenAt)}

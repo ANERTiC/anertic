@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -395,7 +396,7 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	`,
 		gridMeterID,
 		gridDeviceID,
-		"DEMO-"+gridMeterID,
+		"DEMO-"+strings.ToUpper(gridMeterID),
 	)
 	if err != nil {
 		return err
@@ -434,7 +435,7 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	`,
 		solarMeterID,
 		solarDeviceID,
-		"DEMO-"+solarMeterID,
+		"DEMO-"+strings.ToUpper(solarMeterID),
 	)
 	if err != nil {
 		return err
@@ -473,7 +474,7 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	`,
 		floorMeterID,
 		floorDeviceID,
-		"DEMO-"+floorMeterID,
+		"DEMO-"+strings.ToUpper(floorMeterID),
 	)
 	if err != nil {
 		return err
@@ -512,7 +513,7 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	`,
 		batteryMeterID,
 		batteryDeviceID,
-		"DEMO-"+batteryMeterID,
+		"DEMO-"+strings.ToUpper(batteryMeterID),
 	)
 	return err
 }

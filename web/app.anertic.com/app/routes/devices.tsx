@@ -269,10 +269,6 @@ function DeviceRow({ device, onClick }: { device: DeviceListItem; onClick: () =>
       <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
         {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
       </span>
-      <div className="hidden shrink-0 text-right sm:block" style={{ minWidth: 80 }}>
-        <p className="text-xs font-semibold tabular-nums">{device.dataPointsToday.toLocaleString()}</p>
-        <p className="text-[10px] text-muted-foreground">points today</p>
-      </div>
       <div className="flex shrink-0 items-center gap-2" style={{ minWidth: 90 }}>
         <span className="relative flex size-2">
           {device.connectionStatus === "online" && (

@@ -10,6 +10,7 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 )
@@ -25,6 +26,7 @@ var (
 type ListParams struct {
 	SiteID string `json:"siteId"`
 	Type   string `json:"type"`
+	Search string `json:"search"`
 }
 
 func (p *ListParams) Valid() error {
@@ -34,15 +36,18 @@ func (p *ListParams) Valid() error {
 }
 
 type Item struct {
-	ID        string    `json:"id"`
-	SiteID    string    `json:"siteId"`
-	Name      string    `json:"name"`
-	Type      string    `json:"type"`
-	Tag       string    `json:"tag"`
-	Brand     string    `json:"brand"`
-	Model     string    `json:"model"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID               string     `json:"id"`
+	SiteID           string     `json:"siteId"`
+	Name             string     `json:"name"`
+	Type             string     `json:"type"`
+	Tag              string     `json:"tag"`
+	Brand            string     `json:"brand"`
+	Model            string     `json:"model"`
+	IsActive         bool       `json:"isActive"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	MeterCount       int        `json:"meterCount"`
+	ConnectionStatus string     `json:"connectionStatus"`
+	LastSeenAt       *time.Time `json:"lastSeenAt"`
 }
 
 type ListResult struct {
@@ -61,28 +66,54 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
-			"id",
-			"site_id",
-			"name",
-			"type",
-			"tag",
-			"brand",
-			"model",
-			"is_active",
-			"created_at",
+			"d.id",
+			"d.site_id",
+			"d.name",
+			"d.type",
+			"d.tag",
+			"d.brand",
+			"d.model",
+			"d.is_active",
+			"d.created_at",
+			pgstmt.Raw("coalesce(m.meter_count, 0)"),
+			pgstmt.Raw("coalesce(m.online_count, 0)"),
+			"m.last_seen_at",
 		)
-		b.From("devices")
+		b.From("devices d")
+		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
+			b.Columns(
+				pgstmt.Raw("count(*) as meter_count"),
+				pgstmt.Raw("count(*) filter (where is_online) as online_count"),
+				pgstmt.Raw("max(last_seen_at) as last_seen_at"),
+			)
+			b.From("meters")
+			b.Where(func(c pgstmt.Cond) {
+				c.EqRaw("device_id", "d.id")
+			})
+		}, "m").On(func(c pgstmt.Cond) {
+			c.Raw("true")
+		})
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
-			c.Eq("site_id", p.SiteID)
-			c.IsNull("deleted_at")
+			c.Eq("d.site_id", p.SiteID)
+			c.IsNull("d.deleted_at")
 			if p.Type != "" {
-				c.Eq("type", p.Type)
+				c.Eq("d.type", p.Type)
+			}
+			if p.Search != "" {
+				search := "%" + p.Search + "%"
+				c.And(func(b pgstmt.Cond) {
+					b.Mode().Or()
+					b.ILike("d.name", search)
+					b.ILike("d.brand", search)
+					b.ILike("d.model", search)
+				})
 			}
 		})
-		b.OrderBy("created_at desc")
+		b.OrderBy("d.created_at").Desc()
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item
+		var onlineCount int
 		err := scan(
 			&it.ID,
 			&it.SiteID,
@@ -93,10 +124,14 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.Model,
 			&it.IsActive,
 			&it.CreatedAt,
+			&it.MeterCount,
+			&onlineCount,
+			&it.LastSeenAt,
 		)
 		if err != nil {
 			return err
 		}
+		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
 		items = append(items, it)
 		return nil
 	})
@@ -105,6 +140,19 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	}
 
 	return &ListResult{Items: items}, nil
+}
+
+func deriveConnectionStatus(meterCount, onlineCount int, lastSeenAt *time.Time) string {
+	if meterCount == 0 {
+		return "offline"
+	}
+	if onlineCount > 0 {
+		return "online"
+	}
+	if lastSeenAt != nil && time.Since(*lastSeenAt) < 30*time.Minute {
+		return "degraded"
+	}
+	return "offline"
 }
 
 // Create
@@ -139,25 +187,26 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, err
 	}
 
-	var id string
-	err := pgctx.QueryRow(ctx, `
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
 		insert into devices (
+			id,
 			site_id,
 			name,
 			type,
 			tag,
 			brand,
 			model
-		) values ($1, $2, $3, $4, $5, $6)
-		returning id
+		) values ($1, $2, $3, $4, $5, $6, $7)
 	`,
+		id,
 		p.SiteID,
 		p.Name,
 		p.Type,
 		p.Tag,
 		p.Brand,
 		p.Model,
-	).Scan(&id)
+	)
 	if err != nil {
 		return nil, err
 	}

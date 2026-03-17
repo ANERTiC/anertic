@@ -107,6 +107,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 					b.ILike("d.name", search)
 					b.ILike("d.brand", search)
 					b.ILike("d.model", search)
+					b.ILike("d.tag", search)
 				})
 			}
 		})
@@ -126,7 +127,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.CreatedAt,
 			&it.MeterCount,
 			&onlineCount,
-			&it.LastSeenAt,
+			pgsql.Null(&it.LastSeenAt),
 		)
 		if err != nil {
 			return err

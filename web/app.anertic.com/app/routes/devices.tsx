@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router"
 import useSWR from "swr"
 import {
@@ -46,21 +46,19 @@ export default function Devices() {
 
   const allDevices = data?.items ?? []
 
-  const devices = useMemo(() => {
-    return allDevices.filter((d) => {
-      if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        return (
-          d.name.toLowerCase().includes(q) ||
-          d.brand.toLowerCase().includes(q) ||
-          d.model.toLowerCase().includes(q) ||
-          d.tag.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [allDevices, statusFilter, search])
+  const devices = allDevices.filter((d) => {
+    if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return (
+        d.name.toLowerCase().includes(q) ||
+        d.brand.toLowerCase().includes(q) ||
+        d.model.toLowerCase().includes(q) ||
+        d.tag.toLowerCase().includes(q)
+      )
+    }
+    return true
+  })
 
   const summary = {
     total: allDevices.length,

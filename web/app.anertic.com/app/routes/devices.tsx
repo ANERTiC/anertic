@@ -1,19 +1,20 @@
-import { useState } from "react"
-import { useNavigate, Link } from "react-router"
+import { useMemo, useState } from "react"
+import { useNavigate } from "react-router"
+import useSWR from "swr"
 import {
   RiAddLine,
   RiSearchLine,
   RiCpuLine,
   RiArrowRightSLine,
   RiLink,
+  RiRefreshLine,
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
+import { api } from "~/lib/api"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Badge } from "~/components/ui/badge"
-import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
 import {
@@ -25,116 +26,6 @@ import {
   type DeviceListItem,
 } from "~/lib/device"
 
-// --- Mock Data ---
-
-const MOCK_DEVICES: DeviceListItem[] = [
-  {
-    id: "dev_01",
-    siteId: "site_01",
-    name: "Huawei SUN2000-10KTL",
-    type: "inverter",
-    tag: "",
-    brand: "Huawei",
-    model: "SUN2000-10KTL",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 15000).toISOString(),
-    meterCount: 6,
-    dataPointsToday: 2847,
-    createdAt: "2025-08-15T10:00:00Z",
-  },
-  {
-    id: "dev_02",
-    siteId: "site_01",
-    name: "Rooftop PV Array",
-    type: "solar_panel",
-    tag: "",
-    brand: "JA Solar",
-    model: "JAM72S30-545/MR",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 8000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 1420,
-    createdAt: "2025-08-15T10:30:00Z",
-  },
-  {
-    id: "dev_03",
-    siteId: "site_01",
-    name: "Building MDB",
-    type: "meter",
-    tag: "Main distribution board",
-    brand: "Eastron",
-    model: "SDM630",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 5000).toISOString(),
-    meterCount: 3,
-    dataPointsToday: 4320,
-    createdAt: "2025-08-15T09:00:00Z",
-  },
-  {
-    id: "dev_04",
-    siteId: "site_01",
-    name: "Battery Storage",
-    type: "appliance",
-    tag: "Garage",
-    brand: "BYD",
-    model: "Battery-Box Premium HVS",
-    isActive: true,
-    connectionStatus: "degraded",
-    lastSeenAt: new Date(Date.now() - 180000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 890,
-    createdAt: "2025-09-01T14:00:00Z",
-  },
-  {
-    id: "dev_05",
-    siteId: "site_01",
-    name: "Floor 2 SDB",
-    type: "meter",
-    tag: "Floor 2 sub-distribution board",
-    brand: "Eastron",
-    model: "SDM630",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 12000).toISOString(),
-    meterCount: 3,
-    dataPointsToday: 1380,
-    createdAt: "2025-08-16T08:00:00Z",
-  },
-  {
-    id: "dev_06",
-    siteId: "site_01",
-    name: "HVAC Unit",
-    type: "appliance",
-    tag: "2nd floor lobby",
-    brand: "Daikin",
-    model: "BRP069C4x",
-    isActive: false,
-    connectionStatus: "offline",
-    lastSeenAt: new Date(Date.now() - 86400000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 0,
-    createdAt: "2025-10-05T16:00:00Z",
-  },
-  {
-    id: "dev_07",
-    siteId: "site_01",
-    name: "Wallbox Pulsar Plus",
-    type: "appliance",
-    tag: "Garage EV charger",
-    brand: "Wallbox",
-    model: "Pulsar Plus",
-    isActive: true,
-    connectionStatus: "online",
-    lastSeenAt: new Date(Date.now() - 3000).toISOString(),
-    meterCount: 1,
-    dataPointsToday: 4310,
-    createdAt: "2025-08-15T09:15:00Z",
-  },
-]
-
 // --- Component ---
 
 export default function Devices() {
@@ -143,27 +34,39 @@ export default function Devices() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<DeviceType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
-  const [selectedDevice, setSelectedDevice] = useState<DeviceListItem | null>(null)
 
-  const devices = MOCK_DEVICES.filter((d) => {
-    if (typeFilter !== "all" && d.type !== typeFilter) return false
-    if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.brand.toLowerCase().includes(q) ||
-        d.model.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const { data, isLoading, error, mutate } = useSWR(
+    ["device.list", siteId, typeFilter],
+    () =>
+      api<{ items: DeviceListItem[] }>("device.list", {
+        siteId,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+      }),
+  )
+
+  const allDevices = data?.items ?? []
+
+  const devices = useMemo(() => {
+    return allDevices.filter((d) => {
+      if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        return (
+          d.name.toLowerCase().includes(q) ||
+          d.brand.toLowerCase().includes(q) ||
+          d.model.toLowerCase().includes(q) ||
+          d.tag.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [allDevices, statusFilter, search])
 
   const summary = {
-    total: MOCK_DEVICES.length,
-    online: MOCK_DEVICES.filter((d) => d.connectionStatus === "online").length,
-    degraded: MOCK_DEVICES.filter((d) => d.connectionStatus === "degraded").length,
-    offline: MOCK_DEVICES.filter((d) => d.connectionStatus === "offline").length,
+    total: allDevices.length,
+    online: allDevices.filter((d) => d.connectionStatus === "online").length,
+    degraded: allDevices.filter((d) => d.connectionStatus === "degraded").length,
+    offline: allDevices.filter((d) => d.connectionStatus === "offline").length,
   }
 
   return (
@@ -253,7 +156,37 @@ export default function Devices() {
       </div>
 
       {/* Device List */}
-      {devices.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex w-full items-center gap-4 rounded-xl border border-border/50 p-4"
+            >
+              <div className="size-10 shrink-0 animate-pulse rounded-xl bg-muted/50" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-40 animate-pulse rounded bg-muted/50" />
+                <div className="h-3 w-28 animate-pulse rounded bg-muted/30" />
+              </div>
+              <div className="h-5 w-16 animate-pulse rounded bg-muted/30" />
+              <div className="hidden h-8 w-20 animate-pulse rounded bg-muted/30 sm:block" />
+              <div className="h-5 w-20 animate-pulse rounded bg-muted/30" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-destructive/30 py-16">
+          <RiCpuLine className="size-8 text-destructive/40" />
+          <p className="mt-3 text-sm font-medium text-destructive">Failed to load devices</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            {error instanceof Error ? error.message : "An unexpected error occurred"}
+          </p>
+          <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => mutate()}>
+            <RiRefreshLine className="size-3.5" />
+            Retry
+          </Button>
+        </div>
+      ) : devices.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16">
           <RiCpuLine className="size-8 text-muted-foreground/30" />
           <p className="mt-3 text-sm font-medium text-muted-foreground">No devices found</p>
@@ -269,25 +202,11 @@ export default function Devices() {
             <DeviceRow
               key={device.id}
               device={device}
-              onClick={() => setSelectedDevice(device)}
+              onClick={() => navigate(`/devices/${device.id}?site=${siteId}`)}
             />
           ))}
         </div>
       )}
-
-      {/* Device Quick View Dialog */}
-      <Dialog
-        open={selectedDevice !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedDevice(null)
-        }}
-      >
-        {selectedDevice && (
-          <DialogContent className="max-w-md gap-0 p-0">
-            <DeviceQuickView device={selectedDevice} />
-          </DialogContent>
-        )}
-      </Dialog>
     </div>
   )
 }
@@ -370,73 +289,3 @@ function DeviceRow({ device, onClick }: { device: DeviceListItem; onClick: () =>
     </button>
   )
 }
-
-function DeviceQuickView({ device }: { device: DeviceListItem }) {
-  const typeConfig = DEVICE_TYPE_CONFIG[device.type]
-  const TypeIcon = typeConfig.icon
-  const statusConfig = STATUS_CONFIG[device.connectionStatus]
-
-  return (
-    <div>
-      <div className="flex items-start gap-4 p-6 pb-4">
-        <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", typeConfig.bg)}>
-          <TypeIcon className={cn("size-6", typeConfig.color)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold tracking-tight">{device.name}</h3>
-          <p className="text-sm text-muted-foreground">{device.brand} {device.model}</p>
-          {device.tag && (
-            <p className="mt-0.5 text-xs text-muted-foreground/60">{device.tag}</p>
-          )}
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex size-2">
-                {device.connectionStatus === "online" && (
-                  <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", statusConfig.dot)} />
-                )}
-                <span className={cn("relative inline-flex size-2 rounded-full", statusConfig.dot)} />
-              </span>
-              <span className={cn("text-xs font-medium", statusConfig.color)}>{statusConfig.label}</span>
-            </div>
-            <span className="rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
-            </span>
-          </div>
-        </div>
-      </div>
-      <Separator />
-      <div className="space-y-4 p-6">
-        <div className="grid grid-cols-2 gap-3">
-          <MetricBox label="Data Points" value={device.dataPointsToday.toLocaleString()} color="text-foreground" />
-          <MetricBox
-            label="Last Seen"
-            value={formatLastSeen(device.lastSeenAt)}
-            color={device.connectionStatus === "online" ? "text-emerald-600" : "text-muted-foreground"}
-          />
-        </div>
-        <div className="text-xs text-muted-foreground">
-          <span className="font-mono">{device.id}</span>
-        </div>
-      </div>
-      <Separator />
-      <div className="flex items-center justify-end p-4 px-6">
-        <Link to={`/devices/${device.id}`}>
-          <Button size="sm" className="gap-1.5 text-xs">
-            View details
-            <RiArrowRightSLine className="size-3.5" />
-          </Button>
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</p>
-      <p className={cn("mt-1 text-sm font-bold tabular-nums", color)}>{value}</p>
-    </div>
-  )
-}
-

@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from "react"
-import { useNavigate, Link } from "react-router"
+import { useState } from "react"
+import { useNavigate } from "react-router"
+import useSWR from "swr"
 import {
   RiAddLine,
   RiSearchLine,
   RiCpuLine,
   RiArrowRightSLine,
   RiLink,
-  RiLoader4Line,
+  RiRefreshLine,
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
@@ -14,7 +15,6 @@ import { api } from "~/lib/api"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Badge } from "~/components/ui/badge"
-import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
 import {
@@ -34,33 +34,31 @@ export default function Devices() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<DeviceType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
-  const [selectedDevice, setSelectedDevice] = useState<DeviceListItem | null>(null)
-  const [allDevices, setAllDevices] = useState<DeviceListItem[]>([])
-  const [loading, setLoading] = useState(true)
 
-  const fetchDevices = useCallback(async () => {
-    try {
-      setLoading(true)
-      const params: Record<string, string> = { siteId }
-      if (typeFilter !== "all") params.type = typeFilter
-      if (search.trim()) params.search = search.trim()
-      const res = await api<{ items: DeviceListItem[] }>("device.list", params)
-      setAllDevices(res.items ?? [])
-    } catch {
-      setAllDevices([])
-    } finally {
-      setLoading(false)
-    }
-  }, [siteId, typeFilter, search])
+  const { data: allData } = useSWR(
+    ["device.list", siteId, typeFilter, search],
+    () =>
+      api<{ items: DeviceListItem[] }>("device.list", {
+        siteId,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+        search: search.trim() || undefined,
+      }),
+  )
 
-  useEffect(() => {
-    const timer = setTimeout(fetchDevices, search ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchDevices, search])
+  const allDevices = allData?.items ?? []
 
-  const devices = statusFilter === "all"
-    ? allDevices
-    : allDevices.filter((d) => d.connectionStatus === statusFilter)
+  const { data, isLoading, error, mutate } = useSWR(
+    ["device.list", siteId, typeFilter, search, statusFilter],
+    () =>
+      api<{ items: DeviceListItem[] }>("device.list", {
+        siteId,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+        search: search.trim() || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      }),
+  )
+
+  const devices = data?.items ?? []
 
   const summary = {
     total: allDevices.length,
@@ -156,10 +154,35 @@ export default function Devices() {
       </div>
 
       {/* Device List */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-16">
-          <RiLoader4Line className="size-6 animate-spin text-muted-foreground/50" />
-          <p className="mt-3 text-sm text-muted-foreground">Loading devices...</p>
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex w-full items-center gap-4 rounded-xl border border-border/50 p-4"
+            >
+              <div className="size-10 shrink-0 animate-pulse rounded-xl bg-muted/50" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-40 animate-pulse rounded bg-muted/50" />
+                <div className="h-3 w-28 animate-pulse rounded bg-muted/30" />
+              </div>
+              <div className="h-5 w-16 animate-pulse rounded bg-muted/30" />
+              <div className="hidden h-8 w-20 animate-pulse rounded bg-muted/30 sm:block" />
+              <div className="h-5 w-20 animate-pulse rounded bg-muted/30" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-destructive/30 py-16">
+          <RiCpuLine className="size-8 text-destructive/40" />
+          <p className="mt-3 text-sm font-medium text-destructive">Failed to load devices</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            {error instanceof Error ? error.message : "An unexpected error occurred"}
+          </p>
+          <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => mutate()}>
+            <RiRefreshLine className="size-3.5" />
+            Retry
+          </Button>
         </div>
       ) : devices.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16">
@@ -177,25 +200,11 @@ export default function Devices() {
             <DeviceRow
               key={device.id}
               device={device}
-              onClick={() => setSelectedDevice(device)}
+              onClick={() => navigate(`/devices/${device.id}?site=${siteId}`)}
             />
           ))}
         </div>
       )}
-
-      {/* Device Quick View Dialog */}
-      <Dialog
-        open={selectedDevice !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedDevice(null)
-        }}
-      >
-        {selectedDevice && (
-          <DialogContent className="max-w-md gap-0 p-0">
-            <DeviceQuickView device={selectedDevice} />
-          </DialogContent>
-        )}
-      </Dialog>
     </div>
   )
 }
@@ -274,73 +283,3 @@ function DeviceRow({ device, onClick }: { device: DeviceListItem; onClick: () =>
     </button>
   )
 }
-
-function DeviceQuickView({ device }: { device: DeviceListItem }) {
-  const typeConfig = DEVICE_TYPE_CONFIG[device.type]
-  const TypeIcon = typeConfig.icon
-  const statusConfig = STATUS_CONFIG[device.connectionStatus]
-
-  return (
-    <div>
-      <div className="flex items-start gap-4 p-6 pb-4">
-        <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", typeConfig.bg)}>
-          <TypeIcon className={cn("size-6", typeConfig.color)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold tracking-tight">{device.name}</h3>
-          <p className="text-sm text-muted-foreground">{device.brand} {device.model}</p>
-          {device.tag && (
-            <p className="mt-0.5 text-xs text-muted-foreground/60">{device.tag}</p>
-          )}
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex size-2">
-                {device.connectionStatus === "online" && (
-                  <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", statusConfig.dot)} />
-                )}
-                <span className={cn("relative inline-flex size-2 rounded-full", statusConfig.dot)} />
-              </span>
-              <span className={cn("text-xs font-medium", statusConfig.color)}>{statusConfig.label}</span>
-            </div>
-            <span className="rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}
-            </span>
-          </div>
-        </div>
-      </div>
-      <Separator />
-      <div className="space-y-4 p-6">
-        <div className="grid grid-cols-2 gap-3">
-          <MetricBox label="Meters" value={String(device.meterCount)} color="text-foreground" />
-          <MetricBox
-            label="Last Seen"
-            value={formatLastSeen(device.lastSeenAt)}
-            color={device.connectionStatus === "online" ? "text-emerald-600" : "text-muted-foreground"}
-          />
-        </div>
-        <div className="text-xs text-muted-foreground">
-          <span className="font-mono">{device.id}</span>
-        </div>
-      </div>
-      <Separator />
-      <div className="flex items-center justify-end p-4 px-6">
-        <Link to={`/devices/${device.id}`}>
-          <Button size="sm" className="gap-1.5 text-xs">
-            View details
-            <RiArrowRightSLine className="size-3.5" />
-          </Button>
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</p>
-      <p className={cn("mt-1 text-sm font-bold tabular-nums", color)}>{value}</p>
-    </div>
-  )
-}
-

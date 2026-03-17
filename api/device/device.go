@@ -27,6 +27,7 @@ type ListParams struct {
 	SiteID string `json:"siteId"`
 	Type   string `json:"type"`
 	Search string `json:"search"`
+	Status string `json:"status"`
 }
 
 func (p *ListParams) Valid() error {
@@ -107,6 +108,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 					b.ILike("d.name", search)
 					b.ILike("d.brand", search)
 					b.ILike("d.model", search)
+					b.ILike("d.tag", search)
 				})
 			}
 		})
@@ -126,12 +128,15 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.CreatedAt,
 			&it.MeterCount,
 			&onlineCount,
-			&it.LastSeenAt,
+			pgsql.Null(&it.LastSeenAt),
 		)
 		if err != nil {
 			return err
 		}
 		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
+		if p.Status != "" && it.ConnectionStatus != p.Status {
+			return nil
+		}
 		items = append(items, it)
 		return nil
 	})

@@ -36,29 +36,21 @@ export default function Devices() {
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all")
 
   const { data, isLoading, error, mutate } = useSWR(
-    ["device.list", siteId, typeFilter],
+    ["device.list", siteId, typeFilter, search],
     () =>
       api<{ items: DeviceListItem[] }>("device.list", {
         siteId,
         type: typeFilter !== "all" ? typeFilter : undefined,
+        search: search.trim() || undefined,
       }),
   )
 
   const allDevices = data?.items ?? []
 
-  const devices = allDevices.filter((d) => {
-    if (statusFilter !== "all" && d.connectionStatus !== statusFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.brand.toLowerCase().includes(q) ||
-        d.model.toLowerCase().includes(q) ||
-        d.tag.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const devices =
+    statusFilter === "all"
+      ? allDevices
+      : allDevices.filter((d) => d.connectionStatus === statusFilter)
 
   const summary = {
     total: allDevices.length,

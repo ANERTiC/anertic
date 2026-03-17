@@ -27,6 +27,7 @@ type ListParams struct {
 	SiteID string `json:"siteId"`
 	Type   string `json:"type"`
 	Search string `json:"search"`
+	Status string `json:"status"`
 }
 
 func (p *ListParams) Valid() error {
@@ -133,6 +134,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			return err
 		}
 		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
+		if p.Status != "" && it.ConnectionStatus != p.Status {
+			return nil
+		}
 		items = append(items, it)
 		return nil
 	})

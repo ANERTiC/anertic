@@ -27,6 +27,9 @@ import {
   RiUserLine,
   RiSpeedLine,
   RiRemoteControlLine,
+  RiCalendarCheckLine,
+  RiCalendarCloseLine,
+  RiLoader4Line,
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -34,8 +37,14 @@ import { useSiteId } from '~/layouts/site'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '~/components/ui/collapsible'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
   Dialog,
@@ -45,6 +54,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog'
 import { cn } from '~/lib/utils'
 import { CommandsTab } from '~/components/commands-tab'
 
@@ -115,6 +134,15 @@ interface OcppEvent {
   direction: 'in' | 'out'
   timestamp: string
   payload?: string
+}
+
+interface Reservation {
+  reservationId: number
+  connectorId: number
+  idTag: string
+  parentIdTag: string | null
+  expiryDate: string
+  status: string
 }
 
 interface DailyEnergy {
@@ -449,6 +477,52 @@ function generateMockAnalytics(): {
   }
 }
 
+function generateMockReservations(): Reservation[] {
+  const now = Date.now()
+  return [
+    {
+      reservationId: 101,
+      connectorId: 2,
+      idTag: 'USER-001',
+      parentIdTag: null,
+      expiryDate: new Date(now + 25 * 60000).toISOString(),
+      status: 'Active',
+    },
+    {
+      reservationId: 100,
+      connectorId: 1,
+      idTag: 'TESLA-M3',
+      parentIdTag: 'FLEET-A',
+      expiryDate: new Date(now - 3600000).toISOString(),
+      status: 'Expired',
+    },
+    {
+      reservationId: 99,
+      connectorId: 2,
+      idTag: 'ADMIN-001',
+      parentIdTag: null,
+      expiryDate: new Date(now - 7200000).toISOString(),
+      status: 'Used',
+    },
+    {
+      reservationId: 98,
+      connectorId: 1,
+      idTag: 'GUEST',
+      parentIdTag: null,
+      expiryDate: new Date(now - 14400000).toISOString(),
+      status: 'Cancelled',
+    },
+    {
+      reservationId: 97,
+      connectorId: 2,
+      idTag: 'USER-002',
+      parentIdTag: null,
+      expiryDate: new Date(now - 86400000).toISOString(),
+      status: 'Expired',
+    },
+  ]
+}
+
 // --- Helpers ---
 
 function statusColor(status: string) {
@@ -499,6 +573,20 @@ function registrationColor(status: string) {
       return 'bg-red-500/15 text-red-700'
     default:
       return 'bg-gray-500/15 text-gray-700'
+  }
+}
+
+function reservationStatusColor(status: string) {
+  switch (status) {
+    case 'Active':
+      return 'bg-emerald-500/15 text-emerald-700'
+    case 'Used':
+      return 'bg-blue-500/15 text-blue-700'
+    case 'Cancelled':
+      return 'bg-red-500/15 text-red-700'
+    case 'Expired':
+    default:
+      return 'bg-gray-500/15 text-gray-600'
   }
 }
 
@@ -703,6 +791,10 @@ export default function ChargerDetail() {
               <RiHistoryLine className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Sessions</span>
             </TabsTrigger>
+            <TabsTrigger value="reservations">
+              <RiCalendarCheckLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Reservations</span>
+            </TabsTrigger>
             <TabsTrigger value="info">
               <RiInformationLine className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Device Info</span>
@@ -769,6 +861,14 @@ export default function ChargerDetail() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Reservations */}
+        <TabsContent value="reservations" className="mt-4">
+          <ReservationsTab
+            chargerId={charger.id}
+            connectors={charger.connectors}
+          />
         </TabsContent>
 
         {/* Device Info */}
@@ -2305,6 +2405,496 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 truncate font-medium">{value}</dd>
+    </div>
+  )
+}
+
+// --- Reservations ---
+
+function ReservationCard({
+  reservation,
+  onCancel,
+  cancelling,
+}: {
+  reservation: Reservation
+  onCancel: (reservationId: number) => void
+  cancelling: number | null
+}) {
+  const isActive = reservation.status === 'Active'
+  const isCancelling = cancelling === reservation.reservationId
+  const expiryDate = new Date(reservation.expiryDate)
+  const isExpired = expiryDate.getTime() < Date.now()
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-lg border px-4 py-3 transition-all',
+        isActive && !isExpired
+          ? 'border-emerald-200 bg-emerald-50/30'
+          : 'bg-muted/20'
+      )}
+    >
+      {/* Connector badge */}
+      <span className="flex shrink-0 items-center justify-center rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+        #{reservation.connectorId}
+      </span>
+
+      {/* Reservation ID */}
+      <span className="shrink-0 font-mono text-xs font-semibold text-muted-foreground tabular-nums">
+        R-{reservation.reservationId}
+      </span>
+
+      {/* ID Tag */}
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+        {reservation.idTag}
+      </span>
+
+      {/* Parent ID Tag */}
+      {reservation.parentIdTag && (
+        <span className="hidden truncate text-xs text-muted-foreground sm:block">
+          via {reservation.parentIdTag}
+        </span>
+      )}
+
+      {/* Expiry */}
+      <span
+        className={cn(
+          'shrink-0 text-xs tabular-nums',
+          isActive && !isExpired ? 'text-emerald-700' : 'text-muted-foreground'
+        )}
+      >
+        {isActive && !isExpired
+          ? `Expires ${timeAgo(reservation.expiryDate).replace(' ago', ' left').replace('Just now', 'now')}`
+          : formatDateTime(reservation.expiryDate)}
+      </span>
+
+      {/* Status badge */}
+      <Badge
+        className={cn(
+          'shrink-0 text-[10px]',
+          reservationStatusColor(reservation.status)
+        )}
+      >
+        {reservation.status}
+      </Badge>
+
+      {/* Cancel button — active only */}
+      {isActive && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 shrink-0 border-red-200 text-xs text-red-600 hover:bg-red-50"
+          disabled={isCancelling}
+          onClick={() => onCancel(reservation.reservationId)}
+        >
+          {isCancelling ? (
+            <RiLoader4Line className="size-3 animate-spin" />
+          ) : (
+            <>
+              <RiCalendarCloseLine className="mr-1 size-3" />
+              Cancel
+            </>
+          )}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function NewReservationDialog({
+  open,
+  onOpenChange,
+  connectors,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  connectors: ConnectorDetail[]
+  onCreated: (reservation: Reservation) => void
+}) {
+  const defaultExpiry = () => {
+    const d = new Date(Date.now() + 30 * 60000)
+    // Format for datetime-local input: "YYYY-MM-DDTHH:mm"
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const [connectorId, setConnectorId] = useState<number | null>(null)
+  const [idTag, setIdTag] = useState('')
+  const [reservationId, setReservationId] = useState('')
+  const [expiryDate, setExpiryDate] = useState(defaultExpiry)
+  const [parentIdTag, setParentIdTag] = useState('')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  function reset() {
+    setConnectorId(null)
+    setIdTag('')
+    setReservationId('')
+    setExpiryDate(defaultExpiry())
+    setParentIdTag('')
+    setAdvancedOpen(false)
+    setSubmitting(false)
+  }
+
+  function handleClose() {
+    onOpenChange(false)
+    setTimeout(reset, 200)
+  }
+
+  function validate(): string | null {
+    if (connectorId === null) return 'Please select a connector'
+    if (!idTag.trim()) return 'ID tag is required'
+    if (!reservationId.trim() || isNaN(Number(reservationId))) {
+      return 'A valid reservation ID is required'
+    }
+    if (!expiryDate) return 'Expiry date is required'
+    if (new Date(expiryDate).getTime() <= Date.now()) {
+      return 'Expiry date must be in the future'
+    }
+    return null
+  }
+
+  function handleSubmit() {
+    const err = validate()
+    if (err) {
+      toast.error(err)
+      return
+    }
+    setSubmitting(true)
+    // TODO: replace with api("charger.reserveNow", { id: chargerId, connectorId, expiryDate, idTag, parentIdTag, reservationId })
+    setTimeout(() => {
+      const newReservation: Reservation = {
+        reservationId: Number(reservationId),
+        connectorId: connectorId!,
+        idTag: idTag.trim(),
+        parentIdTag: parentIdTag.trim() || null,
+        expiryDate: new Date(expiryDate).toISOString(),
+        status: 'Active',
+      }
+      onCreated(newReservation)
+      toast.success(`Connector #${connectorId} reserved for ${idTag.trim()}`)
+      handleClose()
+    }, 1200)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
+              <RiCalendarCheckLine className="size-4 text-emerald-600" />
+            </div>
+            New Reservation
+          </DialogTitle>
+          <DialogDescription>
+            Reserve a connector for a specific ID tag and time window.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Connector selector */}
+          <div className="grid gap-2">
+            <Label className="text-xs">Connector</Label>
+            <div className="flex gap-2">
+              {connectors.map((conn) => {
+                const isAvailable = conn.status === 'Available'
+                return (
+                  <button
+                    key={conn.id}
+                    type="button"
+                    disabled={!isAvailable}
+                    onClick={() => setConnectorId(conn.id)}
+                    className={cn(
+                      'flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-xs transition-all',
+                      connectorId === conn.id
+                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700'
+                        : isAvailable
+                          ? 'hover:border-foreground/30 hover:bg-muted/50'
+                          : 'cursor-not-allowed opacity-40'
+                    )}
+                  >
+                    <RiPlugLine className="size-4" />
+                    <span className="font-semibold">#{conn.id}</span>
+                    <span
+                      className={cn(
+                        'text-[10px]',
+                        isAvailable
+                          ? 'text-emerald-600'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {conn.status}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {connectors.every((c) => c.status !== 'Available') && (
+              <p className="text-[10px] text-amber-600">
+                No connectors are currently available for reservation.
+              </p>
+            )}
+          </div>
+
+          {/* ID Tag */}
+          <div className="grid gap-2">
+            <Label
+              htmlFor="res-idTag"
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <RiUserLine className="size-3" />
+              ID Tag
+            </Label>
+            <Input
+              id="res-idTag"
+              placeholder="e.g. USER-001"
+              value={idTag}
+              onChange={(e) => setIdTag(e.target.value)}
+            />
+          </div>
+
+          {/* Reservation ID */}
+          <div className="grid gap-2">
+            <Label htmlFor="res-id" className="text-xs">
+              Reservation ID
+            </Label>
+            <Input
+              id="res-id"
+              type="number"
+              min="1"
+              placeholder="e.g. 102"
+              value={reservationId}
+              onChange={(e) => setReservationId(e.target.value)}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              A unique numeric ID for this reservation (OCPP field).
+            </p>
+          </div>
+
+          {/* Expiry Date */}
+          <div className="grid gap-2">
+            <Label
+              htmlFor="res-expiry"
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <RiTimeLine className="size-3" />
+              Expiry Date &amp; Time
+            </Label>
+            <Input
+              id="res-expiry"
+              type="datetime-local"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+            />
+          </div>
+
+          {/* Advanced (collapsible) */}
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RiArrowDownSLine
+                  className={cn(
+                    'size-3.5 transition-transform',
+                    advancedOpen && 'rotate-180'
+                  )}
+                />
+                Advanced options
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <div className="grid gap-2">
+                <Label htmlFor="res-parentIdTag" className="text-xs">
+                  Parent ID Tag{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="res-parentIdTag"
+                  placeholder="e.g. FLEET-A"
+                  value={parentIdTag}
+                  onChange={(e) => setParentIdTag(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Group tag for fleet or shared authorization.
+                </p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? (
+              <>
+                <RiLoader4Line className="mr-1.5 size-3.5 animate-spin" />
+                Reserving...
+              </>
+            ) : (
+              <>
+                <RiCalendarCheckLine className="mr-1.5 size-3.5" />
+                Reserve Connector
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ReservationsTab({
+  chargerId,
+  connectors,
+}: {
+  chargerId: string
+  connectors: ConnectorDetail[]
+}) {
+  // TODO: replace with api("charger.listReservations", { id: chargerId })
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newDialogOpen, setNewDialogOpen] = useState(false)
+  const [cancelling, setCancelling] = useState<number | null>(null)
+  const [pastOpen, setPastOpen] = useState(false)
+
+  // Suppress unused variable warning while mock is in place
+  void chargerId
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setReservations(generateMockReservations())
+      setLoading(false)
+    }, 500)
+    return () => clearTimeout(t)
+  }, [])
+
+  function handleCreated(reservation: Reservation) {
+    setReservations((prev) => [reservation, ...prev])
+  }
+
+  function handleCancel(reservationId: number) {
+    setCancelling(reservationId)
+    // TODO: replace with api("charger.cancelReservation", { id: chargerId, reservationId })
+    setTimeout(() => {
+      setReservations((prev) =>
+        prev.map((r) =>
+          r.reservationId === reservationId ? { ...r, status: 'Cancelled' } : r
+        )
+      )
+      setCancelling(null)
+      toast.success(`Reservation #${reservationId} cancelled`)
+    }, 1000)
+  }
+
+  const activeReservations = reservations.filter((r) => r.status === 'Active')
+  const pastReservations = reservations.filter((r) => r.status !== 'Active')
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-8 w-36" />
+        </div>
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-14 w-full rounded-lg" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Reservations</h3>
+        <Button size="sm" onClick={() => setNewDialogOpen(true)}>
+          <RiAddLine className="mr-1.5 size-3.5" />
+          New Reservation
+        </Button>
+      </div>
+
+      {/* Empty state */}
+      {reservations.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-12 text-center">
+          <RiCalendarCheckLine className="size-10 text-muted-foreground/40" />
+          <p className="mt-3 text-sm font-medium">No reservations yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Reserve a connector to hold it for a specific ID tag.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => setNewDialogOpen(true)}
+          >
+            <RiAddLine className="mr-1.5 size-3.5" />
+            Create First Reservation
+          </Button>
+        </div>
+      )}
+
+      {/* Active section */}
+      {activeReservations.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            Active
+          </p>
+          {activeReservations.map((r) => (
+            <ReservationCard
+              key={r.reservationId}
+              reservation={r}
+              onCancel={handleCancel}
+              cancelling={cancelling}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Past section (collapsible) */}
+      {pastReservations.length > 0 && (
+        <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase hover:text-foreground"
+            >
+              <RiArrowDownSLine
+                className={cn(
+                  'size-3.5 transition-transform',
+                  pastOpen && 'rotate-180'
+                )}
+              />
+              Past ({pastReservations.length})
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2">
+            {pastReservations.map((r) => (
+              <ReservationCard
+                key={r.reservationId}
+                reservation={r}
+                onCancel={handleCancel}
+                cancelling={cancelling}
+              />
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      <NewReservationDialog
+        open={newDialogOpen}
+        onOpenChange={setNewDialogOpen}
+        connectors={connectors}
+        onCreated={handleCreated}
+      />
     </div>
   )
 }

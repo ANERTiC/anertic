@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/rs/xid"
@@ -48,14 +49,15 @@ func TestList(t *testing.T) {
 		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground Floor", Level: 0})
 		require.NoError(t, err)
 
-		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "First Floor", Level: 1})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Basement", Level: -1})
 		require.NoError(t, err)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
 		require.Len(t, r.Items, 3)
-		assert.Equal(t, 0, r.Items[0].Level)
-		assert.Equal(t, 1, r.Items[1].Level)
+		assert.Equal(t, -1, r.Items[0].Level)
+		assert.Equal(t, "Basement", r.Items[0].Name)
+		assert.Equal(t, 0, r.Items[1].Level)
 		assert.Equal(t, 3, r.Items[2].Level)
 	})
 
@@ -67,17 +69,26 @@ func TestList(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1", Level: 1})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1", Level: 1})
 		require.NoError(t, err)
 
-		roomID := seedRoom(t, ctx, siteID, cf.ID, "Office", "office")
+		roomID := seedRoom(t, ctx, siteID, "Office", "office", 1)
+
+		// Add device + meter to the room
+		deviceID := seedDevice(t, ctx, siteID, "Smart Meter")
+		seedMeter(t, ctx, deviceID, "MTR-FLR-001", true, ptrTime(time.Now()))
+		assignDeviceToRoom(t, ctx, roomID, deviceID)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
 		require.Len(t, r.Items, 1)
 		require.Len(t, r.Items[0].Rooms, 1)
-		assert.Equal(t, roomID, r.Items[0].Rooms[0].ID)
-		assert.Equal(t, "Office", r.Items[0].Rooms[0].Name)
+
+		rm := r.Items[0].Rooms[0]
+		assert.Equal(t, roomID, rm.ID)
+		assert.Equal(t, "Office", rm.Name)
+		assert.Equal(t, 1, rm.DeviceCount)
+		assert.Equal(t, "online", rm.ConnectionStatus)
 	})
 
 	t.Run("filter_by_search", func(t *testing.T) {
@@ -147,16 +158,16 @@ func TestCreate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, r)
-		assert.NotEmpty(t, r.ID)
+		assert.Equal(t, 0, r.Level)
 
-		got, err := Get(ctx, &GetParams{ID: r.ID})
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: 0})
 		require.NoError(t, err)
 		assert.Equal(t, "Ground Floor", got.Name)
 		assert.Equal(t, 0, got.Level)
 		assert.Equal(t, siteID, got.SiteID)
 	})
 
-	t.Run("validation_level_out_of_range", func(t *testing.T) {
+	t.Run("negative_level", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -164,10 +175,26 @@ func TestCreate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Sky High", Level: 100})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Basement", Level: -1})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: -1})
+		require.NoError(t, err)
+		assert.Equal(t, -1, got.Level)
+	})
+
+	t.Run("validation_error_level_out_of_range", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Too High", Level: 100})
 		require.Error(t, err)
 
-		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Deep Down", Level: -100})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Too Low", Level: -100})
 		require.Error(t, err)
 	})
 
@@ -182,9 +209,21 @@ func TestCreate(t *testing.T) {
 		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1", Level: 1})
 		require.NoError(t, err)
 
-		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1 Duplicate", Level: 1})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Also Floor 1", Level: 1})
 		require.Error(t, err)
 		assert.Equal(t, ErrDuplicate, err)
+	})
+
+	t.Run("validation_error_missing_name", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Level: 1})
+		require.Error(t, err)
 	})
 
 	t.Run("forbidden_not_site_member", func(t *testing.T) {
@@ -198,7 +237,7 @@ func TestCreate(t *testing.T) {
 
 		_, err := Create(otherCtx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Forbidden Floor",
+			Name:   "Forbidden",
 			Level:  1,
 		})
 		require.Error(t, err)
@@ -219,17 +258,15 @@ func TestGet(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Level 2", Level: 2})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Level 2", Level: 2})
 		require.NoError(t, err)
 
-		roomID := seedRoom(t, ctx, siteID, cf.ID, "Conference Room", "office")
+		roomID := seedRoom(t, ctx, siteID, "Conference Room", "office", 2)
 
-		r, err := Get(ctx, &GetParams{ID: cf.ID})
+		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 2})
 		require.NoError(t, err)
-		require.NotNil(t, r)
 		assert.Equal(t, "Level 2", r.Name)
 		assert.Equal(t, 2, r.Level)
-		assert.Equal(t, siteID, r.SiteID)
 		require.Len(t, r.Rooms, 1)
 		assert.Equal(t, roomID, r.Rooms[0].ID)
 		assert.Equal(t, "Conference Room", r.Rooms[0].Name)
@@ -243,10 +280,10 @@ func TestGet(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Empty Floor", Level: 5})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Empty Floor", Level: 5})
 		require.NoError(t, err)
 
-		r, err := Get(ctx, &GetParams{ID: cf.ID})
+		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 5})
 		require.NoError(t, err)
 		assert.Equal(t, "Empty Floor", r.Name)
 		assert.Empty(t, r.Rooms)
@@ -257,10 +294,10 @@ func TestGet(t *testing.T) {
 		tc := tu.Setup()
 		defer tc.Teardown()
 
-		userID, _ := seedTestData(t, tc)
+		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Get(ctx, &GetParams{ID: xid.New().String()})
+		_, err := Get(ctx, &GetParams{SiteID: siteID, Level: 99})
 		require.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 	})
@@ -271,7 +308,7 @@ func TestUpdate(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("update_name_only", func(t *testing.T) {
+	t.Run("update_name", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -279,24 +316,23 @@ func TestUpdate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Original", Level: 1})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Original", Level: 1})
 		require.NoError(t, err)
 
 		name := "Renamed"
 		_, err = Update(ctx, &UpdateParams{
 			SiteID: siteID,
-			ID:     cf.ID,
+			Level:  1,
 			Name:   &name,
 		})
 		require.NoError(t, err)
 
-		got, err := Get(ctx, &GetParams{ID: cf.ID})
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
 		require.NoError(t, err)
 		assert.Equal(t, "Renamed", got.Name)
-		assert.Equal(t, 1, got.Level)
 	})
 
-	t.Run("update_level_only", func(t *testing.T) {
+	t.Run("not_found", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -304,45 +340,14 @@ func TestUpdate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor", Level: 1})
-		require.NoError(t, err)
-
-		level := 2
-		_, err = Update(ctx, &UpdateParams{
+		name := "X"
+		_, err := Update(ctx, &UpdateParams{
 			SiteID: siteID,
-			ID:     cf.ID,
-			Level:  &level,
-		})
-		require.NoError(t, err)
-
-		got, err := Get(ctx, &GetParams{ID: cf.ID})
-		require.NoError(t, err)
-		assert.Equal(t, "Floor", got.Name)
-		assert.Equal(t, 2, got.Level)
-	})
-
-	t.Run("duplicate_level_error", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor A", Level: 1})
-		require.NoError(t, err)
-
-		cfB, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor B", Level: 2})
-		require.NoError(t, err)
-
-		level := 1
-		_, err = Update(ctx, &UpdateParams{
-			SiteID: siteID,
-			ID:     cfB.ID,
-			Level:  &level,
+			Level:  99,
+			Name:   &name,
 		})
 		require.Error(t, err)
-		assert.Equal(t, ErrDuplicate, err)
+		assert.Equal(t, ErrNotFound, err)
 	})
 
 	t.Run("forbidden_not_site_member", func(t *testing.T) {
@@ -357,7 +362,7 @@ func TestUpdate(t *testing.T) {
 		name := "X"
 		_, err := Update(otherCtx, &UpdateParams{
 			SiteID: siteID,
-			ID:     xid.New().String(),
+			Level:  1,
 			Name:   &name,
 		})
 		require.Error(t, err)
@@ -370,7 +375,7 @@ func TestDelete(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("success_unassigns_rooms", func(t *testing.T) {
+	t.Run("success_resets_rooms_to_level_0", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -378,26 +383,26 @@ func TestDelete(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cf, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1", Level: 1})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 3", Level: 3})
 		require.NoError(t, err)
 
-		roomID := seedRoom(t, ctx, siteID, cf.ID, "Room A", "office")
+		roomID := seedRoom(t, ctx, siteID, "Room A", "office", 3)
 
-		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cf.ID})
+		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, Level: 3})
 		require.NoError(t, err)
 
 		// Floor should be gone
-		_, err = Get(ctx, &GetParams{ID: cf.ID})
+		_, err = Get(ctx, &GetParams{SiteID: siteID, Level: 3})
 		require.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 
-		// Room should have floor_id = null
-		var floorID *string
+		// Room should have level = 0
+		var level int
 		err = pgctx.QueryRow(ctx, `
-			select floor_id from rooms where id = $1
-		`, roomID).Scan(&floorID)
+			select level from rooms where id = $1
+		`, roomID).Scan(&level)
 		require.NoError(t, err)
-		assert.Nil(t, floorID)
+		assert.Equal(t, 0, level)
 	})
 
 	t.Run("not_found", func(t *testing.T) {
@@ -408,10 +413,7 @@ func TestDelete(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Delete(ctx, &DeleteParams{
-			SiteID: siteID,
-			ID:     xid.New().String(),
-		})
+		_, err := Delete(ctx, &DeleteParams{SiteID: siteID, Level: 99})
 		require.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 	})
@@ -425,10 +427,7 @@ func TestDelete(t *testing.T) {
 		otherUserID := seedUser(t, tc)
 		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
 
-		_, err := Delete(otherCtx, &DeleteParams{
-			SiteID: siteID,
-			ID:     xid.New().String(),
-		})
+		_, err := Delete(otherCtx, &DeleteParams{SiteID: siteID, Level: 1})
 		require.Error(t, err)
 		assert.Equal(t, iam.ErrForbidden, err)
 	})
@@ -439,7 +438,7 @@ func TestReorder(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("success_swaps_levels", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -447,39 +446,54 @@ func TestReorder(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cfA, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor A", Level: 1})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor A", Level: 1})
 		require.NoError(t, err)
 
-		cfB, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor B", Level: 2})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor B", Level: 2})
 		require.NoError(t, err)
 
-		cfC, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor C", Level: 3})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor C", Level: 3})
 		require.NoError(t, err)
 
+		// Assign rooms to floors
+		seedRoom(t, ctx, siteID, "Room on A", "office", 1)
+		seedRoom(t, ctx, siteID, "Room on C", "office", 3)
+
+		// Swap: A→3, B→1, C→2
 		_, err = Reorder(ctx, &ReorderParams{
 			SiteID: siteID,
 			Floors: []ReorderItem{
-				{ID: cfA.ID, Level: 3},
-				{ID: cfB.ID, Level: 1},
-				{ID: cfC.ID, Level: 2},
+				{OldLevel: 1, NewLevel: 3},
+				{OldLevel: 2, NewLevel: 1},
+				{OldLevel: 3, NewLevel: 2},
 			},
 		})
 		require.NoError(t, err)
 
-		gotA, err := Get(ctx, &GetParams{ID: cfA.ID})
+		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
-		assert.Equal(t, 3, gotA.Level)
+		require.Len(t, r.Items, 3)
 
-		gotB, err := Get(ctx, &GetParams{ID: cfB.ID})
-		require.NoError(t, err)
-		assert.Equal(t, 1, gotB.Level)
+		assert.Equal(t, 1, r.Items[0].Level)
+		assert.Equal(t, "Floor B", r.Items[0].Name)
+		assert.Equal(t, 2, r.Items[1].Level)
+		assert.Equal(t, "Floor C", r.Items[1].Name)
+		assert.Equal(t, 3, r.Items[2].Level)
+		assert.Equal(t, "Floor A", r.Items[2].Name)
 
-		gotC, err := Get(ctx, &GetParams{ID: cfC.ID})
+		// Verify rooms moved with their floors
+		gotA, err := Get(ctx, &GetParams{SiteID: siteID, Level: 3})
 		require.NoError(t, err)
-		assert.Equal(t, 2, gotC.Level)
+		require.Len(t, gotA.Rooms, 1)
+		assert.Equal(t, "Room on A", gotA.Rooms[0].Name)
+
+		gotC, err := Get(ctx, &GetParams{SiteID: siteID, Level: 2})
+		require.NoError(t, err)
+		require.Len(t, gotC.Rooms, 1)
+		assert.Equal(t, "Room on C", gotC.Rooms[0].Name)
 	})
 
-	t.Run("validation_error_duplicate_levels_in_request", func(t *testing.T) {
+	t.Run("validation_error_duplicate_levels", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -490,25 +504,45 @@ func TestReorder(t *testing.T) {
 		_, err := Reorder(ctx, &ReorderParams{
 			SiteID: siteID,
 			Floors: []ReorderItem{
-				{ID: xid.New().String(), Level: 1},
-				{ID: xid.New().String(), Level: 1},
+				{OldLevel: 1, NewLevel: 1},
+				{OldLevel: 2, NewLevel: 1},
 			},
 		})
 		require.Error(t, err)
 	})
 
-	t.Run("validation_error_missing_site_id", func(t *testing.T) {
+	t.Run("validation_error_empty_floors", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
 
-		userID, _ := seedTestData(t, tc)
+		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
 		_, err := Reorder(ctx, &ReorderParams{
-			Floors: []ReorderItem{{ID: xid.New().String(), Level: 1}},
+			SiteID: siteID,
+			Floors: []ReorderItem{},
 		})
 		require.Error(t, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		_, err := Reorder(otherCtx, &ReorderParams{
+			SiteID: siteID,
+			Floors: []ReorderItem{
+				{OldLevel: 1, NewLevel: 2},
+			},
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
 	})
 }
 
@@ -552,14 +586,56 @@ func seedUser(t *testing.T, tc *tu.Context) string {
 	return userID
 }
 
-// seedRoom creates a room assigned to a floor and returns its ID.
-func seedRoom(t *testing.T, ctx context.Context, siteID, floorID, name, roomType string) string {
+// seedRoom creates a room on a specific floor level and returns its ID.
+func seedRoom(t *testing.T, ctx context.Context, siteID, name, typ string, level int) string {
 	t.Helper()
 	id := xid.New().String()
 	_, err := pgctx.Exec(ctx, `
-		insert into rooms (id, site_id, name, type, floor_id)
-		values ($1, $2, $3, $4, $5)
-	`, id, siteID, name, roomType, floorID)
+		insert into rooms (id, site_id, name, type, level) values ($1, $2, $3, $4, $5)
+	`, id, siteID, name, typ, level)
 	require.NoError(t, err)
 	return id
+}
+
+// seedDevice creates a device and returns its ID.
+func seedDevice(t *testing.T, ctx context.Context, siteID, name string) string {
+	t.Helper()
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into devices (id, site_id, name, type) values ($1, $2, $3, $4)
+	`, id, siteID, name, "meter")
+	require.NoError(t, err)
+	return id
+}
+
+// seedMeter inserts a meter attached to a device.
+func seedMeter(t *testing.T, ctx context.Context, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
+	t.Helper()
+	_, err := pgctx.Exec(ctx, `
+		insert into meters (id, device_id, serial_number, protocol, is_online, last_seen_at)
+		values ($1, $2, $3, $4, $5, $6)
+		on conflict (serial_number) do nothing
+	`,
+		xid.New().String(),
+		deviceID,
+		serialNumber,
+		"mqtt",
+		isOnline,
+		lastSeenAt,
+	)
+	require.NoError(t, err)
+}
+
+// assignDeviceToRoom creates a room_devices association.
+func assignDeviceToRoom(t *testing.T, ctx context.Context, roomID, deviceID string) {
+	t.Helper()
+	_, err := pgctx.Exec(ctx, `
+		insert into room_devices (room_id, device_id) values ($1, $2)
+		on conflict (room_id, device_id) do nothing
+	`, roomID, deviceID)
+	require.NoError(t, err)
+}
+
+func ptrTime(t time.Time) *time.Time {
+	return &t
 }

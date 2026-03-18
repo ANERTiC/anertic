@@ -12,7 +12,6 @@ import (
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/lib/pq"
 	"github.com/moonrhythm/validator"
-	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/devicestatus"
@@ -46,7 +45,6 @@ type RoomItem struct {
 }
 
 type Item struct {
-	ID        string     `json:"id"`
 	SiteID    string     `json:"siteId"`
 	Name      string     `json:"name"`
 	Level     int        `json:"level"`
@@ -70,10 +68,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	floors := make([]Item, 0)
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
-			"id",
 			"site_id",
-			"name",
 			"level",
+			"name",
 			"created_at",
 			"updated_at",
 		)
@@ -81,7 +78,6 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("site_id", p.SiteID)
-			c.IsNull("deleted_at")
 			if p.Search != "" {
 				c.ILike("name", "%"+p.Search+"%")
 			}
@@ -90,10 +86,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var f Item
 		if err := scan(
-			&f.ID,
 			&f.SiteID,
-			&f.Name,
 			&f.Level,
+			&f.Name,
 			&f.CreatedAt,
 			&f.UpdatedAt,
 		); err != nil {
@@ -111,12 +106,12 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return &ListResult{Items: floors}, nil
 	}
 
-	// Build floor ID index for room attachment
-	floorIndex := make(map[string]int, len(floors))
-	floorIDs := make([]string, len(floors))
+	// Build level index for room attachment
+	levelIndex := make(map[int]int, len(floors))
+	levels := make([]int, len(floors))
 	for i, f := range floors {
-		floorIndex[f.ID] = i
-		floorIDs[i] = f.ID
+		levelIndex[f.Level] = i
+		levels[i] = f.Level
 	}
 
 	// Query rooms with device aggregation for the fetched floors
@@ -125,7 +120,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"r.id",
 			"r.name",
 			"r.type",
-			"r.floor_id",
+			"r.level",
 			pgstmt.Raw("coalesce(agg.device_count, 0)"),
 			pgstmt.Raw("coalesce(agg.meter_count, 0)"),
 			pgstmt.Raw("coalesce(agg.online_count, 0)"),
@@ -157,20 +152,21 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		})
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
+			c.Eq("r.site_id", p.SiteID)
 			c.IsNull("r.deleted_at")
-			c.Eq("r.floor_id", pgstmt.Any(pq.Array(floorIDs)))
+			c.Eq("r.level", pgstmt.Any(pq.Array(levels)))
 		})
 		b.OrderBy("r.created_at").Asc()
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var ri RoomItem
-		var floorID string
+		var level int
 		var meterCount, onlineCount int
 		var lastSeenAt *time.Time
 		if err := scan(
 			&ri.ID,
 			&ri.Name,
 			&ri.Type,
-			&floorID,
+			&level,
 			&ri.DeviceCount,
 			&meterCount,
 			&onlineCount,
@@ -180,7 +176,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			return err
 		}
 		ri.ConnectionStatus = devicestatus.Derive(meterCount, onlineCount, lastSeenAt)
-		if idx, ok := floorIndex[floorID]; ok {
+		if idx, ok := levelIndex[level]; ok {
 			floors[idx].Rooms = append(floors[idx].Rooms, ri)
 		}
 		return nil
@@ -209,7 +205,7 @@ func (p *CreateParams) Valid() error {
 }
 
 type CreateResult struct {
-	ID string `json:"id"`
+	Level int `json:"level"`
 }
 
 func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
@@ -220,19 +216,16 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, err
 	}
 
-	id := xid.New().String()
 	_, err := pgctx.Exec(ctx, `
 		insert into floors (
-			id,
 			site_id,
-			name,
-			level
-		) values ($1, $2, $3, $4)
+			level,
+			name
+		) values ($1, $2, $3)
 	`,
-		id,
 		p.SiteID,
-		p.Name,
 		p.Level,
+		p.Name,
 	)
 	if err != nil {
 		if pgsql.IsUniqueViolation(err) {
@@ -241,18 +234,19 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		return nil, err
 	}
 
-	return &CreateResult{ID: id}, nil
+	return &CreateResult{Level: p.Level}, nil
 }
 
 // Get
 
 type GetParams struct {
-	ID string `json:"id"`
+	SiteID string `json:"siteId"`
+	Level  int    `json:"level"`
 }
 
 func (p *GetParams) Valid() error {
 	v := validator.New()
-	v.Must(p.ID != "", "id is required")
+	v.Must(p.SiteID != "", "siteId is required")
 	return v.Error()
 }
 
@@ -264,24 +258,25 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
 
 	var r GetResult
 	err := pgctx.QueryRow(ctx, `
 		select
-			id,
 			site_id,
-			name,
 			level,
+			name,
 			created_at,
 			updated_at
 		from floors
-		where id = $1
-		  and deleted_at is null
-	`, p.ID).Scan(
-		&r.ID,
+		where site_id = $1
+		  and level = $2
+	`, p.SiteID, p.Level).Scan(
 		&r.SiteID,
-		&r.Name,
 		&r.Level,
+		&r.Name,
 		&r.CreatedAt,
 		&r.UpdatedAt,
 	)
@@ -292,13 +287,9 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		return nil, err
 	}
 
-	if err := iam.InSite(ctx, r.SiteID); err != nil {
-		return nil, err
-	}
-
 	r.Rooms = make([]RoomItem, 0)
 
-	// Fetch rooms for this floor with device aggregation
+	// Fetch rooms on this floor with device aggregation
 	err = pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
 			"r.id",
@@ -335,8 +326,9 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		})
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
+			c.Eq("r.site_id", p.SiteID)
+			c.Eq("r.level", p.Level)
 			c.IsNull("r.deleted_at")
-			c.Eq("r.floor_id", p.ID)
 		})
 		b.OrderBy("r.created_at").Asc()
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
@@ -366,22 +358,17 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	return &r, nil
 }
 
-// Update
+// Update (name only — level is the PK)
 
 type UpdateParams struct {
 	SiteID string  `json:"siteId"`
-	ID     string  `json:"id"`
+	Level  int     `json:"level"`
 	Name   *string `json:"name"`
-	Level  *int    `json:"level"`
 }
 
 func (p *UpdateParams) Valid() error {
 	v := validator.New()
 	v.Must(p.SiteID != "", "siteId is required")
-	v.Must(p.ID != "", "id is required")
-	if p.Level != nil {
-		v.Must(*p.Level >= -99 && *p.Level <= 99, "level must be between -99 and 99")
-	}
 	return v.Error()
 }
 
@@ -398,20 +385,13 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		if p.Name != nil {
 			b.Set("name").To(*p.Name)
 		}
-		if p.Level != nil {
-			b.Set("level").To(*p.Level)
-		}
 		b.Set("updated_at").ToRaw("now()")
 		b.Where(func(c pgstmt.Cond) {
-			c.Eq("id", p.ID)
 			c.Eq("site_id", p.SiteID)
-			c.IsNull("deleted_at")
+			c.Eq("level", p.Level)
 		})
 	}).ExecWith(ctx)
 	if err != nil {
-		if pgsql.IsUniqueViolation(err) {
-			return nil, ErrDuplicate
-		}
 		return nil, err
 	}
 	affected, err := res.RowsAffected()
@@ -429,13 +409,12 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 
 type DeleteParams struct {
 	SiteID string `json:"siteId"`
-	ID     string `json:"id"`
+	Level  int    `json:"level"`
 }
 
 func (p *DeleteParams) Valid() error {
 	v := validator.New()
 	v.Must(p.SiteID != "", "siteId is required")
-	v.Must(p.ID != "", "id is required")
 	return v.Error()
 }
 
@@ -447,27 +426,25 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	// Unassign rooms from this floor first
+	// Reset rooms on this floor to level 0
 	_, err := pgctx.Exec(ctx, `
 		update rooms
-		set floor_id = null,
+		set level = 0,
 		    updated_at = now()
-		where floor_id = $1
+		where site_id = $1
+		  and level = $2
 		  and deleted_at is null
-	`, p.ID)
+	`, p.SiteID, p.Level)
 	if err != nil {
 		return nil, err
 	}
 
-	// Soft-delete the floor
+	// Hard-delete the floor
 	res, err := pgctx.Exec(ctx, `
-		update floors
-		set deleted_at = now(),
-		    updated_at = now()
-		where id = $1
-		  and site_id = $2
-		  and deleted_at is null
-	`, p.ID, p.SiteID)
+		delete from floors
+		where site_id = $1
+		  and level = $2
+	`, p.SiteID, p.Level)
 	if err != nil {
 		return nil, err
 	}
@@ -485,8 +462,8 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 // Reorder
 
 type ReorderItem struct {
-	ID    string `json:"id"`
-	Level int    `json:"level"`
+	OldLevel int `json:"oldLevel"`
+	NewLevel int `json:"newLevel"`
 }
 
 type ReorderParams struct {
@@ -501,10 +478,9 @@ func (p *ReorderParams) Valid() error {
 
 	seen := make(map[int]bool, len(p.Floors))
 	for _, f := range p.Floors {
-		v.Must(f.ID != "", "floor id is required")
-		v.Must(f.Level >= -99 && f.Level <= 99, "level must be between -99 and 99")
-		v.Must(!seen[f.Level], "floor levels must be unique within the request")
-		seen[f.Level] = true
+		v.Must(f.NewLevel >= -99 && f.NewLevel <= 99, "level must be between -99 and 99")
+		v.Must(!seen[f.NewLevel], "floor levels must be unique within the request")
+		seen[f.NewLevel] = true
 	}
 	return v.Error()
 }
@@ -518,35 +494,56 @@ func Reorder(ctx context.Context, p *ReorderParams) (*struct{}, error) {
 	}
 
 	err := pgctx.RunInTx(ctx, func(ctx context.Context) error {
-		// Step 1: offset all affected floors to a safe range (avoids unique constraint
-		// collisions during the two-phase reorder)
-		ids := make([]string, len(p.Floors))
+		// Step 1: offset all affected floors to avoid PK collisions
+		oldLevels := make([]int, len(p.Floors))
 		for i, f := range p.Floors {
-			ids[i] = f.ID
+			oldLevels[i] = f.OldLevel
 		}
 
+		// Offset floors
 		_, err := pgctx.Exec(ctx, `
 			update floors
 			set level = level + 100000,
 			    updated_at = now()
-			where id = any($1)
-			  and site_id = $2
-			  and deleted_at is null
-		`, pq.Array(ids), p.SiteID)
+			where site_id = $1
+			  and level = any($2)
+		`, p.SiteID, pq.Array(oldLevels))
 		if err != nil {
 			return err
 		}
 
-		// Step 2: set each floor to its target level
+		// Offset rooms to match
+		_, err = pgctx.Exec(ctx, `
+			update rooms
+			set level = level + 100000
+			where site_id = $1
+			  and level = any($2)
+			  and deleted_at is null
+		`, p.SiteID, pq.Array(oldLevels))
+		if err != nil {
+			return err
+		}
+
+		// Step 2: set each floor and its rooms to the target level
 		for _, f := range p.Floors {
 			_, err := pgctx.Exec(ctx, `
 				update floors
 				set level = $1,
 				    updated_at = now()
-				where id = $2
-				  and site_id = $3
+				where site_id = $2
+				  and level = $3
+			`, f.NewLevel, p.SiteID, f.OldLevel+100000)
+			if err != nil {
+				return err
+			}
+
+			_, err = pgctx.Exec(ctx, `
+				update rooms
+				set level = $1
+				where site_id = $2
+				  and level = $3
 				  and deleted_at is null
-			`, f.Level, f.ID, p.SiteID)
+			`, f.NewLevel, p.SiteID, f.OldLevel+100000)
 			if err != nil {
 				return err
 			}

@@ -3,6 +3,7 @@ package meter
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -37,17 +38,18 @@ func (p *ListParams) Valid() error {
 }
 
 type Item struct {
-	ID           string     `json:"id"`
-	DeviceID     string     `json:"deviceId"`
-	SerialNumber string     `json:"serialNumber"`
-	Protocol     string     `json:"protocol"`
-	Vendor       string     `json:"vendor"`
-	Phase        int        `json:"phase"`
-	Channel      string     `json:"channel"`
-	IsOnline     bool       `json:"isOnline"`
-	LastSeenAt   *time.Time `json:"lastSeenAt"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID            string          `json:"id"`
+	DeviceID      string          `json:"deviceId"`
+	SerialNumber  string          `json:"serialNumber"`
+	Protocol      string          `json:"protocol"`
+	Vendor        string          `json:"vendor"`
+	Phase         int             `json:"phase"`
+	Channel       string          `json:"channel"`
+	IsOnline      bool            `json:"isOnline"`
+	LastSeenAt    *time.Time      `json:"lastSeenAt"`
+	LatestReading json.RawMessage `json:"latestReading"`
+	CreatedAt     time.Time       `json:"createdAt"`
+	UpdatedAt     time.Time       `json:"updatedAt"`
 }
 
 type ListResult struct {
@@ -79,6 +81,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"channel",
 			"is_online",
 			"last_seen_at",
+			"latest_reading",
 			"created_at",
 			"updated_at",
 		)
@@ -99,6 +102,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.Channel,
 			&it.IsOnline,
 			pgsql.Null(&it.LastSeenAt),
+			pgsql.JSON(&it.LatestReading),
 			&it.CreatedAt,
 			&it.UpdatedAt,
 		)
@@ -215,6 +219,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			channel,
 			is_online,
 			last_seen_at,
+			latest_reading,
 			created_at,
 			updated_at
 		from meters
@@ -229,6 +234,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.Channel,
 		&r.IsOnline,
 		pgsql.Null(&r.LastSeenAt),
+		pgsql.JSON(&r.LatestReading),
 		&r.CreatedAt,
 		&r.UpdatedAt,
 	)

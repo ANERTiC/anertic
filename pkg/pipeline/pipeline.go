@@ -133,6 +133,31 @@ func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
 		return
 	}
 
+	// Update meter's latest reading
+	latestReading, _ := json.Marshal(map[string]any{
+		"time":      ts,
+		"powerW":    r.PowerW,
+		"energyKwh": r.EnergyKWh,
+		"voltageV":  r.VoltageV,
+		"currentA":  r.CurrentA,
+		"frequency": r.Frequency,
+		"pf":        r.PF,
+	})
+	_, err = p.db.ExecContext(ctx, `
+		update meters
+		set latest_reading = $1,
+		    is_online = true,
+		    last_seen_at = $2
+		where id = $3
+	`,
+		latestReading,
+		ts,
+		r.MeterID,
+	)
+	if err != nil {
+		slog.Error("failed to update meter latest reading", "error", err)
+	}
+
 	// Publish to Redis for real-time WebSocket fan-out
 	data, _ := json.Marshal(r)
 	if err := p.redis.Publish(ctx, "readings:realtime", data).Err(); err != nil {

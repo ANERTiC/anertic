@@ -144,17 +144,17 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 
 	var r Reading
 	err := pgctx.QueryRow(ctx, `
-		SELECT
-			rd.time,
-			COALESCE(rd.power_w, 0),
-			COALESCE(rd.energy_kwh, 0),
-			COALESCE(rd.voltage_v, 0),
-			COALESCE(rd.current_a, 0)
-		FROM readings rd
-		JOIN meters m ON m.id = rd.meter_id
-		WHERE m.device_id = $1
-		ORDER BY rd.time DESC
-		LIMIT 1
+		select
+			(m.latest_reading->>'time')::timestamptz,
+			coalesce((m.latest_reading->>'powerW')::float8, 0),
+			coalesce((m.latest_reading->>'energyKwh')::float8, 0),
+			coalesce((m.latest_reading->>'voltageV')::float8, 0),
+			coalesce((m.latest_reading->>'currentA')::float8, 0)
+		from meters m
+		where m.device_id = $1
+		  and m.latest_reading is not null
+		order by (m.latest_reading->>'time')::timestamptz desc
+		limit 1
 	`, p.DeviceID).Scan(
 		&r.Time,
 		&r.PowerW,

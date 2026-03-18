@@ -2,6 +2,9 @@ package diagnostics
 
 import (
 	"context"
+	"log/slog"
+
+	"github.com/acoshift/pgsql/pgctx"
 
 	"github.com/anertic/anertic/ocpp"
 )
@@ -15,9 +18,23 @@ type StatusParams struct {
 type StatusResult struct{}
 
 func StatusNotification(ctx context.Context, p *StatusParams) (*StatusResult, error) {
-	_ = ocpp.ChargePointID(ctx)
+	chargePointID := ocpp.ChargePointID(ctx)
 
-	// TODO: update diagnostics upload status
+	_, err := pgctx.Exec(ctx, `
+		update ev_chargers
+		set diagnostics_status = $1,
+		    updated_at = now()
+		where charge_point_id = $2
+	`,
+		p.Status,
+		chargePointID,
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to update diagnostics status",
+			"error", err,
+			"chargePointID", chargePointID,
+		)
+	}
 
 	return &StatusResult{}, nil
 }

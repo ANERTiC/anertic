@@ -10,11 +10,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CommandStatus represents the status of a CSMS→CP command stored on ev_chargers.
+// Command status constants — mirrors pkg/ocpp.CommandStatusXxx.
+// Duplicated here because this package cannot import pkg/ocpp (same package name).
 const (
-	CommandPending int16 = iota // 0
-	CommandOk                   // 1
-	CommandError                // 2
+	commandStatusPending int16 = 0
+	commandStatusOk      int16 = 1
+	commandStatusError   int16 = 2
 )
 
 // Hub manages OCPP charge point connections and inbound message routing.
@@ -101,7 +102,7 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			    get_local_list_version_status = $3,
 			    updated_at = now()
 			where charge_point_id = $1
-		`, chargePointID, resp.ListVersion, CommandOk)
+		`, chargePointID, resp.ListVersion, commandStatusOk)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to update local_list_version", "error", err, "chargePointID", chargePointID)
 			return
@@ -116,9 +117,9 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			slog.ErrorContext(ctx, "failed to parse SendLocalList response", "error", err, "chargePointID", chargePointID)
 			return
 		}
-		status := CommandOk
+		status := commandStatusOk
 		if resp.Status != "Accepted" {
-			status = CommandError
+			status = commandStatusError
 			slog.WarnContext(ctx, "SendLocalList not accepted by charger", "chargePointID", chargePointID, "status", resp.Status)
 			_, err := pgctx.Exec(ctx, `
 				update ev_chargers
@@ -159,9 +160,9 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			slog.ErrorContext(ctx, "failed to parse UnlockConnector response", "error", err, "chargePointID", chargePointID)
 			return
 		}
-		status := CommandOk
+		status := commandStatusOk
 		if resp.Status != "Unlocked" {
-			status = CommandError
+			status = commandStatusError
 		}
 		_, err := pgctx.Exec(ctx, `
 			update ev_chargers
@@ -182,9 +183,9 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			slog.ErrorContext(ctx, "failed to parse ChangeAvailability response", "error", err, "chargePointID", chargePointID)
 			return
 		}
-		status := CommandOk
+		status := commandStatusOk
 		if resp.Status != "Accepted" && resp.Status != "Scheduled" {
-			status = CommandError
+			status = commandStatusError
 		}
 		_, err := pgctx.Exec(ctx, `
 			update ev_chargers
@@ -205,9 +206,9 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			slog.ErrorContext(ctx, "failed to parse ClearCache response", "error", err, "chargePointID", chargePointID)
 			return
 		}
-		status := CommandOk
+		status := commandStatusOk
 		if resp.Status != "Accepted" {
-			status = CommandError
+			status = commandStatusError
 		}
 		_, err := pgctx.Exec(ctx, `
 			update ev_chargers
@@ -228,9 +229,9 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			slog.ErrorContext(ctx, "failed to parse ChangeConfiguration response", "error", err, "chargePointID", chargePointID)
 			return
 		}
-		status := CommandOk
+		status := commandStatusOk
 		if resp.Status != "Accepted" && resp.Status != "RebootRequired" {
-			status = CommandError
+			status = commandStatusError
 		}
 		if resp.Status == "RebootRequired" {
 			slog.WarnContext(ctx, "ChangeConfiguration requires reboot", "chargePointID", chargePointID, "status", resp.Status)
@@ -252,7 +253,7 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			set update_firmware_status = $2,
 			    updated_at = now()
 			where charge_point_id = $1
-		`, chargePointID, CommandOk)
+		`, chargePointID, commandStatusOk)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to update update_firmware_status", "error", err, "chargePointID", chargePointID)
 		}
@@ -264,7 +265,7 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			set get_diagnostics_status = $2,
 			    updated_at = now()
 			where charge_point_id = $1
-		`, chargePointID, CommandOk)
+		`, chargePointID, commandStatusOk)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to update get_diagnostics_status", "error", err, "chargePointID", chargePointID)
 		}

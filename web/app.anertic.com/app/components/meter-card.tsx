@@ -47,9 +47,9 @@ export interface Meter {
   channel: MeterChannel
   isOnline: boolean
   lastSeenAt: string | null
-  config: Record<string, string>
+  config?: Record<string, string>
   createdAt: string
-  latestReadings: MeterReading[]
+  latestReadings?: MeterReading[]
 }
 
 // --- Config ---
@@ -109,8 +109,10 @@ export function MeterCard({
   const ProtoIcon = proto.icon
   const channelCfg = CHANNEL_CONFIG[meter.channel]
   const ChannelIcon = channelCfg.icon
-  const power = meter.latestReadings.find((r) => r.metric === "power_w")
-  const voltage = meter.latestReadings.find((r) => r.metric === "voltage_v")
+  const readings = meter.latestReadings ?? []
+  const config = meter.config ?? {}
+  const power = readings.find((r) => r.metric === "power_w")
+  const voltage = readings.find((r) => r.metric === "voltage_v")
 
   // Reset mode when collapsing
   function handleToggle() {
@@ -298,6 +300,8 @@ function TabButton({
 
 function ReadingsPanel({ meter }: { meter: Meter }) {
   const proto = PROTOCOL_CONFIG[meter.protocol]
+  const readings = meter.latestReadings ?? []
+  const config = meter.config ?? {}
 
   return (
     <>
@@ -316,7 +320,7 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
           )}
         </div>
         <div className="grid grid-cols-3 gap-1.5 lg:grid-cols-6">
-          {meter.latestReadings.map((reading) => {
+          {readings.map((reading) => {
             const isPrimary = reading.metric === "power_w" || reading.metric === "energy_kwh"
             return (
               <div
@@ -362,7 +366,7 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
           <InfoRow label="Protocol" value={proto.label} />
           <InfoRow label="Vendor" value={meter.vendor} />
           <InfoRow label="Phase" value={meter.phase > 0 ? `L${meter.phase}` : "N/A"} />
-          {Object.entries(meter.config).map(([key, value]) => (
+          {Object.entries(config).map(([key, value]) => (
             <InfoRow key={key} label={key.replace(/_/g, " ")} value={value} mono={key === "topic" || key === "broker"} />
           ))}
         </div>
@@ -381,6 +385,7 @@ function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: stri
 
   const proto = PROTOCOL_CONFIG[meter.protocol]
   const ProtoIcon = proto.icon
+  const config = meter.config ?? {}
   const allChannels: MeterChannel[] = ["pv", "grid", "battery", "ev", "load"]
 
   async function handleSave() {
@@ -491,16 +496,16 @@ function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: stri
               <div className="space-y-2.5">
                 <CopyableField
                   label="Broker"
-                  value={meter.config.broker || ANERTIC_MQTT_BROKER}
+                  value={config.broker || ANERTIC_MQTT_BROKER}
                 />
                 <CopyableField
                   label="Topic"
-                  value={meter.config.topic || `meters/${meter.serialNumber}/telemetry`}
+                  value={config.topic || `meters/${meter.serialNumber}/telemetry`}
                 />
                 <div className="flex items-center gap-6">
                   <div>
                     <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">QoS</p>
-                    <p className="mt-0.5 font-mono text-sm">{meter.config.qos || "1"}</p>
+                    <p className="mt-0.5 font-mono text-sm">{config.qos || "1"}</p>
                   </div>
                 </div>
               </div>

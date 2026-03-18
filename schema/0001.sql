@@ -108,9 +108,10 @@ create index if not exists idx_devices_type on devices (type);
 create table if not exists meters
 (
     id            varchar(20) primary key not null,
+    site_id       varchar(20) not null references sites (id),
     device_id     varchar(20) references devices (id),
     name          text                    not null default '',
-    serial_number text                    not null unique,
+    serial_number text                    not null,
     protocol      text                    not null default 'mqtt', -- 'mqtt', 'http'
     phase         smallint                not null default 0, -- 0: unassigned, 1: L1, 2: L2, 3: L3
     channel       text                    not null default '', -- 'pv', 'grid', 'battery', 'load', '' (general)
@@ -119,10 +120,12 @@ create table if not exists meters
     last_seen_at   timestamptz,
     latest_reading jsonb,
     created_at     timestamptz             not null default now(),
-    updated_at         timestamptz             not null default now()
+    updated_at         timestamptz             not null default now(),
+    unique (site_id, serial_number)
 );
 
 create index if not exists idx_meters_device_id on meters (device_id);
+create index if not exists idx_meters_site_id on meters (site_id);
 
 create table if not exists meter_readings
 (

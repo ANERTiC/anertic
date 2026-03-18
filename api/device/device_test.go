@@ -52,8 +52,8 @@ func TestList(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		seedMeter(t, ctx, cr.ID, "MTR-001", true, ptrTime(time.Now()))
-		seedMeter(t, ctx, cr.ID, "MTR-002", false, nil)
+		seedMeter(t, ctx, siteID, cr.ID, "MTR-001", true, ptrTime(time.Now()))
+		seedMeter(t, ctx, siteID, cr.ID, "MTR-002", false, nil)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
@@ -108,8 +108,8 @@ func TestList(t *testing.T) {
 
 		// Meters with recent last_seen_at but is_online=false -> degraded
 		recentTime := time.Now().Add(-10 * time.Minute)
-		seedMeter(t, ctx, cr.ID, "MTR-DEG-001", false, &recentTime)
-		seedMeter(t, ctx, cr.ID, "MTR-DEG-002", false, &recentTime)
+		seedMeter(t, ctx, siteID, cr.ID, "MTR-DEG-001", false, &recentTime)
+		seedMeter(t, ctx, siteID, cr.ID, "MTR-DEG-002", false, &recentTime)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestList(t *testing.T) {
 
 		// Meters with old last_seen_at and is_online=false -> offline
 		staleTime := time.Now().Add(-2 * time.Hour)
-		seedMeter(t, ctx, cr.ID, "MTR-STALE-001", false, &staleTime)
+		seedMeter(t, ctx, siteID, cr.ID, "MTR-STALE-001", false, &staleTime)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
@@ -963,15 +963,16 @@ func seedUser(t *testing.T, tc *tu.Context) string {
 }
 
 // seedMeter inserts a meter attached to a device.
-func seedMeter(t *testing.T, ctx context.Context, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
+func seedMeter(t *testing.T, ctx context.Context, siteID, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
 	t.Helper()
 
 	_, err := pgctx.Exec(ctx, `
-		insert into meters (id, device_id, serial_number, protocol, is_online, last_seen_at)
-		values ($1, $2, $3, $4, $5, $6)
-		on conflict (serial_number) do nothing
+		insert into meters (id, site_id, device_id, serial_number, protocol, is_online, last_seen_at)
+		values ($1, $2, $3, $4, $5, $6, $7)
+		on conflict (site_id, serial_number) do nothing
 	`,
 		xid.New().String(),
+		siteID,
 		deviceID,
 		serialNumber,
 		"mqtt",

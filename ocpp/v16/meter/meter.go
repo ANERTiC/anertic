@@ -40,16 +40,19 @@ type Result struct{}
 func MeterValues(ctx context.Context, p *Params) (*Result, error) {
 	chargePointID := ocpp.ChargePointID(ctx)
 
-	// resolve charger_id from charge_point_id
+	// resolve charger_id and site_id from charge_point_id
 	var chargerID string
+	var siteID string
 	err := pgctx.QueryRow(ctx, `
-		select id
+		select id,
+		       coalesce(site_id, '')
 		from ev_chargers
 		where charge_point_id = $1
 	`,
 		chargePointID,
 	).Scan(
 		&chargerID,
+		&siteID,
 	)
 	if err != nil {
 		return nil, err
@@ -67,7 +70,7 @@ func MeterValues(ctx context.Context, p *Params) (*Result, error) {
 		insertEVMeterValues(ctx, chargerID, p.ConnectorID, p.TransactionID, ts, mv.SampledValue)
 
 		// 2. Write unified meter_readings for dashboard
-		insertMeterReadings(ctx, chargePointID, ts, mv.SampledValue)
+		insertMeterReadings(ctx, chargePointID, siteID, ts, mv.SampledValue)
 	}
 
 	return &Result{}, nil
@@ -165,7 +168,7 @@ type reading struct {
 
 // insertMeterReadings maps OCPP sampled values to the unified meter_readings table.
 // Groups values by phase so each meter (identified by charge_point_id + phase) gets one row.
-func insertMeterReadings(ctx context.Context, chargePointID string, ts time.Time, samples []SampledValue) {
+func insertMeterReadings(ctx context.Context, chargePointID, siteID string, ts time.Time, samples []SampledValue) {
 	// group by phase: "" (no phase / total) and "L1", "L2", "L3"
 	readings := make(map[string]*reading)
 
@@ -201,7 +204,7 @@ func insertMeterReadings(ctx context.Context, chargePointID string, ts time.Time
 
 	// write one meter_readings row per phase
 	for phase, r := range readings {
-		meterID := resolveMeterID(ctx, chargePointID, phase)
+		meterID := resolveMeterID(ctx, chargePointID, siteID, phase)
 		if meterID == "" {
 			continue
 		}
@@ -305,24 +308,26 @@ func normalizeValue(value decimal.Decimal, unit string) decimal.Decimal {
 	}
 }
 
-// resolveMeterID finds the meter_id linked to a charge point.
+// resolveMeterID finds the meter_id linked to a charge point within a site.
 // Convention: meters.serial_number = charge_point_id for single-phase,
 // or meters.serial_number = charge_point_id + phase suffix for multi-phase.
-func resolveMeterID(ctx context.Context, chargePointID, phase string) string {
+func resolveMeterID(ctx context.Context, chargePointID, siteID, phase string) string {
 	phaseNum := ocppPhaseToNum(phase)
 
 	var meterID string
 	var err error
 
-	if phaseNum > 0 {
-		// try phase-specific meter first
+	if phaseNum > 0 && siteID != "" {
+		// try phase-specific meter within site first
 		err = pgctx.QueryRow(ctx, `
 			select id
 			from meters
 			where serial_number = $1
-				and phase = $2
+			  and site_id = $2
+			  and phase = $3
 		`,
 			chargePointID,
+			siteID,
 			phaseNum,
 		).Scan(
 			&meterID,
@@ -332,7 +337,26 @@ func resolveMeterID(ctx context.Context, chargePointID, phase string) string {
 		}
 	}
 
-	// fallback: meter with serial_number = charge_point_id
+	if siteID != "" {
+		// fallback: meter with serial_number = charge_point_id within site
+		err = pgctx.QueryRow(ctx, `
+			select id
+			from meters
+			where serial_number = $1
+			  and site_id = $2
+			limit 1
+		`,
+			chargePointID,
+			siteID,
+		).Scan(
+			&meterID,
+		)
+		if err == nil {
+			return meterID
+		}
+	}
+
+	// last resort: no site_id (charger not assigned to site yet)
 	err = pgctx.QueryRow(ctx, `
 		select id
 		from meters
@@ -344,7 +368,6 @@ func resolveMeterID(ctx context.Context, chargePointID, phase string) string {
 		&meterID,
 	)
 	if err != nil {
-		// no linked meter — skip silently, charger may not be linked to devices yet
 		return ""
 	}
 

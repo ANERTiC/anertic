@@ -18,6 +18,7 @@ import (
 	"github.com/anertic/anertic/api/reading"
 	"github.com/anertic/anertic/api/room"
 	"github.com/anertic/anertic/api/site"
+	"github.com/anertic/anertic/ingest"
 )
 
 var errUnauthorized = arpc.NewErrorCode("unauthorized", "unauthorized")
@@ -53,6 +54,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 
 	// Public API routes
 	mux.Handle("POST /auth.refreshToken", am.Handler(auth.RefreshToken))
+
+	// Ingest (public, no auth — device-to-server)
+	mux.HandleFunc("POST /ingest/{serial_number}", ingest.Handler)
 
 	// Protected API routes
 	a := mux.Group("", am.Middleware(authMiddleware))

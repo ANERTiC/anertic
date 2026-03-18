@@ -51,7 +51,7 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 
 		deviceID := seedDevice(t, ctx, siteID, "Smart Meter")
-		seedMeter(t, ctx, deviceID, "MTR-ROOM-001", true, ptrTime(time.Now()))
+		seedMeter(t, ctx, siteID, deviceID, "MTR-ROOM-001", true, ptrTime(time.Now()))
 
 		_, err = AssignDevice(ctx, &AssignDeviceParams{
 			SiteID:   siteID,
@@ -275,7 +275,7 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		deviceID := seedDevice(t, ctx, siteID, "Air Conditioner")
-		seedMeter(t, ctx, deviceID, "MTR-GET-001", true, ptrTime(time.Now()))
+		seedMeter(t, ctx, siteID, deviceID, "MTR-GET-001", true, ptrTime(time.Now()))
 
 		_, err = AssignDevice(ctx, &AssignDeviceParams{
 			SiteID:   siteID,
@@ -899,15 +899,16 @@ func seedDevice(t *testing.T, ctx context.Context, siteID, name string) string {
 }
 
 // seedMeter inserts a meter attached to a device.
-func seedMeter(t *testing.T, ctx context.Context, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
+func seedMeter(t *testing.T, ctx context.Context, siteID, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
 	t.Helper()
 
 	_, err := pgctx.Exec(ctx, `
-		insert into meters (id, device_id, serial_number, protocol, is_online, last_seen_at)
-		values ($1, $2, $3, $4, $5, $6)
-		on conflict (serial_number) do nothing
+		insert into meters (id, site_id, device_id, serial_number, protocol, is_online, last_seen_at)
+		values ($1, $2, $3, $4, $5, $6, $7)
+		on conflict (site_id, serial_number) do nothing
 	`,
 		xid.New().String(),
+		siteID,
 		deviceID,
 		serialNumber,
 		"mqtt",

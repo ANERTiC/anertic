@@ -53,14 +53,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Look up meter by serial_number and verify it belongs to the site
+	// Look up meter by serial_number within the site
 	var meterID string
 	err = pgctx.QueryRow(ctx, `
-		select m.id
-		from meters m
-		join devices d on d.id = m.device_id
-		where m.serial_number = $1
-		  and d.site_id = $2
+		select id
+		from meters
+		where serial_number = $1
+		  and site_id = $2
 	`, serialNumber, siteID).Scan(&meterID)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "meter not found")

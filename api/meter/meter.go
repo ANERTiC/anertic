@@ -160,15 +160,17 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	_, err := pgctx.Exec(ctx, `
 		insert into meters (
 			id,
+			site_id,
 			device_id,
 			name,
 			serial_number,
 			protocol,
 			phase,
 			channel
-		) values ($1, $2, $3, $4, $5, $6, $7)
+		) values ($1, $2, $3, $4, $5, $6, $7, $8)
 	`,
 		id,
+		p.SiteID,
 		p.DeviceID,
 		p.Name,
 		p.SerialNumber,

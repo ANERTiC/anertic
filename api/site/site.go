@@ -387,14 +387,16 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	_, err = pgctx.Exec(ctx, `
 		insert into meters (
 			id,
+			site_id,
 			device_id,
 			serial_number,
 			protocol,
 			vendor,
 			channel
-		) values ($1, $2, $3, 'mqtt', 'Eastron', 'grid')
+		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'grid')
 	`,
 		gridMeterID,
+		siteID,
 		gridDeviceID,
 		"DEMO-"+strings.ToUpper(gridMeterID),
 	)
@@ -426,14 +428,16 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	_, err = pgctx.Exec(ctx, `
 		insert into meters (
 			id,
+			site_id,
 			device_id,
 			serial_number,
 			protocol,
 			vendor,
 			channel
-		) values ($1, $2, $3, 'mqtt', 'Huawei', 'pv')
+		) values ($1, $2, $3, $4, 'mqtt', 'Huawei', 'pv')
 	`,
 		solarMeterID,
+		siteID,
 		solarDeviceID,
 		"DEMO-"+strings.ToUpper(solarMeterID),
 	)
@@ -465,14 +469,16 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	_, err = pgctx.Exec(ctx, `
 		insert into meters (
 			id,
+			site_id,
 			device_id,
 			serial_number,
 			protocol,
 			vendor,
 			channel
-		) values ($1, $2, $3, 'mqtt', 'Eastron', 'load')
+		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'load')
 	`,
 		floorMeterID,
+		siteID,
 		floorDeviceID,
 		"DEMO-"+strings.ToUpper(floorMeterID),
 	)
@@ -504,14 +510,16 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 	_, err = pgctx.Exec(ctx, `
 		insert into meters (
 			id,
+			site_id,
 			device_id,
 			serial_number,
 			protocol,
 			vendor,
 			channel
-		) values ($1, $2, $3, 'mqtt', 'Tesla', 'battery')
+		) values ($1, $2, $3, $4, 'mqtt', 'Tesla', 'battery')
 	`,
 		batteryMeterID,
+		siteID,
 		batteryDeviceID,
 		"DEMO-"+strings.ToUpper(batteryMeterID),
 	)

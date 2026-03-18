@@ -179,9 +179,9 @@ func seedTestData(t *testing.T, tc *tu.Context) (rawKey, meterID, serialNumber s
 	require.NoError(t, err)
 
 	_, err = pgctx.Exec(ctx, `
-		insert into meters (id, device_id, serial_number, protocol)
-		values ($1, $2, $3, $4)
-	`, meterID, deviceID, serialNumber, "http")
+		insert into meters (id, site_id, device_id, serial_number, protocol)
+		values ($1, $2, $3, $4, $5)
+	`, meterID, siteID, deviceID, serialNumber, "http")
 	require.NoError(t, err)
 
 	return rawKey, meterID, serialNumber

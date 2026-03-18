@@ -225,6 +225,35 @@ create index if not exists idx_ev_charging_profiles_charger on ev_charging_profi
 create index if not exists idx_ev_charging_profiles_purpose on ev_charging_profiles (charging_profile_purpose);
 
 -- ============================================================
+-- Firmware Management Profile
+-- ============================================================
+
+-- ev_firmware_updates: tracking firmware update and diagnostics operations
+create table if not exists ev_firmware_updates
+(
+    id              varchar(20) primary key not null,
+    charger_id      varchar(20)             not null references ev_chargers (id),
+    type            text                    not null, -- 'firmware' or 'diagnostics'
+    status          text                    not null default 'Pending',
+    -- firmware: location to download from; diagnostics: location to upload to
+    location        text                    not null,
+    -- firmware fields
+    retrieve_date   timestamptz,
+    retries         integer                 not null default 0,
+    retry_interval  integer                 not null default 0,
+    -- diagnostics fields
+    start_time      timestamptz,
+    stop_time       timestamptz,
+    -- diagnostics result (file name returned by charger)
+    file_name       text                    not null default '',
+    created_at      timestamptz             not null default now(),
+    updated_at      timestamptz             not null default now()
+);
+
+create index if not exists idx_ev_firmware_updates_charger on ev_firmware_updates (charger_id, created_at desc);
+create index if not exists idx_ev_firmware_updates_type on ev_firmware_updates (type, status);
+
+-- ============================================================
 -- Message Log (all profiles)
 -- ============================================================
 

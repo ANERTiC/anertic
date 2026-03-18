@@ -100,6 +100,8 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.clearCache", am.Handler(charger.ClearCache))
 	a.Handle("POST /charger.changeAvailability", am.Handler(charger.ChangeAvailability))
 	a.Handle("POST /charger.unlockConnector", am.Handler(charger.UnlockConnector))
+	a.Handle("POST /charger.updateFirmware", am.Handler(charger.UpdateFirmware))
+	a.Handle("POST /charger.getDiagnostics", am.Handler(charger.GetDiagnostics))
 
 	// Connectors
 	a.Handle("POST /connector.list", am.Handler(connector.List))

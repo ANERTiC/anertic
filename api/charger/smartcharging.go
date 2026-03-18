@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"strconv"
 
+	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
+	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 	"github.com/shopspring/decimal"
@@ -38,8 +39,8 @@ type ChargingProfile struct {
 	ChargingProfilePurpose string            `json:"chargingProfilePurpose"`
 	ChargingProfileKind    string            `json:"chargingProfileKind"`
 	RecurrencyKind         string            `json:"recurrencyKind"`
-	ValidFrom              string            `json:"validFrom"`
-	ValidTo                string            `json:"validTo"`
+	ValidFrom              *string           `json:"validFrom"`
+	ValidTo                *string           `json:"validTo"`
 	TransactionId          *int              `json:"transactionId"`
 	ChargingSchedule       *ChargingSchedule `json:"chargingSchedule"`
 }
@@ -105,11 +106,6 @@ func SetChargingProfile(ctx context.Context, p *SetChargingProfileParams) (*SetC
 		return nil, err
 	}
 
-	scheduleJSON, err := json.Marshal(p.CsChargingProfiles.ChargingSchedule)
-	if err != nil {
-		return nil, err
-	}
-
 	profileID := xid.New().String()
 	_, err = pgctx.Exec(ctx, `
 		insert into ev_charging_profiles (
@@ -146,10 +142,11 @@ func SetChargingProfile(ctx context.Context, p *SetChargingProfileParams) (*SetC
 		p.CsChargingProfiles.ChargingProfilePurpose,
 		p.CsChargingProfiles.ChargingProfileKind,
 		p.CsChargingProfiles.RecurrencyKind,
-		nullableString(p.CsChargingProfiles.ValidFrom),
-		nullableString(p.CsChargingProfiles.ValidTo),
+		pgsql.NullString(p.CsChargingProfiles.ValidFrom),
+		pgsql.NullString(p.CsChargingProfiles.ValidTo),
+
 		p.CsChargingProfiles.TransactionId,
-		scheduleJSON,
+		pgsql.JSON(p.CsChargingProfiles.ChargingSchedule),
 	)
 	if err != nil {
 		return nil, err
@@ -230,34 +227,24 @@ func ClearChargingProfile(ctx context.Context, p *ClearChargingProfileParams) (*
 		return nil, err
 	}
 
-	// Build dynamic delete query based on provided filters
-	query := `delete from ev_charging_profiles where charger_id = $1`
-	args := []any{p.ID}
-	idx := 2
-
-	if p.ChargingProfileId != nil {
-		query += ` and charging_profile_id = $` + strconv.Itoa(idx)
-		args = append(args, *p.ChargingProfileId)
-		idx++
-	}
-	if p.ConnectorId != nil {
-		query += ` and connector_id = $` + strconv.Itoa(idx)
-		args = append(args, *p.ConnectorId)
-		idx++
-	}
-	if p.ChargingProfilePurpose != nil {
-		query += ` and charging_profile_purpose = $` + strconv.Itoa(idx)
-		args = append(args, *p.ChargingProfilePurpose)
-		idx++
-	}
-	if p.StackLevel != nil {
-		query += ` and stack_level = $` + strconv.Itoa(idx)
-		args = append(args, *p.StackLevel)
-		idx++
-	}
-	_ = idx
-
-	_, err = pgctx.Exec(ctx, query, args...)
+	_, err = pgstmt.Delete(func(b pgstmt.DeleteStatement) {
+		b.From("ev_charging_profiles")
+		b.Where(func(c pgstmt.Cond) {
+			c.Eq("charger_id", p.ID)
+			if p.ChargingProfileId != nil {
+				c.Eq("charging_profile_id", *p.ChargingProfileId)
+			}
+			if p.ConnectorId != nil {
+				c.Eq("connector_id", *p.ConnectorId)
+			}
+			if p.ChargingProfilePurpose != nil {
+				c.Eq("charging_profile_purpose", *p.ChargingProfilePurpose)
+			}
+			if p.StackLevel != nil {
+				c.Eq("stack_level", *p.StackLevel)
+			}
+		})
+	}).ExecWith(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -373,11 +360,3 @@ func GetCompositeSchedule(ctx context.Context, p *GetCompositeScheduleParams) (*
 	return &GetCompositeScheduleResult{Status: "Accepted"}, nil
 }
 
-// nullableString returns nil if s is empty, otherwise returns a pointer to s.
-// Used for optional string fields stored as nullable in the database.
-func nullableString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

@@ -1,4 +1,4 @@
-package device
+package room
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func TestList(t *testing.T) {
 		assert.Empty(t, r.Items)
 	})
 
-	t.Run("returns_devices_with_meter_aggregation", func(t *testing.T) {
+	t.Run("returns_rooms_with_device_aggregation", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -45,15 +45,20 @@ func TestList(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Inverter A",
-			Type:   "inverter",
-			Brand:  "Huawei",
-			Model:  "SUN2000",
+			Name:   "Living Room",
+			Type:   "living",
 		})
 		require.NoError(t, err)
 
-		seedMeter(t, ctx, cr.ID, "MTR-001", true, ptrTime(time.Now()))
-		seedMeter(t, ctx, cr.ID, "MTR-002", false, nil)
+		deviceID := seedDevice(t, ctx, siteID, "Smart Meter")
+		seedMeter(t, ctx, deviceID, "MTR-ROOM-001", true, ptrTime(time.Now()))
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID})
 		require.NoError(t, err)
@@ -61,37 +66,13 @@ func TestList(t *testing.T) {
 
 		item := r.Items[0]
 		assert.Equal(t, cr.ID, item.ID)
-		assert.Equal(t, 2, item.MeterCount)
+		assert.Equal(t, "Living Room", item.Name)
+		assert.Equal(t, "living", item.Type)
+		assert.Equal(t, 1, item.DeviceCount)
 		assert.Equal(t, "online", item.ConnectionStatus)
-		assert.NotNil(t, item.LastSeenAt)
 	})
 
-	t.Run("device_with_no_meters_is_offline", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Empty Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-
-		assert.Equal(t, "Empty Device", r.Items[0].Name)
-		assert.Equal(t, 0, r.Items[0].MeterCount)
-		assert.Equal(t, "offline", r.Items[0].ConnectionStatus)
-		assert.Nil(t, r.Items[0].LastSeenAt)
-	})
-
-	t.Run("connection_status_degraded", func(t *testing.T) {
+	t.Run("excludes_soft_deleted_rooms", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -101,73 +82,18 @@ func TestList(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Degraded Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		// Meters with recent last_seen_at but is_online=false -> degraded
-		recentTime := time.Now().Add(-10 * time.Minute)
-		seedMeter(t, ctx, cr.ID, "MTR-DEG-001", false, &recentTime)
-		seedMeter(t, ctx, cr.ID, "MTR-DEG-002", false, &recentTime)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-
-		assert.Equal(t, "degraded", r.Items[0].ConnectionStatus)
-		assert.NotNil(t, r.Items[0].LastSeenAt)
-	})
-
-	t.Run("connection_status_offline_stale_last_seen", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		cr, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Stale Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		// Meters with old last_seen_at and is_online=false -> offline
-		staleTime := time.Now().Add(-2 * time.Hour)
-		seedMeter(t, ctx, cr.ID, "MTR-STALE-001", false, &staleTime)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-
-		assert.Equal(t, "offline", r.Items[0].ConnectionStatus)
-	})
-
-	t.Run("excludes_soft_deleted_devices", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		cr, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "To Be Deleted",
-			Type:   "meter",
+			Name:   "To Delete",
+			Type:   "other",
 		})
 		require.NoError(t, err)
 
 		_, err = Create(ctx, &CreateParams{
 			SiteID: siteID,
 			Name:   "Still Alive",
-			Type:   "meter",
+			Type:   "office",
 		})
 		require.NoError(t, err)
 
-		// Soft delete the first device
 		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr.ID})
 		require.NoError(t, err)
 
@@ -185,24 +111,16 @@ func TestList(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Inverter",
-			Type:   "inverter",
-		})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Kitchen", Type: "kitchen"})
 		require.NoError(t, err)
 
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Meter",
-			Type:   "meter",
-		})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Office", Type: "office"})
 		require.NoError(t, err)
 
-		r, err := List(ctx, &ListParams{SiteID: siteID, Type: "inverter"})
+		r, err := List(ctx, &ListParams{SiteID: siteID, Type: "kitchen"})
 		require.NoError(t, err)
 		require.Len(t, r.Items, 1)
-		assert.Equal(t, "inverter", r.Items[0].Type)
+		assert.Equal(t, "kitchen", r.Items[0].Type)
 	})
 
 	t.Run("search_by_name", func(t *testing.T) {
@@ -213,131 +131,16 @@ func TestList(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Solar Panel Alpha",
-			Type:   "solar_panel",
-		})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Server Room Alpha", Type: "office"})
 		require.NoError(t, err)
 
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Meter Beta",
-			Type:   "meter",
-		})
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Kitchen Beta", Type: "kitchen"})
 		require.NoError(t, err)
 
 		r, err := List(ctx, &ListParams{SiteID: siteID, Search: "Alpha"})
 		require.NoError(t, err)
 		require.Len(t, r.Items, 1)
-		assert.Equal(t, "Solar Panel Alpha", r.Items[0].Name)
-	})
-
-	t.Run("search_by_brand", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Device X",
-			Type:   "meter",
-			Brand:  "Eastron",
-		})
-		require.NoError(t, err)
-
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Device Y",
-			Type:   "meter",
-			Brand:  "Schneider",
-		})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID, Search: "eastron"})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-		assert.Equal(t, "Eastron", r.Items[0].Brand)
-	})
-
-	t.Run("search_by_model", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Device Z",
-			Type:   "meter",
-			Model:  "SDM630",
-		})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID, Search: "sdm630"})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-		assert.Equal(t, "SDM630", r.Items[0].Model)
-	})
-
-	t.Run("search_no_match", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID, Search: "nonexistent"})
-		require.NoError(t, err)
-		assert.Empty(t, r.Items)
-	})
-
-	t.Run("ordered_by_created_at_desc", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "First Created",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Second Created",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 2)
-		// Most recent first
-		assert.Equal(t, "Second Created", r.Items[0].Name)
-		assert.Equal(t, "First Created", r.Items[1].Name)
-	})
-
-	t.Run("validation_error_missing_site_id", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, _ := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := List(ctx, &ListParams{})
-		require.Error(t, err)
+		assert.Equal(t, "Server Room Alpha", r.Items[0].Name)
 	})
 
 	t.Run("forbidden_not_site_member", func(t *testing.T) {
@@ -354,43 +157,16 @@ func TestList(t *testing.T) {
 		assert.Equal(t, iam.ErrForbidden, err)
 	})
 
-	t.Run("does_not_return_devices_from_other_sites", func(t *testing.T) {
+	t.Run("validation_error_missing_site_id", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
 
-		userID, siteID := seedTestData(t, tc)
+		userID, _ := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		// Create a second site for the same user
-		otherSiteID := xid.New().String()
-		_, err := pgctx.Exec(tc.Ctx(), `
-			insert into sites (id, name) values ($1, $2)
-		`, otherSiteID, "Other Site")
-		require.NoError(t, err)
-		_, err = pgctx.Exec(tc.Ctx(), `
-			insert into site_members (site_id, user_id, role) values ($1, $2, $3)
-		`, otherSiteID, userID, "owner")
-		require.NoError(t, err)
-
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Site 1 Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		_, err = Create(ctx, &CreateParams{
-			SiteID: otherSiteID,
-			Name:   "Site 2 Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-		assert.Equal(t, "Site 1 Device", r.Items[0].Name)
+		_, err := List(ctx, &ListParams{})
+		require.Error(t, err)
 	})
 }
 
@@ -409,11 +185,8 @@ func TestCreate(t *testing.T) {
 
 		r, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Test Device",
-			Type:   "meter",
-			Tag:    "Main DB",
-			Brand:  "Eastron",
-			Model:  "SDM630",
+			Name:   "Living Room",
+			Type:   "living",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, r)
@@ -421,37 +194,9 @@ func TestCreate(t *testing.T) {
 
 		got, err := Get(ctx, &GetParams{ID: r.ID})
 		require.NoError(t, err)
-		assert.Equal(t, "Test Device", got.Name)
-		assert.Equal(t, "meter", got.Type)
-		assert.Equal(t, "Main DB", got.Tag)
-		assert.Equal(t, "Eastron", got.Brand)
-		assert.Equal(t, "SDM630", got.Model)
-		assert.True(t, got.IsActive)
+		assert.Equal(t, "Living Room", got.Name)
+		assert.Equal(t, "living", got.Type)
 		assert.Equal(t, siteID, got.SiteID)
-	})
-
-	t.Run("minimal_fields", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		r, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Minimal",
-			Type:   "inverter",
-		})
-		require.NoError(t, err)
-
-		got, err := Get(ctx, &GetParams{ID: r.ID})
-		require.NoError(t, err)
-		assert.Equal(t, "Minimal", got.Name)
-		assert.Equal(t, "inverter", got.Type)
-		assert.Equal(t, "", got.Tag)
-		assert.Equal(t, "", got.Brand)
-		assert.Equal(t, "", got.Model)
 	})
 
 	t.Run("validation_error_missing_name", func(t *testing.T) {
@@ -462,10 +207,7 @@ func TestCreate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Type:   "meter",
-		})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Type: "living"})
 		require.Error(t, err)
 	})
 
@@ -477,25 +219,19 @@ func TestCreate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "No Type",
-		})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Room"})
 		require.Error(t, err)
 	})
 
-	t.Run("validation_error_missing_site_id", func(t *testing.T) {
+	t.Run("validation_error_invalid_type", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
 
-		userID, _ := seedTestData(t, tc)
+		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		_, err := Create(ctx, &CreateParams{
-			Name: "No Site",
-			Type: "meter",
-		})
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Room", Type: "invalid"})
 		require.Error(t, err)
 	})
 
@@ -510,8 +246,8 @@ func TestCreate(t *testing.T) {
 
 		_, err := Create(otherCtx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Forbidden Device",
-			Type:   "meter",
+			Name:   "Forbidden Room",
+			Type:   "other",
 		})
 		require.Error(t, err)
 		assert.Equal(t, iam.ErrForbidden, err)
@@ -523,7 +259,7 @@ func TestGet(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("success_with_devices", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -533,24 +269,52 @@ func TestGet(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Get Device",
-			Type:   "inverter",
-			Brand:  "SMA",
-			Model:  "Sunny Boy",
+			Name:   "Office",
+			Type:   "office",
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, ctx, siteID, "Air Conditioner")
+		seedMeter(t, ctx, deviceID, "MTR-GET-001", true, ptrTime(time.Now()))
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
 		})
 		require.NoError(t, err)
 
 		r, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
 		require.NotNil(t, r)
-		assert.Equal(t, cr.ID, r.ID)
-		assert.Equal(t, "Get Device", r.Name)
-		assert.Equal(t, "inverter", r.Type)
-		assert.Equal(t, "SMA", r.Brand)
-		assert.Equal(t, "Sunny Boy", r.Model)
-		assert.Equal(t, siteID, r.SiteID)
-		assert.True(t, r.IsActive)
-		assert.False(t, r.CreatedAt.IsZero())
+		assert.Equal(t, "Office", r.Name)
+		assert.Equal(t, "office", r.Type)
+		require.Len(t, r.Devices, 1)
+		assert.Equal(t, deviceID, r.Devices[0].ID)
+		assert.Equal(t, "Air Conditioner", r.Devices[0].Name)
+		assert.Equal(t, "online", r.Devices[0].ConnectionStatus)
+		assert.Equal(t, 1, r.Devices[0].MeterCount)
+	})
+
+	t.Run("success_no_devices", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Empty Room",
+			Type:   "storage",
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		assert.Equal(t, "Empty Room", r.Name)
+		assert.Empty(t, r.Devices)
 	})
 
 	t.Run("not_found", func(t *testing.T) {
@@ -595,9 +359,7 @@ func TestUpdate(t *testing.T) {
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
 			Name:   "Original",
-			Type:   "meter",
-			Brand:  "Eastron",
-			Model:  "SDM630",
+			Type:   "office",
 		})
 		require.NoError(t, err)
 
@@ -612,11 +374,10 @@ func TestUpdate(t *testing.T) {
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
 		assert.Equal(t, "Updated", got.Name)
-		assert.Equal(t, "Eastron", got.Brand)
-		assert.Equal(t, "SDM630", got.Model)
+		assert.Equal(t, "office", got.Type)
 	})
 
-	t.Run("update_brand_only", func(t *testing.T) {
+	t.Run("update_type_only", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -626,24 +387,23 @@ func TestUpdate(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Brand Test",
-			Type:   "meter",
-			Brand:  "ABB",
+			Name:   "Room",
+			Type:   "office",
 		})
 		require.NoError(t, err)
 
-		brand := "Siemens"
+		typ := "bedroom"
 		_, err = Update(ctx, &UpdateParams{
 			ID:     cr.ID,
 			SiteID: siteID,
-			Brand:  &brand,
+			Type:   &typ,
 		})
 		require.NoError(t, err)
 
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
-		assert.Equal(t, "Brand Test", got.Name)
-		assert.Equal(t, "Siemens", got.Brand)
+		assert.Equal(t, "Room", got.Name)
+		assert.Equal(t, "bedroom", got.Type)
 	})
 
 	t.Run("update_multiple_fields", func(t *testing.T) {
@@ -656,33 +416,28 @@ func TestUpdate(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Multi Update",
-			Type:   "meter",
-			Brand:  "ABB",
-			Model:  "M100",
+			Name:   "Old Name",
+			Type:   "office",
 		})
 		require.NoError(t, err)
 
 		name := "New Name"
-		brand := "Siemens"
-		model := "PAC2200"
+		typ := "kitchen"
 		_, err = Update(ctx, &UpdateParams{
 			ID:     cr.ID,
 			SiteID: siteID,
 			Name:   &name,
-			Brand:  &brand,
-			Model:  &model,
+			Type:   &typ,
 		})
 		require.NoError(t, err)
 
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
 		assert.Equal(t, "New Name", got.Name)
-		assert.Equal(t, "Siemens", got.Brand)
-		assert.Equal(t, "PAC2200", got.Model)
+		assert.Equal(t, "kitchen", got.Type)
 	})
 
-	t.Run("update_with_no_fields_is_noop", func(t *testing.T) {
+	t.Run("validation_error_invalid_type", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -690,21 +445,13 @@ func TestUpdate(t *testing.T) {
 		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-		cr, err := Create(ctx, &CreateParams{
+		typ := "invalid"
+		_, err := Update(ctx, &UpdateParams{
+			ID:     xid.New().String(),
 			SiteID: siteID,
-			Name:   "No Change",
-			Type:   "meter",
-			Brand:  "Eastron",
+			Type:   &typ,
 		})
-		require.NoError(t, err)
-
-		_, err = Update(ctx, &UpdateParams{ID: cr.ID, SiteID: siteID})
-		require.NoError(t, err)
-
-		got, err := Get(ctx, &GetParams{ID: cr.ID})
-		require.NoError(t, err)
-		assert.Equal(t, "No Change", got.Name)
-		assert.Equal(t, "Eastron", got.Brand)
+		require.Error(t, err)
 	})
 
 	t.Run("validation_error_missing_id", func(t *testing.T) {
@@ -712,12 +459,31 @@ func TestUpdate(t *testing.T) {
 		tc := tu.Setup()
 		defer tc.Teardown()
 
-		userID, _ := seedTestData(t, tc)
+		userID, siteID := seedTestData(t, tc)
 		ctx := auth.WithAccountID(tc.Ctx(), userID)
 
 		name := "X"
-		_, err := Update(ctx, &UpdateParams{Name: &name})
+		_, err := Update(ctx, &UpdateParams{SiteID: siteID, Name: &name})
 		require.Error(t, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		name := "X"
+		_, err := Update(otherCtx, &UpdateParams{
+			ID:     xid.New().String(),
+			SiteID: siteID,
+			Name:   &name,
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
 	})
 }
 
@@ -737,20 +503,34 @@ func TestDelete(t *testing.T) {
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
 			Name:   "To Delete",
-			Type:   "meter",
+			Type:   "other",
+		})
+		require.NoError(t, err)
+
+		// Assign a device to verify room_devices cleanup
+		deviceID := seedDevice(t, ctx, siteID, "Device")
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
 		})
 		require.NoError(t, err)
 
 		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr.ID})
 		require.NoError(t, err)
 
-		// Verify deleted_at is set in DB
-		var deletedAt *time.Time
+		// Verify room is soft-deleted
+		_, err = Get(ctx, &GetParams{ID: cr.ID})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
+
+		// Verify room_devices rows are removed
+		var count int
 		err = pgctx.QueryRow(ctx, `
-			select deleted_at from devices where id = $1
-		`, cr.ID).Scan(&deletedAt)
+			select count(*) from room_devices where room_id = $1
+		`, cr.ID).Scan(&count)
 		require.NoError(t, err)
-		assert.NotNil(t, deletedAt)
+		assert.Equal(t, 0, count)
 	})
 
 	t.Run("not_found_nonexistent_id", func(t *testing.T) {
@@ -780,47 +560,14 @@ func TestDelete(t *testing.T) {
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
 			Name:   "Delete Twice",
-			Type:   "meter",
+			Type:   "other",
 		})
 		require.NoError(t, err)
 
 		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr.ID})
 		require.NoError(t, err)
 
-		// Second delete should return not found
 		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr.ID})
-		require.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
-	})
-
-	t.Run("not_found_wrong_site_id", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		// Create second site for same user
-		otherSiteID := xid.New().String()
-		_, err := pgctx.Exec(tc.Ctx(), `
-			insert into sites (id, name) values ($1, $2)
-		`, otherSiteID, "Other Site")
-		require.NoError(t, err)
-		_, err = pgctx.Exec(tc.Ctx(), `
-			insert into site_members (site_id, user_id, role) values ($1, $2, $3)
-		`, otherSiteID, userID, "owner")
-		require.NoError(t, err)
-
-		cr, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Wrong Site Device",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		// Try to delete with wrong siteID
-		_, err = Delete(ctx, &DeleteParams{SiteID: otherSiteID, ID: cr.ID})
 		require.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 	})
@@ -865,39 +612,14 @@ func TestDelete(t *testing.T) {
 		_, err := Delete(ctx, &DeleteParams{SiteID: siteID})
 		require.Error(t, err)
 	})
+}
 
-	t.Run("deleted_device_excluded_from_list", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
+func TestAssignDevice(t *testing.T) {
+	if os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("TEST_DB_URL not set, skipping integration test")
+	}
 
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		cr1, err := Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Device A",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		_, err = Create(ctx, &CreateParams{
-			SiteID: siteID,
-			Name:   "Device B",
-			Type:   "meter",
-		})
-		require.NoError(t, err)
-
-		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr1.ID})
-		require.NoError(t, err)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-		assert.Equal(t, "Device B", r.Items[0].Name)
-	})
-
-	t.Run("get_still_returns_soft_deleted_device", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -907,18 +629,221 @@ func TestDelete(t *testing.T) {
 
 		cr, err := Create(ctx, &CreateParams{
 			SiteID: siteID,
-			Name:   "Soft Deleted",
-			Type:   "meter",
+			Name:   "Room",
+			Type:   "office",
 		})
 		require.NoError(t, err)
 
-		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr.ID})
+		deviceID := seedDevice(t, ctx, siteID, "Device A")
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
 		require.NoError(t, err)
 
-		// Get does not filter by deleted_at, so it still returns the device
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
-		assert.Equal(t, "Soft Deleted", got.Name)
+		require.Len(t, got.Devices, 1)
+		assert.Equal(t, deviceID, got.Devices[0].ID)
+	})
+
+	t.Run("duplicate_assignment_is_noop", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Room",
+			Type:   "office",
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, ctx, siteID, "Device B")
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		// Assign again - should not error
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		require.Len(t, got.Devices, 1)
+	})
+
+	t.Run("room_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		deviceID := seedDevice(t, ctx, siteID, "Device")
+
+		_, err := AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   xid.New().String(),
+			DeviceID: deviceID,
+		})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("device_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Room",
+			Type:   "office",
+		})
+		require.NoError(t, err)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, ErrDeviceNotFound, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		_, err := AssignDevice(otherCtx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   xid.New().String(),
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("validation_error_missing_fields", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, _ := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := AssignDevice(ctx, &AssignDeviceParams{})
+		require.Error(t, err)
+	})
+}
+
+func TestUnassignDevice(t *testing.T) {
+	if os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("TEST_DB_URL not set, skipping integration test")
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Room",
+			Type:   "office",
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, ctx, siteID, "Device")
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		_, err = UnassignDevice(ctx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		assert.Empty(t, got.Devices)
+	})
+
+	t.Run("unassign_nonexistent_is_noop", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := UnassignDevice(ctx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   xid.New().String(),
+			DeviceID: xid.New().String(),
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		_, err := UnassignDevice(otherCtx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   xid.New().String(),
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("validation_error_missing_fields", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, _ := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := UnassignDevice(ctx, &UnassignDeviceParams{})
+		require.Error(t, err)
 	})
 }
 
@@ -960,6 +885,17 @@ func seedUser(t *testing.T, tc *tu.Context) string {
 	require.NoError(t, err)
 
 	return userID
+}
+
+// seedDevice creates a device and returns its ID.
+func seedDevice(t *testing.T, ctx context.Context, siteID, name string) string {
+	t.Helper()
+	id := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into devices (id, site_id, name, type) values ($1, $2, $3, $4)
+	`, id, siteID, name, "meter")
+	require.NoError(t, err)
+	return id
 }
 
 // seedMeter inserts a meter attached to a device.

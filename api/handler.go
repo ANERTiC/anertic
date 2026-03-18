@@ -15,6 +15,7 @@ import (
 	"github.com/anertic/anertic/api/insight"
 	"github.com/anertic/anertic/api/meter"
 	"github.com/anertic/anertic/api/reading"
+	"github.com/anertic/anertic/api/room"
 	"github.com/anertic/anertic/api/site"
 )
 
@@ -89,6 +90,15 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /meter.get", am.Handler(meter.Get))
 	a.Handle("POST /meter.update", am.Handler(meter.Update))
 	a.Handle("POST /meter.delete", am.Handler(meter.Delete))
+
+	// Rooms
+	a.Handle("POST /room.list", am.Handler(room.List))
+	a.Handle("POST /room.create", am.Handler(room.Create))
+	a.Handle("POST /room.get", am.Handler(room.Get))
+	a.Handle("POST /room.update", am.Handler(room.Update))
+	a.Handle("POST /room.delete", am.Handler(room.Delete))
+	a.Handle("POST /room.assignDevice", am.Handler(room.AssignDevice))
+	a.Handle("POST /room.unassignDevice", am.Handler(room.UnassignDevice))
 
 	// Chargers
 	a.Handle("POST /charger.list", am.Handler(charger.List))

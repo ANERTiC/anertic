@@ -36,10 +36,7 @@ import {
   ANERTIC_MQTT_BROKER,
   ANERTIC_INGEST_URL,
   formatPower,
-  formatReadingValue,
-  formatMetricLabel,
   type Meter,
-  type MeterReading,
   type MeterProtocol,
   type MeterChannel,
   CopyableField,
@@ -57,6 +54,18 @@ import {
 
 interface MeterListResult {
   items: Meter[]
+}
+
+interface DeviceReading {
+  time: string
+  powerW: number
+  energyKwh: number
+  voltageV: number
+  currentA: number
+}
+
+interface LatestReadingResult {
+  reading: DeviceReading | null
 }
 
 // --- Component ---
@@ -78,6 +87,11 @@ export default function DeviceDetail() {
   const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR(
     deviceId && siteId ? ["meter.list", deviceId, siteId] : null,
     () => api<MeterListResult>("meter.list", { siteId, deviceId }),
+  )
+
+  const { data: latestReading } = useSWR(
+    deviceId ? ["reading.latest", deviceId] : null,
+    () => api<LatestReadingResult>("reading.latest", { deviceId }),
   )
 
   if (deviceLoading || metersLoading) {
@@ -117,6 +131,7 @@ export default function DeviceDetail() {
   const TypeIcon = typeConfig.icon
 
   const onlineMeters = meters.filter((m) => m.isOnline).length
+  const reading = latestReading?.reading ?? null
 
   return (
     <div className="space-y-6">
@@ -173,26 +188,20 @@ export default function DeviceDetail() {
         />
         <MetricCard
           label="Total Power"
-          value={formatPower(meters.reduce((sum, m) => {
-            const pw = m.latestReadings.find((r) => r.metric === "power_w")
-            return sum + (pw?.value ?? 0)
-          }, 0))}
+          value={formatPower(reading?.powerW ?? 0)}
           color="text-cyan-600"
           subtitle="live"
         />
         <MetricCard
           label="Last Data"
-          value={formatLastSeen(meters.reduce((latest, m) => {
-            if (!m.lastSeenAt) return latest
-            return !latest || new Date(m.lastSeenAt) > new Date(latest) ? m.lastSeenAt : latest
-          }, null as string | null))}
+          value={formatLastSeen(reading?.time ?? null)}
           color="text-emerald-600"
           subtitle="most recent"
         />
       </div>
 
-      {/* Aggregated Readings */}
-      {meters.length > 0 && (
+      {/* Live Readings */}
+      {reading && (
         <div>
           <div className="mb-3 flex items-center gap-2">
             <RiPulseLine className="size-4 text-muted-foreground/50" />
@@ -202,18 +211,34 @@ export default function DeviceDetail() {
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
             </span>
           </div>
-          <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
-            {aggregateReadings(meters).map((reading) => (
-              <div key={reading.metric} className="rounded-xl border border-border/50 bg-card p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                  {formatMetricLabel(reading.metric)}
-                </p>
-                <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
-                  {formatReadingValue(reading.value, reading.metric)}
-                  <span className="ml-1 text-[11px] font-normal text-muted-foreground">{reading.unit}</span>
-                </p>
-              </div>
-            ))}
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-border/50 bg-card p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Power</p>
+              <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
+                {formatPower(reading.powerW)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Energy</p>
+              <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
+                {reading.energyKwh.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                <span className="ml-1 text-[11px] font-normal text-muted-foreground">kWh</span>
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Voltage</p>
+              <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
+                {reading.voltageV.toFixed(1)}
+                <span className="ml-1 text-[11px] font-normal text-muted-foreground">V</span>
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Current</p>
+              <p className="mt-1 text-lg font-bold tabular-nums tracking-tight">
+                {reading.currentA.toFixed(1)}
+                <span className="ml-1 text-[11px] font-normal text-muted-foreground">A</span>
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -716,32 +741,4 @@ function AddMeterDialog({
   )
 }
 
-// --- Helpers ---
-
-function aggregateReadings(meters: Meter[]): MeterReading[] {
-  const byMetric = new Map<string, { value: number; unit: string; count: number; timestamp: string }>()
-  const sumMetrics = new Set(["power_w", "current_a", "energy_kwh"])
-
-  for (const meter of meters) {
-    for (const reading of meter.latestReadings) {
-      const existing = byMetric.get(reading.metric)
-      if (!existing) {
-        byMetric.set(reading.metric, { value: reading.value, unit: reading.unit, count: 1, timestamp: reading.timestamp })
-      } else if (sumMetrics.has(reading.metric)) {
-        existing.value += reading.value
-        existing.count++
-      } else {
-        existing.value = (existing.value * existing.count + reading.value) / (existing.count + 1)
-        existing.count++
-      }
-    }
-  }
-
-  return Array.from(byMetric.entries()).map(([metric, data]) => ({
-    metric,
-    value: data.value,
-    unit: data.unit,
-    timestamp: data.timestamp,
-  }))
-}
 

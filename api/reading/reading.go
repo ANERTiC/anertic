@@ -6,6 +6,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
+	"github.com/shopspring/decimal"
 )
 
 // Query
@@ -25,11 +26,11 @@ func (p *QueryParams) Valid() error {
 }
 
 type Reading struct {
-	Time      time.Time `json:"time"`
-	PowerW    float64   `json:"powerW"`
-	EnergyKWh float64   `json:"energyKwh"`
-	VoltageV  float64   `json:"voltageV"`
-	CurrentA  float64   `json:"currentA"`
+	Time      time.Time       `json:"time"`
+	PowerW    decimal.Decimal `json:"powerW"`
+	EnergyKWh decimal.Decimal `json:"energyKwh"`
+	VoltageV  decimal.Decimal `json:"voltageV"`
+	CurrentA  decimal.Decimal `json:"currentA"`
 }
 
 type QueryResult struct {
@@ -49,7 +50,7 @@ func Query(ctx context.Context, p *QueryParams) (*QueryResult, error) {
 	var table string
 	switch interval {
 	case "raw":
-		table = "readings"
+		table = "meter_readings"
 	case "daily":
 		table = "readings_daily"
 	default:
@@ -144,17 +145,17 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 
 	var r Reading
 	err := pgctx.QueryRow(ctx, `
-		SELECT
-			rd.time,
-			COALESCE(rd.power_w, 0),
-			COALESCE(rd.energy_kwh, 0),
-			COALESCE(rd.voltage_v, 0),
-			COALESCE(rd.current_a, 0)
-		FROM readings rd
-		JOIN meters m ON m.id = rd.meter_id
-		WHERE m.device_id = $1
-		ORDER BY rd.time DESC
-		LIMIT 1
+		select
+			m.last_seen_at,
+			coalesce((m.latest_reading->>'powerW')::numeric, 0),
+			coalesce((m.latest_reading->>'energyKwh')::numeric, 0),
+			coalesce((m.latest_reading->>'voltageV')::numeric, 0),
+			coalesce((m.latest_reading->>'currentA')::numeric, 0)
+		from meters m
+		where m.device_id = $1
+		  and m.latest_reading is not null
+		order by m.last_seen_at desc
+		limit 1
 	`, p.DeviceID).Scan(
 		&r.Time,
 		&r.PowerW,

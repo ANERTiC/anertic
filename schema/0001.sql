@@ -115,10 +115,11 @@ create table if not exists meters
     phase         smallint                not null default 0, -- 0: unassigned, 1: L1, 2: L2, 3: L3
     channel       text                    not null default '', -- 'pv', 'grid', 'battery', 'load', '' (general)
     config        jsonb                   not null default '{}',
-    is_online     boolean                 not null default false,
-    last_seen_at  timestamptz,
-    created_at    timestamptz             not null default now(),
-    updated_at    timestamptz             not null default now()
+    is_online      boolean                 not null default false,
+    last_seen_at   timestamptz,
+    latest_reading jsonb,
+    created_at     timestamptz             not null default now(),
+    updated_at         timestamptz             not null default now()
 );
 
 create index if not exists idx_meters_device_id on meters (device_id);

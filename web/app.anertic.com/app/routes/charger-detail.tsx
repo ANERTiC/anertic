@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -26,16 +26,17 @@ import {
   RiChargingPile2Line,
   RiUserLine,
   RiSpeedLine,
-} from "@remixicon/react"
-import { toast } from "sonner"
+  RiRemoteControlLine,
+} from '@remixicon/react'
+import { toast } from 'sonner'
 
-import { useSiteId } from "~/layouts/site"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { useSiteId } from '~/layouts/site'
+import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent } from '~/components/ui/card'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -43,8 +44,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog"
-import { cn } from "~/lib/utils"
+} from '~/components/ui/dialog'
+import { cn } from '~/lib/utils'
+import { CommandsTab } from '~/components/commands-tab'
 
 // --- Types ---
 
@@ -110,7 +112,7 @@ interface Session {
 interface OcppEvent {
   id: string
   action: string
-  direction: "in" | "out"
+  direction: 'in' | 'out'
   timestamp: string
   payload?: string
 }
@@ -139,7 +141,7 @@ interface AnalyticsSummary {
   last7DaysAvgSession: number
   last7DaysPeakPower: number
   changePercent: number
-  changeDirection: "up" | "down" | "stable"
+  changeDirection: 'up' | 'down' | 'stable'
   bussiestDay: string
   bussiestHour: string
 }
@@ -149,20 +151,20 @@ interface AnalyticsSummary {
 function generateMockCharger(id: string): Charger {
   return {
     id,
-    siteId: "site-1",
-    chargePointId: "CP-001",
-    ocppVersion: "1.6",
-    status: "Charging",
-    registrationStatus: "Accepted",
+    siteId: 'site-1',
+    chargePointId: 'CP-001',
+    ocppVersion: '1.6',
+    status: 'Charging',
+    registrationStatus: 'Accepted',
     connectorCount: 2,
     maxPowerKw: 22,
-    vendor: "ABB",
-    model: "Terra AC W22-T-RD-M-0",
-    serialNumber: "ABB-2024-001",
-    firmwareVersion: "3.8.1",
-    chargeBoxSerialNumber: "CB-ABB-2024-001",
-    firmwareStatus: "Installed",
-    diagnosticsStatus: "Idle",
+    vendor: 'ABB',
+    model: 'Terra AC W22-T-RD-M-0',
+    serialNumber: 'ABB-2024-001',
+    firmwareVersion: '3.8.1',
+    chargeBoxSerialNumber: 'CB-ABB-2024-001',
+    firmwareStatus: 'Installed',
+    diagnosticsStatus: 'Idle',
     heartbeatInterval: 60,
     lastHeartbeatAt: new Date(Date.now() - 15000).toISOString(),
     createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
@@ -175,23 +177,23 @@ function generateMockCharger(id: string): Charger {
     connectors: [
       {
         id: 1,
-        status: "Charging",
+        status: 'Charging',
         powerKw: 11.2,
         maxPowerKw: 22,
-        connectorType: "Type 2",
-        errorCode: "NoError",
-        vehicleId: "Tesla Model 3",
+        connectorType: 'Type 2',
+        errorCode: 'NoError',
+        vehicleId: 'Tesla Model 3',
         sessionStartedAt: new Date(Date.now() - 3600000).toISOString(),
         sessionKwh: 9.8,
         lastStatusAt: new Date(Date.now() - 3600000).toISOString(),
       },
       {
         id: 2,
-        status: "Available",
+        status: 'Available',
         powerKw: 0,
         maxPowerKw: 22,
-        connectorType: "Type 2",
-        errorCode: "NoError",
+        connectorType: 'Type 2',
+        errorCode: 'NoError',
         sessionKwh: 0,
         lastStatusAt: new Date(Date.now() - 600000).toISOString(),
       },
@@ -203,96 +205,96 @@ function generateMockSessions(): Session[] {
   const now = Date.now()
   return [
     {
-      id: "ses-1",
+      id: 'ses-1',
       connectorId: 1,
       startedAt: new Date(now - 3600000).toISOString(),
       endedAt: null,
       energyKwh: 9.8,
       maxPowerKw: 11.2,
       avgPowerKw: 9.8,
-      vehicleId: "Tesla Model 3",
-      idTag: "TESLA-M3",
-      status: "Active",
+      vehicleId: 'Tesla Model 3',
+      idTag: 'TESLA-M3',
+      status: 'Active',
       meterStart: 124500,
       meterStop: null,
       transactionId: 317,
     },
     {
-      id: "ses-2",
+      id: 'ses-2',
       connectorId: 2,
       startedAt: new Date(now - 1800000).toISOString(),
       endedAt: null,
       energyKwh: 4.5,
       maxPowerKw: 7.2,
       avgPowerKw: 6.1,
-      vehicleId: "BYD Atto 3",
-      idTag: "BYD-ATTO3",
-      status: "Active",
+      vehicleId: 'BYD Atto 3',
+      idTag: 'BYD-ATTO3',
+      status: 'Active',
       meterStart: 88200,
       meterStop: null,
       transactionId: 318,
     },
     {
-      id: "ses-3",
+      id: 'ses-3',
       connectorId: 1,
       startedAt: new Date(now - 14400000).toISOString(),
       endedAt: new Date(now - 10800000).toISOString(),
       energyKwh: 18.6,
       maxPowerKw: 22.0,
       avgPowerKw: 18.6,
-      vehicleId: "Hyundai Ioniq 5",
-      idTag: "USER-001",
-      status: "Completed",
+      vehicleId: 'Hyundai Ioniq 5',
+      idTag: 'USER-001',
+      status: 'Completed',
       meterStart: 105900,
       meterStop: 124500,
-      stopReason: "EVDisconnected",
+      stopReason: 'EVDisconnected',
       transactionId: 316,
     },
     {
-      id: "ses-4",
+      id: 'ses-4',
       connectorId: 2,
       startedAt: new Date(now - 21600000).toISOString(),
       endedAt: new Date(now - 18000000).toISOString(),
       energyKwh: 12.3,
       maxPowerKw: 11.0,
       avgPowerKw: 10.2,
-      idTag: "ADMIN-001",
-      status: "Completed",
+      idTag: 'ADMIN-001',
+      status: 'Completed',
       meterStart: 75900,
       meterStop: 88200,
-      stopReason: "Local",
+      stopReason: 'Local',
       transactionId: 315,
     },
     {
-      id: "ses-5",
+      id: 'ses-5',
       connectorId: 1,
       startedAt: new Date(now - 86400000).toISOString(),
       endedAt: new Date(now - 82800000).toISOString(),
       energyKwh: 7.1,
       maxPowerKw: 7.4,
       avgPowerKw: 7.1,
-      vehicleId: "Nissan Leaf",
-      idTag: "USER-002",
-      status: "Completed",
+      vehicleId: 'Nissan Leaf',
+      idTag: 'USER-002',
+      status: 'Completed',
       meterStart: 98800,
       meterStop: 105900,
-      stopReason: "EVDisconnected",
+      stopReason: 'EVDisconnected',
       transactionId: 314,
     },
     {
-      id: "ses-6",
+      id: 'ses-6',
       connectorId: 2,
       startedAt: new Date(now - 90000000).toISOString(),
       endedAt: new Date(now - 86400000).toISOString(),
       energyKwh: 22.0,
       maxPowerKw: 22.0,
       avgPowerKw: 19.8,
-      vehicleId: "MG ZS EV",
-      idTag: "GUEST",
-      status: "Completed",
+      vehicleId: 'MG ZS EV',
+      idTag: 'GUEST',
+      status: 'Completed',
       meterStart: 53900,
       meterStop: 75900,
-      stopReason: "Remote",
+      stopReason: 'Remote',
       transactionId: 313,
     },
   ]
@@ -301,16 +303,74 @@ function generateMockSessions(): Session[] {
 function generateMockEvents(): OcppEvent[] {
   const now = Date.now()
   return [
-    { id: "ev-1", action: "Heartbeat", direction: "in", timestamp: new Date(now - 15000).toISOString() },
-    { id: "ev-2", action: "MeterValues", direction: "in", timestamp: new Date(now - 30000).toISOString(), payload: "connectorId=1, power=11.2kW" },
-    { id: "ev-3", action: "MeterValues", direction: "in", timestamp: new Date(now - 30000).toISOString(), payload: "connectorId=2, power=7.2kW" },
-    { id: "ev-4", action: "StatusNotification", direction: "in", timestamp: new Date(now - 1800000).toISOString(), payload: "connector=2, status=Charging" },
-    { id: "ev-5", action: "StartTransaction", direction: "in", timestamp: new Date(now - 1800000).toISOString(), payload: "connectorId=2, idTag=BYD-ATTO3" },
-    { id: "ev-6", action: "StatusNotification", direction: "in", timestamp: new Date(now - 3600000).toISOString(), payload: "connector=1, status=Charging" },
-    { id: "ev-7", action: "StartTransaction", direction: "in", timestamp: new Date(now - 3600000).toISOString(), payload: "connectorId=1, idTag=TESLA-M3" },
-    { id: "ev-8", action: "StopTransaction", direction: "in", timestamp: new Date(now - 10800000).toISOString(), payload: "transactionId=312, meterStop=18600" },
-    { id: "ev-9", action: "Heartbeat", direction: "in", timestamp: new Date(now - 60000).toISOString() },
-    { id: "ev-10", action: "RemoteStartTransaction", direction: "out", timestamp: new Date(now - 3700000).toISOString(), payload: "connectorId=1, idTag=TESLA-M3" },
+    {
+      id: 'ev-1',
+      action: 'Heartbeat',
+      direction: 'in',
+      timestamp: new Date(now - 15000).toISOString(),
+    },
+    {
+      id: 'ev-2',
+      action: 'MeterValues',
+      direction: 'in',
+      timestamp: new Date(now - 30000).toISOString(),
+      payload: 'connectorId=1, power=11.2kW',
+    },
+    {
+      id: 'ev-3',
+      action: 'MeterValues',
+      direction: 'in',
+      timestamp: new Date(now - 30000).toISOString(),
+      payload: 'connectorId=2, power=7.2kW',
+    },
+    {
+      id: 'ev-4',
+      action: 'StatusNotification',
+      direction: 'in',
+      timestamp: new Date(now - 1800000).toISOString(),
+      payload: 'connector=2, status=Charging',
+    },
+    {
+      id: 'ev-5',
+      action: 'StartTransaction',
+      direction: 'in',
+      timestamp: new Date(now - 1800000).toISOString(),
+      payload: 'connectorId=2, idTag=BYD-ATTO3',
+    },
+    {
+      id: 'ev-6',
+      action: 'StatusNotification',
+      direction: 'in',
+      timestamp: new Date(now - 3600000).toISOString(),
+      payload: 'connector=1, status=Charging',
+    },
+    {
+      id: 'ev-7',
+      action: 'StartTransaction',
+      direction: 'in',
+      timestamp: new Date(now - 3600000).toISOString(),
+      payload: 'connectorId=1, idTag=TESLA-M3',
+    },
+    {
+      id: 'ev-8',
+      action: 'StopTransaction',
+      direction: 'in',
+      timestamp: new Date(now - 10800000).toISOString(),
+      payload: 'transactionId=312, meterStop=18600',
+    },
+    {
+      id: 'ev-9',
+      action: 'Heartbeat',
+      direction: 'in',
+      timestamp: new Date(now - 60000).toISOString(),
+    },
+    {
+      id: 'ev-10',
+      action: 'RemoteStartTransaction',
+      direction: 'out',
+      timestamp: new Date(now - 3700000).toISOString(),
+      payload: 'connectorId=1, idTag=TESLA-M3',
+    },
   ]
 }
 
@@ -319,7 +379,7 @@ function generateMockAnalytics(): {
   hourly: HourlyPower[]
   summary: AnalyticsSummary
 } {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const now = new Date()
   const currentHour = now.getHours()
 
@@ -333,8 +393,8 @@ function generateMockAnalytics(): {
     const peak = 11 + Math.random() * 11
     const c1 = energy * (0.45 + Math.random() * 0.15)
     return {
-      date: d.toISOString().split("T")[0],
-      label: i === 6 ? "Today" : days[d.getDay()],
+      date: d.toISOString().split('T')[0],
+      label: i === 6 ? 'Today' : days[d.getDay()],
       energyKwh: parseFloat(energy.toFixed(1)),
       sessions,
       peakPowerKw: parseFloat(peak.toFixed(1)),
@@ -378,13 +438,13 @@ function generateMockAnalytics(): {
       last7DaysSessions: totalSessions,
       last7DaysAvgDaily: parseFloat((totalKwh / 7).toFixed(1)),
       last7DaysAvgSession: parseFloat(
-        (totalKwh / Math.max(totalSessions, 1)).toFixed(1),
+        (totalKwh / Math.max(totalSessions, 1)).toFixed(1)
       ),
       last7DaysPeakPower: peakPower,
       changePercent: 12.4,
-      changeDirection: "up",
+      changeDirection: 'up',
       bussiestDay: busiestDay.label,
-      bussiestHour: `${busiestHour.hour.toString().padStart(2, "0")}:00`,
+      bussiestHour: `${busiestHour.hour.toString().padStart(2, '0')}:00`,
     },
   }
 }
@@ -393,60 +453,60 @@ function generateMockAnalytics(): {
 
 function statusColor(status: string) {
   switch (status) {
-    case "Available":
-      return "bg-emerald-500/15 text-emerald-700"
-    case "Charging":
-    case "Preparing":
-      return "bg-blue-500/15 text-blue-700"
-    case "SuspendedEV":
-    case "SuspendedEVSE":
-    case "Finishing":
-      return "bg-amber-500/15 text-amber-700"
-    case "Faulted":
-      return "bg-red-500/15 text-red-700"
-    case "Reserved":
-      return "bg-purple-500/15 text-purple-700"
+    case 'Available':
+      return 'bg-emerald-500/15 text-emerald-700'
+    case 'Charging':
+    case 'Preparing':
+      return 'bg-blue-500/15 text-blue-700'
+    case 'SuspendedEV':
+    case 'SuspendedEVSE':
+    case 'Finishing':
+      return 'bg-amber-500/15 text-amber-700'
+    case 'Faulted':
+      return 'bg-red-500/15 text-red-700'
+    case 'Reserved':
+      return 'bg-purple-500/15 text-purple-700'
     default:
-      return "bg-gray-500/15 text-gray-700"
+      return 'bg-gray-500/15 text-gray-700'
   }
 }
 
 function statusDot(status: string) {
   switch (status) {
-    case "Available":
-      return "bg-emerald-500"
-    case "Charging":
-    case "Preparing":
-      return "bg-blue-500"
-    case "SuspendedEV":
-    case "SuspendedEVSE":
-    case "Finishing":
-      return "bg-amber-500"
-    case "Faulted":
-      return "bg-red-500"
+    case 'Available':
+      return 'bg-emerald-500'
+    case 'Charging':
+    case 'Preparing':
+      return 'bg-blue-500'
+    case 'SuspendedEV':
+    case 'SuspendedEVSE':
+    case 'Finishing':
+      return 'bg-amber-500'
+    case 'Faulted':
+      return 'bg-red-500'
     default:
-      return "bg-gray-400"
+      return 'bg-gray-400'
   }
 }
 
 function registrationColor(status: string) {
   switch (status) {
-    case "Accepted":
-      return "bg-emerald-500/15 text-emerald-700"
-    case "Pending":
-      return "bg-amber-500/15 text-amber-700"
-    case "Rejected":
-      return "bg-red-500/15 text-red-700"
+    case 'Accepted':
+      return 'bg-emerald-500/15 text-emerald-700'
+    case 'Pending':
+      return 'bg-amber-500/15 text-amber-700'
+    case 'Rejected':
+      return 'bg-red-500/15 text-red-700'
     default:
-      return "bg-gray-500/15 text-gray-700"
+      return 'bg-gray-500/15 text-gray-700'
   }
 }
 
 function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "Never"
+  if (!dateStr) return 'Never'
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "Just now"
+  if (mins < 1) return 'Just now'
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
@@ -476,8 +536,8 @@ function sessionDuration(startedAt: string, endedAt?: string | null): string {
 
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -486,13 +546,13 @@ function formatDateTime(dateStr: string): string {
   const today = new Date()
   const isToday = d.toDateString() === today.toDateString()
   if (isToday) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
   return d.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -510,7 +570,7 @@ export default function ChargerDetail() {
   //   () => api<Charger>("charger.get", { id: chargerId }),
   // )
   const [charger] = useState<Charger>(() =>
-    generateMockCharger(chargerId || ""),
+    generateMockCharger(chargerId || '')
   )
   const [sessions] = useState<Session[]>(() => generateMockSessions())
   const [events] = useState<OcppEvent[]>(() => generateMockEvents())
@@ -522,18 +582,18 @@ export default function ChargerDetail() {
   }, [])
 
   const isCharging =
-    charger.status === "Charging" || charger.status === "Preparing"
-  const isFaulted = charger.status === "Faulted"
+    charger.status === 'Charging' || charger.status === 'Preparing'
+  const isFaulted = charger.status === 'Faulted'
   const isOnline = !!charger.lastHeartbeatAt
 
-  const activeSessions = sessions.filter((s) => s.status === "Active")
-  const completedSessions = sessions.filter((s) => s.status === "Completed")
+  const activeSessions = sessions.filter((s) => s.status === 'Active')
+  const completedSessions = sessions.filter((s) => s.status === 'Completed')
 
   return (
     <div
       className={cn(
-        "space-y-5 transition-opacity duration-500",
-        mounted ? "opacity-100" : "opacity-0",
+        'space-y-5 transition-opacity duration-500',
+        mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
       {/* Header */}
@@ -545,7 +605,7 @@ export default function ChargerDetail() {
               size="sm"
               className="mb-2 -ml-2"
               onClick={() =>
-                navigate(`/chargers${siteId ? `?site=${siteId}` : ""}`)
+                navigate(`/chargers${siteId ? `?site=${siteId}` : ''}`)
               }
             >
               <RiArrowLeftLine className="mr-1 size-4" />
@@ -561,8 +621,8 @@ export default function ChargerDetail() {
                 )}
                 <span
                   className={cn(
-                    "relative inline-flex size-3 rounded-full",
-                    statusDot(charger.status),
+                    'relative inline-flex size-3 rounded-full',
+                    statusDot(charger.status)
                   )}
                 />
               </span>
@@ -571,13 +631,13 @@ export default function ChargerDetail() {
               </h1>
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <Badge className={cn("text-[10px]", statusColor(charger.status))}>
+              <Badge className={cn('text-[10px]', statusColor(charger.status))}>
                 {charger.status}
               </Badge>
               <Badge
                 className={cn(
-                  "text-[10px]",
-                  registrationColor(charger.registrationStatus),
+                  'text-[10px]',
+                  registrationColor(charger.registrationStatus)
                 )}
               >
                 {charger.registrationStatus}
@@ -651,6 +711,10 @@ export default function ChargerDetail() {
               <RiSettings3Line className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
+            <TabsTrigger value="commands">
+              <RiRemoteControlLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Commands</span>
+            </TabsTrigger>
             <TabsTrigger value="log">
               <RiHistoryLine className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">OCPP Logs</span>
@@ -668,7 +732,7 @@ export default function ChargerDetail() {
           <div className="space-y-4">
             {activeSessions.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   Active
                 </p>
                 {activeSessions.map((session) => (
@@ -678,7 +742,7 @@ export default function ChargerDetail() {
                     selected={selectedSession?.id === session.id}
                     onClick={() =>
                       setSelectedSession(
-                        selectedSession?.id === session.id ? null : session,
+                        selectedSession?.id === session.id ? null : session
                       )
                     }
                   />
@@ -687,7 +751,7 @@ export default function ChargerDetail() {
             )}
             {completedSessions.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   Recent
                 </p>
                 {completedSessions.map((session) => (
@@ -697,7 +761,7 @@ export default function ChargerDetail() {
                     selected={selectedSession?.id === session.id}
                     onClick={() =>
                       setSelectedSession(
-                        selectedSession?.id === session.id ? null : session,
+                        selectedSession?.id === session.id ? null : session
                       )
                     }
                   />
@@ -712,20 +776,29 @@ export default function ChargerDetail() {
           <Card>
             <CardContent className="p-5">
               <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                <InfoRow label="Charge Point ID" value={charger.chargePointId} />
+                <InfoRow
+                  label="Charge Point ID"
+                  value={charger.chargePointId}
+                />
                 <InfoRow label="OCPP Version" value={charger.ocppVersion} />
-                <InfoRow label="Vendor" value={charger.vendor || "—"} />
-                <InfoRow label="Model" value={charger.model || "—"} />
-                <InfoRow label="Serial Number" value={charger.serialNumber || "—"} />
+                <InfoRow label="Vendor" value={charger.vendor || '—'} />
+                <InfoRow label="Model" value={charger.model || '—'} />
+                <InfoRow
+                  label="Serial Number"
+                  value={charger.serialNumber || '—'}
+                />
                 <InfoRow
                   label="Charge Box Serial"
-                  value={charger.chargeBoxSerialNumber || "—"}
+                  value={charger.chargeBoxSerialNumber || '—'}
                 />
                 <InfoRow
                   label="Firmware"
-                  value={charger.firmwareVersion || "—"}
+                  value={charger.firmwareVersion || '—'}
                 />
-                <InfoRow label="Firmware Status" value={charger.firmwareStatus} />
+                <InfoRow
+                  label="Firmware Status"
+                  value={charger.firmwareStatus}
+                />
                 <InfoRow
                   label="Diagnostics Status"
                   value={charger.diagnosticsStatus}
@@ -734,10 +807,7 @@ export default function ChargerDetail() {
                   label="Connector Count"
                   value={String(charger.connectorCount)}
                 />
-                <InfoRow
-                  label="Max Power"
-                  value={`${charger.maxPowerKw} kW`}
-                />
+                <InfoRow label="Max Power" value={`${charger.maxPowerKw} kW`} />
                 <InfoRow
                   label="Heartbeat Interval"
                   value={`${charger.heartbeatInterval}s`}
@@ -745,9 +815,9 @@ export default function ChargerDetail() {
                 <InfoRow
                   label="Registered"
                   value={new Date(charger.createdAt).toLocaleDateString([], {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
                   })}
                 />
               </div>
@@ -758,6 +828,18 @@ export default function ChargerDetail() {
         {/* Settings */}
         <TabsContent value="settings" className="mt-4">
           <SettingsTab charger={charger} />
+        </TabsContent>
+
+        {/* Commands */}
+        <TabsContent value="commands" className="mt-4">
+          <CommandsTab
+            chargerId={charger.id}
+            connectors={charger.connectors.map((c) => ({
+              id: c.id,
+              status: c.status,
+            }))}
+            ocppVersion={charger.ocppVersion}
+          />
         </TabsContent>
 
         {/* OCPP Logs */}
@@ -772,13 +854,13 @@ export default function ChargerDetail() {
                   >
                     <span
                       className={cn(
-                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                        event.direction === "in"
-                          ? "bg-blue-500/10 text-blue-600"
-                          : "bg-amber-500/10 text-amber-600",
+                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase',
+                        event.direction === 'in'
+                          ? 'bg-blue-500/10 text-blue-600'
+                          : 'bg-amber-500/10 text-amber-600'
                       )}
                     >
-                      {event.direction === "in" ? "IN" : "OUT"}
+                      {event.direction === 'in' ? 'IN' : 'OUT'}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
                       {event.action}
@@ -788,7 +870,7 @@ export default function ChargerDetail() {
                         {event.payload}
                       </span>
                     )}
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                       {formatDateTime(event.timestamp)}
                     </span>
                   </div>
@@ -822,7 +904,7 @@ function AnalyticsTab({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
               7-Day Total
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
@@ -832,17 +914,17 @@ function AnalyticsTab({
               </span>
             </p>
             <div className="mt-1 flex items-center gap-1">
-              {summary.changeDirection === "up" ? (
+              {summary.changeDirection === 'up' ? (
                 <RiArrowUpSLine className="size-4 text-emerald-500" />
               ) : (
                 <RiArrowDownSLine className="size-4 text-red-500" />
               )}
               <span
                 className={cn(
-                  "text-xs font-medium",
-                  summary.changeDirection === "up"
-                    ? "text-emerald-600"
-                    : "text-red-600",
+                  'text-xs font-medium',
+                  summary.changeDirection === 'up'
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
                 )}
               >
                 {summary.changePercent}% vs prev week
@@ -852,7 +934,7 @@ function AnalyticsTab({
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
               Sessions
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
@@ -865,7 +947,7 @@ function AnalyticsTab({
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
               Daily Average
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
@@ -881,7 +963,7 @@ function AnalyticsTab({
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
               Peak Power
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
@@ -901,7 +983,9 @@ function AnalyticsTab({
       <Card>
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Energy Delivered — Last 7 Days</h3>
+            <h3 className="text-sm font-medium">
+              Energy Delivered — Last 7 Days
+            </h3>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-blue-500" />
@@ -916,9 +1000,7 @@ function AnalyticsTab({
           <div className="mt-4 flex h-48 items-end gap-2">
             {daily.map((day) => {
               const totalH =
-                maxDailyKwh > 0
-                  ? (day.energyKwh / maxDailyKwh) * 100
-                  : 0
+                maxDailyKwh > 0 ? (day.energyKwh / maxDailyKwh) * 100 : 0
               const c1Pct =
                 day.energyKwh > 0
                   ? (day.connector1Kwh / day.energyKwh) * 100
@@ -948,9 +1030,7 @@ function AnalyticsTab({
                       className="w-full bg-blue-500 transition-all duration-500"
                       style={{ height: `${c1Pct}%` }}
                     />
-                    <div
-                      className="w-full flex-1 bg-cyan-400 transition-all duration-500"
-                    />
+                    <div className="w-full flex-1 bg-cyan-400 transition-all duration-500" />
                   </div>
                   {/* Label */}
                   <span className="mt-2 text-[10px] text-muted-foreground">
@@ -978,9 +1058,7 @@ function AnalyticsTab({
           <div className="mt-4 flex h-36 items-end gap-px">
             {hourly.map((h) => {
               const barH =
-                maxHourlyPower > 0
-                  ? (h.powerKw / maxHourlyPower) * 100
-                  : 0
+                maxHourlyPower > 0 ? (h.powerKw / maxHourlyPower) * 100 : 0
               const isCurrent = h.hour === currentHour
               const isFuture = h.hour > currentHour
 
@@ -991,25 +1069,25 @@ function AnalyticsTab({
                 >
                   <div className="pointer-events-none absolute -top-14 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] text-background shadow-lg group-hover:block">
                     <div className="font-medium">
-                      {h.hour.toString().padStart(2, "0")}:00
+                      {h.hour.toString().padStart(2, '0')}:00
                     </div>
                     <div>{h.powerKw} kW</div>
                     <div>{h.energyKwh} kWh</div>
                   </div>
                   <div
                     className={cn(
-                      "w-full rounded-t-sm transition-all duration-300",
+                      'w-full rounded-t-sm transition-all duration-300',
                       isFuture
-                        ? "bg-blue-100"
+                        ? 'bg-blue-100'
                         : isCurrent
-                          ? "bg-blue-600"
-                          : "bg-blue-400",
+                          ? 'bg-blue-600'
+                          : 'bg-blue-400'
                     )}
                     style={{ height: `${Math.max(barH, 1)}%` }}
                   />
                   {h.hour % 4 === 0 && (
-                    <span className="mt-1.5 text-[10px] tabular-nums text-muted-foreground">
-                      {h.hour.toString().padStart(2, "0")}
+                    <span className="mt-1.5 text-[10px] text-muted-foreground tabular-nums">
+                      {h.hour.toString().padStart(2, '0')}
                     </span>
                   )}
                 </div>
@@ -1023,7 +1101,7 @@ function AnalyticsTab({
       <div className="grid gap-4 lg:grid-cols-2">
         {[1, 2].map((connId) => {
           const connDailyKwh = daily.map((d) =>
-            connId === 1 ? d.connector1Kwh : d.connector2Kwh,
+            connId === 1 ? d.connector1Kwh : d.connector2Kwh
           )
           const total = connDailyKwh.reduce((s, v) => s + v, 0)
           const max = Math.max(...connDailyKwh, 0.1)
@@ -1034,9 +1112,7 @@ function AnalyticsTab({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <RiPlugLine className="size-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">
-                      Connector {connId}
-                    </h3>
+                    <h3 className="text-sm font-medium">Connector {connId}</h3>
                   </div>
                   <span className="text-sm font-bold tabular-nums">
                     {total.toFixed(1)} kWh
@@ -1055,8 +1131,8 @@ function AnalyticsTab({
                         </div>
                         <div
                           className={cn(
-                            "w-full rounded-t-sm",
-                            connId === 1 ? "bg-blue-400" : "bg-cyan-400",
+                            'w-full rounded-t-sm',
+                            connId === 1 ? 'bg-blue-400' : 'bg-cyan-400'
                           )}
                           style={{ height: `${Math.max(h, 3)}%` }}
                         />
@@ -1078,88 +1154,104 @@ function AnalyticsTab({
 
 // Mock OCPP configuration keys
 const MOCK_CONFIG_KEYS = [
-  { key: "HeartbeatInterval", value: "60", readonly: false },
-  { key: "MeterValueSampleInterval", value: "30", readonly: false },
-  { key: "ClockAlignedDataInterval", value: "0", readonly: false },
-  { key: "ConnectionTimeOut", value: "120", readonly: false },
-  { key: "MeterValuesAlignedData", value: "Energy.Active.Import.Register", readonly: false },
-  { key: "MeterValuesSampledData", value: "Energy.Active.Import.Register,Power.Active.Import", readonly: false },
-  { key: "NumberOfConnectors", value: "2", readonly: true },
-  { key: "ChargePointModel", value: "Terra AC W22-T-RD-M-0", readonly: true },
-  { key: "ChargePointVendor", value: "ABB", readonly: true },
-  { key: "SupportedFeatureProfiles", value: "Core,FirmwareManagement,LocalAuthListManagement,SmartCharging", readonly: true },
-  { key: "AuthorizeRemoteTxRequests", value: "true", readonly: false },
-  { key: "LocalAuthListEnabled", value: "true", readonly: false },
-  { key: "LocalPreAuthorize", value: "false", readonly: false },
-  { key: "StopTransactionOnEVSideDisconnect", value: "true", readonly: false },
-  { key: "UnlockConnectorOnEVSideDisconnect", value: "true", readonly: false },
+  { key: 'HeartbeatInterval', value: '60', readonly: false },
+  { key: 'MeterValueSampleInterval', value: '30', readonly: false },
+  { key: 'ClockAlignedDataInterval', value: '0', readonly: false },
+  { key: 'ConnectionTimeOut', value: '120', readonly: false },
+  {
+    key: 'MeterValuesAlignedData',
+    value: 'Energy.Active.Import.Register',
+    readonly: false,
+  },
+  {
+    key: 'MeterValuesSampledData',
+    value: 'Energy.Active.Import.Register,Power.Active.Import',
+    readonly: false,
+  },
+  { key: 'NumberOfConnectors', value: '2', readonly: true },
+  { key: 'ChargePointModel', value: 'Terra AC W22-T-RD-M-0', readonly: true },
+  { key: 'ChargePointVendor', value: 'ABB', readonly: true },
+  {
+    key: 'SupportedFeatureProfiles',
+    value: 'Core,FirmwareManagement,LocalAuthListManagement,SmartCharging',
+    readonly: true,
+  },
+  { key: 'AuthorizeRemoteTxRequests', value: 'true', readonly: false },
+  { key: 'LocalAuthListEnabled', value: 'true', readonly: false },
+  { key: 'LocalPreAuthorize', value: 'false', readonly: false },
+  { key: 'StopTransactionOnEVSideDisconnect', value: 'true', readonly: false },
+  { key: 'UnlockConnectorOnEVSideDisconnect', value: 'true', readonly: false },
 ]
 
 const MOCK_AUTH_LIST = [
-  { idTag: "TESLA-M3", status: "Accepted", expiryDate: "2026-12-31" },
-  { idTag: "BYD-ATTO3", status: "Accepted", expiryDate: "2026-12-31" },
-  { idTag: "MG-ZS-EV", status: "Accepted", expiryDate: "2026-06-30" },
-  { idTag: "NISSAN-LEAF", status: "Accepted", expiryDate: "2026-12-31" },
+  { idTag: 'TESLA-M3', status: 'Accepted', expiryDate: '2026-12-31' },
+  { idTag: 'BYD-ATTO3', status: 'Accepted', expiryDate: '2026-12-31' },
+  { idTag: 'MG-ZS-EV', status: 'Accepted', expiryDate: '2026-06-30' },
+  { idTag: 'NISSAN-LEAF', status: 'Accepted', expiryDate: '2026-12-31' },
 ]
 
 function SettingsTab({ charger }: { charger: Charger }) {
   const navigate = useNavigate()
   const siteId = useSiteId()
   const [configKeys, setConfigKeys] = useState(
-    MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value })),
+    MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value }))
   )
   const [authList] = useState(MOCK_AUTH_LIST)
-  const [newIdTag, setNewIdTag] = useState("")
-  const [firmwareUrl, setFirmwareUrl] = useState("")
+  const [newIdTag, setNewIdTag] = useState('')
+  const [firmwareUrl, setFirmwareUrl] = useState('')
   const [displayName, setDisplayName] = useState(charger.chargePointId)
   const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
 
   function handleEditConfig(key: string) {
     setConfigKeys((prev) =>
       prev.map((k) =>
-        k.key === key ? { ...k, editing: true, editValue: k.value } : k,
-      ),
+        k.key === key ? { ...k, editing: true, editValue: k.value } : k
+      )
     )
   }
 
   function handleSaveConfig(key: string) {
     setConfigKeys((prev) =>
       prev.map((k) =>
-        k.key === key ? { ...k, editing: false, value: k.editValue } : k,
-      ),
+        k.key === key ? { ...k, editing: false, value: k.editValue } : k
+      )
     )
     toast.success(`Configuration "${key}" updated`)
   }
 
   function handleCancelConfig(key: string) {
     setConfigKeys((prev) =>
-      prev.map((k) => (k.key === key ? { ...k, editing: false } : k)),
+      prev.map((k) => (k.key === key ? { ...k, editing: false } : k))
     )
   }
 
   function handleAddIdTag() {
     if (!newIdTag.trim()) return
     toast.success(`ID tag "${newIdTag}" added to local auth list`)
-    setNewIdTag("")
+    setNewIdTag('')
   }
 
   function handleFirmwareUpdate() {
     if (!firmwareUrl.trim()) return
-    toast.success("Firmware update requested")
-    setFirmwareUrl("")
+    toast.success('Firmware update requested')
+    setFirmwareUrl('')
   }
 
   function handleRequestDiagnostics() {
-    toast.success("Diagnostics upload requested")
+    toast.success('Diagnostics upload requested')
   }
 
   function handleSaveGeneral() {
-    toast.success("Charger settings saved")
+    toast.success('Charger settings saved')
   }
 
   function handleDeleteCharger() {
-    if (confirm("Are you sure you want to delete this charger? This action cannot be undone.")) {
-      toast.success("Charger deleted")
+    if (
+      confirm(
+        'Are you sure you want to delete this charger? This action cannot be undone.'
+      )
+    ) {
+      toast.success('Charger deleted')
       navigate(`/chargers?site=${siteId}`)
     }
   }
@@ -1214,7 +1306,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
           </p>
           <div className="mt-4">
             <div className="rounded-lg border">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 <span>Key</span>
                 <span>Value</span>
                 <span className="w-16" />
@@ -1243,19 +1335,19 @@ function SettingsTab({ charger }: { charger: Charger }) {
                               prev.map((k) =>
                                 k.key === config.key
                                   ? { ...k, editValue: e.target.value }
-                                  : k,
-                              ),
+                                  : k
+                              )
                             )
                           }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveConfig(config.key)
-                            if (e.key === "Escape")
+                            if (e.key === 'Enter') handleSaveConfig(config.key)
+                            if (e.key === 'Escape')
                               handleCancelConfig(config.key)
                           }}
                           autoFocus
                         />
                       ) : (
-                        <span className="truncate text-xs tabular-nums text-muted-foreground">
+                        <span className="truncate text-xs text-muted-foreground tabular-nums">
                           {config.value}
                         </span>
                       )}
@@ -1327,7 +1419,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
             Local authorization list management
           </p>
           <div className="mt-4 rounded-lg border">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
               <span>ID Tag</span>
               <span>Status</span>
               <span>Expiry</span>
@@ -1344,15 +1436,15 @@ function SettingsTab({ charger }: { charger: Charger }) {
                   </span>
                   <Badge
                     className={cn(
-                      "text-[10px]",
-                      auth.status === "Accepted"
-                        ? "bg-emerald-500/15 text-emerald-700"
-                        : "bg-red-500/15 text-red-700",
+                      'text-[10px]',
+                      auth.status === 'Accepted'
+                        ? 'bg-emerald-500/15 text-emerald-700'
+                        : 'bg-red-500/15 text-red-700'
                     )}
                   >
                     {auth.status}
                   </Badge>
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-xs text-muted-foreground tabular-nums">
                     {auth.expiryDate}
                   </span>
                 </div>
@@ -1366,7 +1458,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
               value={newIdTag}
               onChange={(e) => setNewIdTag(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddIdTag()
+                if (e.key === 'Enter') handleAddIdTag()
               }}
             />
             <Button size="sm" className="h-8" onClick={handleAddIdTag}>
@@ -1395,7 +1487,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
                 <span className="font-medium text-foreground">
                   {charger.firmwareVersion}
                 </span>
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700">
+                <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700">
                   {charger.firmwareStatus}
                 </Badge>
               </div>
@@ -1471,10 +1563,10 @@ function SettingsTab({ charger }: { charger: Charger }) {
 
 function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
   const isActive =
-    connector.status === "Charging" || connector.status === "Preparing"
+    connector.status === 'Charging' || connector.status === 'Preparing'
   const isSuspended =
-    connector.status === "SuspendedEV" || connector.status === "SuspendedEVSE"
-  const isFaulted = connector.status === "Faulted"
+    connector.status === 'SuspendedEV' || connector.status === 'SuspendedEVSE'
+  const isFaulted = connector.status === 'Faulted'
   const powerPercent =
     connector.maxPowerKw > 0
       ? (connector.powerKw / connector.maxPowerKw) * 100
@@ -1487,9 +1579,9 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
     <>
       <Card
         className={cn(
-          "overflow-hidden",
-          isFaulted && "border-red-200",
-          isActive && "border-blue-200",
+          'overflow-hidden',
+          isFaulted && 'border-red-200',
+          isActive && 'border-blue-200'
         )}
       >
         <CardContent className="p-0">
@@ -1500,8 +1592,8 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   <RiPlugLine className="size-5 text-muted-foreground" />
                   <span
                     className={cn(
-                      "absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-white",
-                      statusDot(connector.status),
+                      'absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-white',
+                      statusDot(connector.status)
                     )}
                   />
                 </div>
@@ -1510,13 +1602,13 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                     Connector {connector.id}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {connector.connectorType || "Type 2"} &middot;{" "}
+                    {connector.connectorType || 'Type 2'} &middot;{' '}
                     {connector.maxPowerKw} kW max
                   </p>
                 </div>
               </div>
               <Badge
-                className={cn("text-[10px]", statusColor(connector.status))}
+                className={cn('text-[10px]', statusColor(connector.status))}
               >
                 {connector.status}
               </Badge>
@@ -1527,7 +1619,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
               <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium">
-                    {connector.vehicleId || "Unknown vehicle"}
+                    {connector.vehicleId || 'Unknown vehicle'}
                   </p>
                   {connector.sessionStartedAt && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -1539,7 +1631,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] text-muted-foreground">Power</p>
-                    <p className="text-lg font-bold tabular-nums text-blue-700">
+                    <p className="text-lg font-bold text-blue-700 tabular-nums">
                       {formatPower(connector.powerKw)}
                     </p>
                   </div>
@@ -1548,7 +1640,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                       Session Energy
                     </p>
                     <p className="text-lg font-bold tabular-nums">
-                      {connector.sessionKwh.toFixed(1)}{" "}
+                      {connector.sessionKwh.toFixed(1)}{' '}
                       <span className="text-sm font-normal text-muted-foreground">
                         kWh
                       </span>
@@ -1588,7 +1680,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
               <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/30 p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium">
-                    {connector.vehicleId || "Unknown vehicle"}
+                    {connector.vehicleId || 'Unknown vehicle'}
                   </p>
                   <span className="text-[10px] font-medium text-amber-600">
                     Paused
@@ -1601,7 +1693,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             )}
 
             {/* Faulted */}
-            {isFaulted && connector.errorCode !== "NoError" && (
+            {isFaulted && connector.errorCode !== 'NoError' && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50/30 p-3">
                 <div className="flex items-center gap-2">
                   <RiAlertLine className="size-4 text-red-500" />
@@ -1613,7 +1705,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             )}
 
             {/* Available — Start Charging */}
-            {connector.status === "Available" && (
+            {connector.status === 'Available' && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <RiCheckboxCircleLine className="size-4 text-emerald-500" />
@@ -1668,18 +1760,18 @@ function StartChargingDialog({
   maxPowerKw: number
   connectorType: string
 }) {
-  const [step, setStep] = useState<"config" | "sending" | "sent">("config")
-  const [idTag, setIdTag] = useState("")
+  const [step, setStep] = useState<'config' | 'sending' | 'sent'>('config')
+  const [idTag, setIdTag] = useState('')
   const [powerLimit, setPowerLimit] = useState(String(maxPowerKw))
   function handleStart() {
     if (!idTag.trim()) {
-      toast.error("Please enter an ID tag")
+      toast.error('Please enter an ID tag')
       return
     }
-    setStep("sending")
+    setStep('sending')
     // Simulate sending command
     setTimeout(() => {
-      setStep("sent")
+      setStep('sent')
     }, 1500)
   }
 
@@ -1687,8 +1779,8 @@ function StartChargingDialog({
     onOpenChange(false)
     // Reset after animation
     setTimeout(() => {
-      setStep("config")
-      setIdTag("")
+      setStep('config')
+      setIdTag('')
       setPowerLimit(String(maxPowerKw))
     }, 200)
   }
@@ -1696,7 +1788,7 @@ function StartChargingDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
-        {step === "config" && (
+        {step === 'config' && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1717,8 +1809,8 @@ function StartChargingDialog({
                 <div className="flex-1 text-xs">
                   <span className="font-medium">Connector {connectorId}</span>
                   <span className="text-muted-foreground">
-                    {" "}
-                    &middot; {connectorType || "Type 2"} &middot; {maxPowerKw}{" "}
+                    {' '}
+                    &middot; {connectorType || 'Type 2'} &middot; {maxPowerKw}{' '}
                     kW
                   </span>
                 </div>
@@ -1729,7 +1821,10 @@ function StartChargingDialog({
 
               {/* ID Tag */}
               <div className="grid gap-2">
-                <Label htmlFor="idTag" className="flex items-center gap-1.5 text-xs">
+                <Label
+                  htmlFor="idTag"
+                  className="flex items-center gap-1.5 text-xs"
+                >
                   <RiUserLine className="size-3" />
                   ID Tag / Identifier
                 </Label>
@@ -1737,7 +1832,7 @@ function StartChargingDialog({
                   id="idTag"
                   value={idTag}
                   onChange={(e) => setIdTag(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                   autoFocus
                 >
                   <option value="">Select an ID tag...</option>
@@ -1754,7 +1849,10 @@ function StartChargingDialog({
 
               {/* Power Limit */}
               <div className="grid gap-2">
-                <Label htmlFor="powerLimit" className="flex items-center gap-1.5 text-xs">
+                <Label
+                  htmlFor="powerLimit"
+                  className="flex items-center gap-1.5 text-xs"
+                >
                   <RiSpeedLine className="size-3" />
                   Power Limit (kW)
                 </Label>
@@ -1771,7 +1869,6 @@ function StartChargingDialog({
                   Max: {maxPowerKw} kW. Leave as-is for full power.
                 </p>
               </div>
-
             </div>
 
             <DialogFooter>
@@ -1786,7 +1883,7 @@ function StartChargingDialog({
           </>
         )}
 
-        {step === "sending" && (
+        {step === 'sending' && (
           <div className="flex flex-col items-center py-10">
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500" />
@@ -1803,7 +1900,7 @@ function StartChargingDialog({
           </div>
         )}
 
-        {step === "sent" && (
+        {step === 'sent' && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
               <RiCheckboxCircleLine className="size-8 text-emerald-500" />
@@ -1857,28 +1954,28 @@ function StopChargingDialog({
   sessionKwh: number
   sessionStartedAt?: string
 }) {
-  const [step, setStep] = useState<"confirm" | "stopping" | "stopped">(
-    "confirm",
+  const [step, setStep] = useState<'confirm' | 'stopping' | 'stopped'>(
+    'confirm'
   )
 
   function handleStop() {
-    setStep("stopping")
+    setStep('stopping')
     setTimeout(() => {
-      setStep("stopped")
+      setStep('stopped')
     }, 1500)
   }
 
   function handleClose() {
     onOpenChange(false)
     setTimeout(() => {
-      setStep("confirm")
+      setStep('confirm')
     }, 200)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-sm">
-        {step === "confirm" && (
+        {step === 'confirm' && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1888,7 +1985,8 @@ function StopChargingDialog({
                 Stop Charging
               </DialogTitle>
               <DialogDescription>
-                This will send a remote stop command to connector #{connectorId}.
+                This will send a remote stop command to connector #{connectorId}
+                .
               </DialogDescription>
             </DialogHeader>
 
@@ -1905,7 +2003,9 @@ function StopChargingDialog({
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Energy Delivered</span>
+                  <span className="text-muted-foreground">
+                    Energy Delivered
+                  </span>
                   <span className="font-medium tabular-nums">
                     {sessionKwh.toFixed(1)} kWh
                   </span>
@@ -1925,10 +2025,7 @@ function StopChargingDialog({
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleStop}
-              >
+              <Button variant="destructive" onClick={handleStop}>
                 <RiShutDownLine className="mr-1.5 size-3.5" />
                 Stop Charging
               </Button>
@@ -1936,7 +2033,7 @@ function StopChargingDialog({
           </>
         )}
 
-        {step === "stopping" && (
+        {step === 'stopping' && (
           <div className="flex flex-col items-center py-10">
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-red-100 border-t-red-500" />
@@ -1953,7 +2050,7 @@ function StopChargingDialog({
           </div>
         )}
 
-        {step === "stopped" && (
+        {step === 'stopped' && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
               <RiCheckboxCircleLine className="size-8 text-emerald-500" />
@@ -1983,7 +2080,7 @@ function SessionRow({
   selected: boolean
   onClick: () => void
 }) {
-  const isActive = session.status === "Active"
+  const isActive = session.status === 'Active'
 
   return (
     <div className="space-y-0">
@@ -1991,11 +2088,11 @@ function SessionRow({
         type="button"
         onClick={onClick}
         className={cn(
-          "flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-all",
-          isActive && "border-blue-200 bg-blue-50/30",
-          !isActive && "hover:bg-muted/50",
-          selected && !isActive && "border-foreground/20 bg-muted/30",
-          selected && "rounded-b-none",
+          'flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-all',
+          isActive && 'border-blue-200 bg-blue-50/30',
+          !isActive && 'hover:bg-muted/50',
+          selected && !isActive && 'border-foreground/20 bg-muted/30',
+          selected && 'rounded-b-none'
         )}
       >
         {/* Status dot */}
@@ -2005,8 +2102,8 @@ function SessionRow({
           )}
           <span
             className={cn(
-              "relative inline-flex size-2.5 rounded-full",
-              isActive ? "bg-blue-500" : "bg-gray-300",
+              'relative inline-flex size-2.5 rounded-full',
+              isActive ? 'bg-blue-500' : 'bg-gray-300'
             )}
           />
         </span>
@@ -2018,7 +2115,7 @@ function SessionRow({
 
         {/* Vehicle */}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {session.vehicleId || "Unknown vehicle"}
+          {session.vehicleId || 'Unknown vehicle'}
         </span>
 
         {/* Energy */}
@@ -2027,26 +2124,26 @@ function SessionRow({
         </span>
 
         {/* Max power */}
-        <span className="hidden text-xs tabular-nums text-muted-foreground sm:block">
+        <span className="hidden text-xs text-muted-foreground tabular-nums sm:block">
           {formatPower(session.maxPowerKw)} peak
         </span>
 
         {/* Duration */}
-        <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+        <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
           <RiTimeLine className="size-3" />
           {sessionDuration(session.startedAt, session.endedAt)}
         </span>
 
         {/* Time */}
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <span className="text-xs text-muted-foreground tabular-nums">
           {formatTime(session.startedAt)}
         </span>
 
         {/* Expand indicator */}
         <RiArrowDownSLine
           className={cn(
-            "size-4 text-muted-foreground transition-transform",
-            selected && "rotate-180",
+            'size-4 text-muted-foreground transition-transform',
+            selected && 'rotate-180'
           )}
         />
       </button>
@@ -2058,18 +2155,20 @@ function SessionRow({
 }
 
 function SessionDetail({ session }: { session: Session }) {
-  const isActive = session.status === "Active"
+  const isActive = session.status === 'Active'
 
   return (
     <div
       className={cn(
-        "rounded-b-lg border border-t-0 px-5 py-4",
-        isActive ? "border-blue-200 bg-blue-50/20" : "border-foreground/20 bg-muted/20",
+        'rounded-b-lg border border-t-0 px-5 py-4',
+        isActive
+          ? 'border-blue-200 bg-blue-50/20'
+          : 'border-foreground/20 bg-muted/20'
       )}
     >
       <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Transaction ID
           </p>
           <p className="mt-0.5 font-mono text-sm font-semibold">
@@ -2077,25 +2176,25 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             ID Tag
           </p>
-          <p className="mt-0.5 font-mono text-sm">{session.idTag || "—"}</p>
+          <p className="mt-0.5 font-mono text-sm">{session.idTag || '—'}</p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Vehicle
           </p>
-          <p className="mt-0.5 text-sm">{session.vehicleId || "Unknown"}</p>
+          <p className="mt-0.5 text-sm">{session.vehicleId || 'Unknown'}</p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Connector
           </p>
           <p className="mt-0.5 text-sm">#{session.connectorId}</p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Energy Delivered
           </p>
           <p className="mt-0.5 text-sm font-semibold tabular-nums">
@@ -2103,7 +2202,7 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Duration
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
@@ -2111,7 +2210,7 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Peak Power
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
@@ -2119,7 +2218,7 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Avg Power
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
@@ -2127,51 +2226,51 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Status
           </p>
           <Badge
             className={cn(
-              "mt-0.5 text-[10px]",
+              'mt-0.5 text-[10px]',
               isActive
-                ? "bg-blue-500/15 text-blue-700"
-                : "bg-emerald-500/15 text-emerald-700",
+                ? 'bg-blue-500/15 text-blue-700'
+                : 'bg-emerald-500/15 text-emerald-700'
             )}
           >
             {session.status}
           </Badge>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Started
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
             {new Date(session.startedAt).toLocaleString([], {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
             })}
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Ended
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
             {session.endedAt
               ? new Date(session.endedAt).toLocaleString([], {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
                 })
-              : "In progress"}
+              : 'In progress'}
           </p>
         </div>
         {session.stopReason && (
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
               Stop Reason
             </p>
             <p className="mt-0.5 text-sm">{session.stopReason}</p>
@@ -2193,7 +2292,7 @@ function SessionDetail({ session }: { session: Session }) {
           <span className="font-mono tabular-nums">
             {session.meterStop !== null
               ? `${session.meterStop.toLocaleString()} Wh`
-              : "—"}
+              : '—'}
           </span>
         </div>
       </div>

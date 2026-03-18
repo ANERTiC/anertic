@@ -35,7 +35,8 @@ func (p *UpdateFirmwareParams) Valid() error {
 }
 
 type UpdateFirmwareResult struct {
-	ID string `json:"id"`
+	ID        string `json:"id"`
+	CommandID string `json:"commandID"`
 }
 
 func UpdateFirmware(ctx context.Context, p *UpdateFirmwareParams) (*UpdateFirmwareResult, error) {
@@ -108,11 +109,20 @@ func UpdateFirmware(ctx context.Context, p *UpdateFirmwareParams) (*UpdateFirmwa
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, "UpdateFirmware", payload); err != nil {
+	cmdID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
+		values ($1, $2, 'UpdateFirmware', 'pending', $3)
+	`, cmdID, p.ID, payload)
+	if err != nil {
 		return nil, err
 	}
 
-	return &UpdateFirmwareResult{ID: recordID}, nil
+	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "UpdateFirmware", payload); err != nil {
+		return nil, err
+	}
+
+	return &UpdateFirmwareResult{ID: recordID, CommandID: cmdID}, nil
 }
 
 // GetDiagnostics
@@ -135,7 +145,8 @@ func (p *GetDiagnosticsParams) Valid() error {
 }
 
 type GetDiagnosticsResult struct {
-	ID string `json:"id"`
+	ID        string `json:"id"`
+	CommandID string `json:"commandID"`
 }
 
 func GetDiagnostics(ctx context.Context, p *GetDiagnosticsParams) (*GetDiagnosticsResult, error) {
@@ -214,9 +225,18 @@ func GetDiagnostics(ctx context.Context, p *GetDiagnosticsParams) (*GetDiagnosti
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, "GetDiagnostics", payload); err != nil {
+	cmdID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
+		values ($1, $2, 'GetDiagnostics', 'pending', $3)
+	`, cmdID, p.ID, payload)
+	if err != nil {
 		return nil, err
 	}
 
-	return &GetDiagnosticsResult{ID: recordID}, nil
+	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "GetDiagnostics", payload); err != nil {
+		return nil, err
+	}
+
+	return &GetDiagnosticsResult{ID: recordID, CommandID: cmdID}, nil
 }

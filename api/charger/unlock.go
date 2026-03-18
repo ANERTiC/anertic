@@ -8,6 +8,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
@@ -27,7 +28,11 @@ func (p *UnlockConnectorParams) Valid() error {
 	return v.Error()
 }
 
-func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*struct{}, error) {
+type UnlockConnectorResult struct {
+	CommandID string `json:"commandID"`
+}
+
+func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*UnlockConnectorResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -63,9 +68,18 @@ func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*struct{}, 
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, "UnlockConnector", payload); err != nil {
+	cmdID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
+		values ($1, $2, 'UnlockConnector', 'pending', $3)
+	`, cmdID, p.ID, payload)
+	if err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "UnlockConnector", payload); err != nil {
+		return nil, err
+	}
+
+	return &UnlockConnectorResult{CommandID: cmdID}, nil
 }

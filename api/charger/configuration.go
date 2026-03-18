@@ -8,6 +8,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
@@ -29,7 +30,11 @@ func (p *ChangeConfigurationParams) Valid() error {
 	return v.Error()
 }
 
-func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*struct{}, error) {
+type ChangeConfigurationResult struct {
+	CommandID string `json:"commandID"`
+}
+
+func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*ChangeConfigurationResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -69,9 +74,18 @@ func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*st
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, "ChangeConfiguration", payload); err != nil {
+	cmdID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
+		values ($1, $2, 'ChangeConfiguration', 'pending', $3)
+	`, cmdID, p.ID, payload)
+	if err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "ChangeConfiguration", payload); err != nil {
+		return nil, err
+	}
+
+	return &ChangeConfigurationResult{CommandID: cmdID}, nil
 }

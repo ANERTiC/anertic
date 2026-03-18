@@ -8,6 +8,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
+	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
@@ -25,7 +26,11 @@ func (p *ClearCacheParams) Valid() error {
 	return v.Error()
 }
 
-func ClearCache(ctx context.Context, p *ClearCacheParams) (*struct{}, error) {
+type ClearCacheResult struct {
+	CommandID string `json:"commandID"`
+}
+
+func ClearCache(ctx context.Context, p *ClearCacheParams) (*ClearCacheResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -59,9 +64,18 @@ func ClearCache(ctx context.Context, p *ClearCacheParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, "ClearCache", payload); err != nil {
+	cmdID := xid.New().String()
+	_, err = pgctx.Exec(ctx, `
+		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
+		values ($1, $2, 'ClearCache', 'pending', $3)
+	`, cmdID, p.ID, payload)
+	if err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "ClearCache", payload); err != nil {
+		return nil, err
+	}
+
+	return &ClearCacheResult{CommandID: cmdID}, nil
 }

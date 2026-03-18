@@ -78,7 +78,33 @@ func (h *Hub) ListLocal() []string {
 
 // handleCommandResponse processes the charger's response to a CSMS-initiated command
 // and persists relevant data back to the database.
-func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, action string, requestPayload json.RawMessage, responsePayload json.RawMessage) {
+func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, commandID string, action string, requestPayload json.RawMessage, responsePayload json.RawMessage) {
+	// Determine success/failure from the response status field.
+	status := "success"
+	var resp struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(responsePayload, &resp); err == nil {
+		switch resp.Status {
+		case "Failed", "Rejected", "UnlockFailed", "NotSupported", "VersionMismatch":
+			status = "failed"
+		}
+	}
+
+	// Persist response back to the command record (best-effort; log on error).
+	if commandID != "" {
+		_, err := pgctx.Exec(ctx, `
+			update ev_charger_commands
+			set status = $2,
+			    response_payload = $3,
+			    updated_at = now()
+			where id = $1
+		`, commandID, status, responsePayload)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update command status", "error", err, "commandID", commandID, "action", action)
+		}
+	}
+
 	switch action {
 	case "GetLocalListVersion":
 		var resp struct {
@@ -179,6 +205,7 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 
 // command is a message received from Redis pub/sub to execute on a charge point.
 type command struct {
+	ID      string          `json:"id"`
 	Action  string          `json:"action"`
 	Payload json.RawMessage `json:"payload"`
 }
@@ -208,7 +235,7 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 			}
 			slog.InfoContext(ctx, "command executed", "chargePointID", cp.Identity, "action", cmd.Action, "response", string(raw))
 
-			h.handleCommandResponse(ctx, cp.Identity, cmd.Action, cmd.Payload, raw)
+			h.handleCommandResponse(ctx, cp.Identity, cmd.ID, cmd.Action, cmd.Payload, raw)
 		}()
 	}
 }

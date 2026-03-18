@@ -278,3 +278,24 @@ create table if not exists ev_message_log
 create index if not exists idx_ev_message_log_charger on ev_message_log (charger_id, created_at desc);
 create index if not exists idx_ev_message_log_action on ev_message_log (action, created_at desc);
 create index if not exists idx_ev_message_log_message_id on ev_message_log (charge_point_id, message_id);
+
+-- ============================================================
+-- Command Status Tracking
+-- ============================================================
+
+-- ev_charger_commands: tracks CSMS→CP command lifecycle
+-- status: pending → success | failed
+create table if not exists ev_charger_commands
+(
+    id               text        not null primary key,
+    charger_id       text        not null references ev_chargers (id),
+    action           text        not null,
+    status           text        not null default 'pending',
+    request_payload  jsonb       not null default '{}',
+    response_payload jsonb,
+    created_at       timestamptz not null default now(),
+    updated_at       timestamptz not null default now()
+);
+
+create index if not exists idx_ev_charger_commands_charger on ev_charger_commands (charger_id, created_at desc);
+create index if not exists idx_ev_charger_commands_status on ev_charger_commands (status) where status = 'pending';

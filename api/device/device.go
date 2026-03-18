@@ -13,6 +13,7 @@ import (
 	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
+	"github.com/anertic/anertic/pkg/devicestatus"
 )
 
 var (
@@ -133,7 +134,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		if err != nil {
 			return err
 		}
-		it.ConnectionStatus = deriveConnectionStatus(it.MeterCount, onlineCount, it.LastSeenAt)
+		it.ConnectionStatus = devicestatus.Derive(it.MeterCount, onlineCount, it.LastSeenAt)
 		if p.Status != "" && it.ConnectionStatus != p.Status {
 			return nil
 		}
@@ -145,19 +146,6 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 	}
 
 	return &ListResult{Items: items}, nil
-}
-
-func deriveConnectionStatus(meterCount, onlineCount int, lastSeenAt *time.Time) string {
-	if meterCount == 0 {
-		return "offline"
-	}
-	if onlineCount > 0 {
-		return "online"
-	}
-	if lastSeenAt != nil && time.Since(*lastSeenAt) < 30*time.Minute {
-		return "degraded"
-	}
-	return "offline"
 }
 
 // Create

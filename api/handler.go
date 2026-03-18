@@ -114,6 +114,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.getDiagnostics", am.Handler(charger.GetDiagnostics))
 	a.Handle("POST /charger.getLocalListVersion", am.Handler(charger.GetLocalListVersion))
 	a.Handle("POST /charger.sendLocalList", am.Handler(charger.SendLocalList))
+	a.Handle("POST /charger.reserveNow", am.Handler(charger.ReserveNow))
+	a.Handle("POST /charger.cancelReservation", am.Handler(charger.CancelReservation))
+	a.Handle("POST /charger.listReservations", am.Handler(charger.ListReservations))
 
 	// Connectors
 	a.Handle("POST /connector.list", am.Handler(connector.List))

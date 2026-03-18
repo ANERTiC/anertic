@@ -78,13 +78,13 @@ func (h *Hub) ListLocal() []string {
 
 // handleCommandResponse processes the charger's response to a CSMS-initiated command
 // and persists relevant data back to the database.
-func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, action string, raw json.RawMessage) {
+func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, action string, requestPayload json.RawMessage, responsePayload json.RawMessage) {
 	switch action {
 	case "GetLocalListVersion":
 		var resp struct {
 			ListVersion int `json:"listVersion"`
 		}
-		if err := json.Unmarshal(raw, &resp); err != nil {
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
 			slog.ErrorContext(ctx, "failed to parse GetLocalListVersion response", "error", err, "chargePointID", chargePointID)
 			return
 		}
@@ -99,6 +99,81 @@ func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, a
 			return
 		}
 		slog.InfoContext(ctx, "updated local_list_version from charger", "chargePointID", chargePointID, "listVersion", resp.ListVersion)
+
+	case "UnlockConnector":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse UnlockConnector response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		slog.InfoContext(ctx, "UnlockConnector response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "ChangeAvailability":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ChangeAvailability response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		slog.InfoContext(ctx, "ChangeAvailability response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "ClearCache":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ClearCache response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		slog.InfoContext(ctx, "ClearCache response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "ChangeConfiguration":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ChangeConfiguration response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		if resp.Status == "RebootRequired" {
+			slog.WarnContext(ctx, "ChangeConfiguration requires reboot", "chargePointID", chargePointID, "status", resp.Status)
+			return
+		}
+		slog.InfoContext(ctx, "ChangeConfiguration response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "SendLocalList":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse SendLocalList response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		if resp.Status != "Accepted" {
+			slog.WarnContext(ctx, "SendLocalList not accepted by charger", "chargePointID", chargePointID, "status", resp.Status)
+			return
+		}
+		var req struct {
+			ListVersion int `json:"listVersion"`
+		}
+		if err := json.Unmarshal(requestPayload, &req); err != nil {
+			slog.ErrorContext(ctx, "failed to parse SendLocalList request payload", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set local_list_version = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, req.ListVersion)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update local_list_version after SendLocalList", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		slog.InfoContext(ctx, "updated local_list_version after SendLocalList accepted", "chargePointID", chargePointID, "listVersion", req.ListVersion)
 	}
 }
 
@@ -133,7 +208,7 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 			}
 			slog.InfoContext(ctx, "command executed", "chargePointID", cp.Identity, "action", cmd.Action, "response", string(raw))
 
-			h.handleCommandResponse(ctx, cp.Identity, cmd.Action, raw)
+			h.handleCommandResponse(ctx, cp.Identity, cmd.Action, cmd.Payload, raw)
 		}()
 	}
 }

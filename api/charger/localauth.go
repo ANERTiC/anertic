@@ -162,15 +162,5 @@ func SendLocalList(ctx context.Context, p *SendLocalListParams) (*SendLocalListR
 		return nil, err
 	}
 
-	_, err = pgctx.Exec(ctx, `
-		update ev_chargers
-		set local_list_version = $2,
-		    updated_at = now()
-		where id = $1
-	`, p.ID, p.ListVersion)
-	if err != nil {
-		return nil, err
-	}
-
 	return &SendLocalListResult{Status: "Accepted"}, nil
 }

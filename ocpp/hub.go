@@ -277,6 +277,75 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 		}
 		slog.InfoContext(ctx, "GetDiagnostics response", "chargePointID", chargePointID)
 
+	case "SetChargingProfile":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse SetChargingProfile response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set set_charging_profile_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update set_charging_profile_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "SetChargingProfile response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "ClearChargingProfile":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ClearChargingProfile response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set clear_charging_profile_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update clear_charging_profile_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "ClearChargingProfile response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "GetCompositeSchedule":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse GetCompositeSchedule response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set get_composite_schedule_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update get_composite_schedule_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "GetCompositeSchedule response", "chargePointID", chargePointID, "status", resp.Status)
+
 	case "ReserveNow":
 		var resp struct {
 			Status string `json:"status"`

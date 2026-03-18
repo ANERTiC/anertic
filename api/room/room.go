@@ -21,7 +21,6 @@ import (
 var (
 	ErrNotFound       = arpc.NewErrorCode("room/not-found", "room not found")
 	ErrDeviceNotFound = arpc.NewErrorCode("room/device-not-found", "device not found")
-	ErrFloorNotFound  = arpc.NewErrorCode("room/floor-not-found", "floor not found")
 
 	validRoomTypes = []string{"living", "bedroom", "kitchen", "bathroom", "office", "garage", "laundry", "storage", "outdoor", "other"}
 )
@@ -29,10 +28,10 @@ var (
 // List
 
 type ListParams struct {
-	SiteID  string `json:"siteId"`
-	Type    string `json:"type"`
-	Search  string `json:"search"`
-	FloorID string `json:"floorId"`
+	SiteID string `json:"siteId"`
+	Type   string `json:"type"`
+	Search string `json:"search"`
+	Level  *int   `json:"level"`
 }
 
 func (p *ListParams) Valid() error {
@@ -114,8 +113,8 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			if p.Search != "" {
 				c.ILike("r.name", "%"+p.Search+"%")
 			}
-			if p.FloorID != "" {
-				c.Eq("r.floor_id", p.FloorID)
+			if p.Level != nil {
+				c.Eq("r.level", *p.Level)
 			}
 		})
 		b.OrderBy("r.created_at").Desc()
@@ -325,11 +324,10 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 // Update
 
 type UpdateParams struct {
-	SiteID  string  `json:"siteId"`
-	ID      string  `json:"id"`
-	Name    *string `json:"name"`
-	Type    *string `json:"type"`
-	FloorID *string `json:"floorId"`
+	SiteID string  `json:"siteId"`
+	ID     string  `json:"id"`
+	Name   *string `json:"name"`
+	Type   *string `json:"type"`
 }
 
 func (p *UpdateParams) Valid() error {
@@ -350,13 +348,6 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	// Validate floor belongs to the same site when assigning
-	if p.FloorID != nil && *p.FloorID != "" {
-		if err := verifyFloorInSite(ctx, *p.FloorID, p.SiteID); err != nil {
-			return nil, err
-		}
-	}
-
 	_, err := pgstmt.Update(func(b pgstmt.UpdateStatement) {
 		b.Table("rooms")
 		if p.Name != nil {
@@ -364,13 +355,6 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		}
 		if p.Type != nil {
 			b.Set("type").To(*p.Type)
-		}
-		if p.FloorID != nil {
-			if *p.FloorID == "" {
-				b.Set("floor_id").ToRaw("null")
-			} else {
-				b.Set("floor_id").To(*p.FloorID)
-			}
 		}
 		b.Set("updated_at").ToRaw("now()")
 		b.Where(func(c pgstmt.Cond) {
@@ -536,27 +520,6 @@ func verifyRoomInSite(ctx context.Context, roomID, siteID string) error {
 	}
 	if !exists {
 		return ErrNotFound
-	}
-	return nil
-}
-
-// verifyFloorInSite checks that the floor belongs to the given site and is not deleted.
-func verifyFloorInSite(ctx context.Context, floorID, siteID string) error {
-	var exists bool
-	err := pgctx.QueryRow(ctx, `
-		select exists (
-			select 1
-			from floors
-			where id = $1
-			  and site_id = $2
-			  and deleted_at is null
-		)
-	`, floorID, siteID).Scan(&exists)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return ErrFloorNotFound
 	}
 	return nil
 }

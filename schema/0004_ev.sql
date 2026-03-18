@@ -55,12 +55,15 @@ create table if not exists ev_authorization_tags
     -- local list management (SendLocalList)
     list_version    integer                 not null default 0,
     created_at      timestamptz             not null default now(),
-    updated_at      timestamptz             not null default now()
+    updated_at      timestamptz             not null default now(),
+
+    unique (charger_id, id_tag)
 );
 
 create unique index if not exists idx_ev_authorization_tags_global_id_tag on ev_authorization_tags (id_tag) where charger_id is null;
 create unique index if not exists idx_ev_authorization_tags_charger_id_tag on ev_authorization_tags (charger_id, id_tag) where charger_id is not null;
 create index if not exists idx_ev_authorization_tags_id_tag on ev_authorization_tags (id_tag);
+create index if not exists idx_ev_authorization_tags_charger on ev_authorization_tags (charger_id) where charger_id is not null;
 create index if not exists idx_ev_authorization_tags_parent on ev_authorization_tags (parent_id_tag) where parent_id_tag is not null;
 
 -- ============================================================

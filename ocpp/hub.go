@@ -379,6 +379,29 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 		}
 		slog.InfoContext(ctx, "ReserveNow accepted by charger", "chargePointID", chargePointID, "reservationId", req.ReservationID, "status", resp.Status)
 
+	case "TriggerMessage":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse TriggerMessage response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set trigger_message_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update trigger_message_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "TriggerMessage response", "chargePointID", chargePointID, "status", resp.Status)
+
 	case "CancelReservation":
 		var resp struct {
 			Status string `json:"status"`

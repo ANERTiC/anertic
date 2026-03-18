@@ -30,7 +30,7 @@ type ChargingSchedule struct {
 	StartSchedule          string                   `json:"startSchedule"`
 	ChargingRateUnit       string                   `json:"chargingRateUnit"`
 	ChargingSchedulePeriod []ChargingSchedulePeriod `json:"chargingSchedulePeriod"`
-	MinChargingRate        *decimal.Decimal          `json:"minChargingRate"`
+	MinChargingRate        *decimal.Decimal         `json:"minChargingRate"`
 }
 
 type ChargingProfile struct {
@@ -359,4 +359,3 @@ func GetCompositeSchedule(ctx context.Context, p *GetCompositeScheduleParams) (*
 
 	return &GetCompositeScheduleResult{Status: "Accepted"}, nil
 }
-

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
+	"github.com/asaskevich/govalidator"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 
@@ -29,6 +30,7 @@ func (p *UpdateFirmwareParams) Valid() error {
 	v := validator.New()
 	v.Must(p.ID != "", "id is required")
 	v.Must(p.Location != "", "location is required")
+	v.Must(govalidator.IsURL(p.Location), "location must be a valid URL")
 	return v.Error()
 }
 
@@ -128,6 +130,7 @@ func (p *GetDiagnosticsParams) Valid() error {
 	v := validator.New()
 	v.Must(p.ID != "", "id is required")
 	v.Must(p.Location != "", "location is required")
+	v.Must(govalidator.IsURL(p.Location), "location must be a valid URL")
 	return v.Error()
 }
 

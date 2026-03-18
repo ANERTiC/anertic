@@ -345,6 +345,71 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 			slog.ErrorContext(ctx, "failed to update get_composite_schedule_status", "error", err, "chargePointID", chargePointID)
 		}
 		slog.InfoContext(ctx, "GetCompositeSchedule response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "ReserveNow":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ReserveNow response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		var req struct {
+			ReservationID int `json:"reservationId"`
+		}
+		if err := json.Unmarshal(requestPayload, &req); err != nil {
+			slog.ErrorContext(ctx, "failed to parse ReserveNow request payload", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		if resp.Status != "Accepted" {
+			// mark reservation as cancelled if charger rejected it
+			_, err := pgctx.Exec(ctx, `
+				update ev_reservations
+				set status = 'Cancelled',
+				    updated_at = now()
+				where charger_id = (select id from ev_chargers where charge_point_id = $1)
+				  and reservation_id = $2
+				  and status = 'Reserved'
+			`, chargePointID, req.ReservationID)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to cancel rejected reservation", "error", err, "chargePointID", chargePointID)
+			}
+			slog.WarnContext(ctx, "ReserveNow not accepted by charger", "chargePointID", chargePointID, "status", resp.Status, "reservationId", req.ReservationID)
+			return
+		}
+		slog.InfoContext(ctx, "ReserveNow accepted by charger", "chargePointID", chargePointID, "reservationId", req.ReservationID, "status", resp.Status)
+
+	case "CancelReservation":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse CancelReservation response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		var req struct {
+			ReservationID int `json:"reservationId"`
+		}
+		if err := json.Unmarshal(requestPayload, &req); err != nil {
+			slog.ErrorContext(ctx, "failed to parse CancelReservation request payload", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		if resp.Status != "Accepted" {
+			slog.WarnContext(ctx, "CancelReservation not accepted by charger", "chargePointID", chargePointID, "status", resp.Status, "reservationId", req.ReservationID)
+			return
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_reservations
+			set status = 'Cancelled',
+			    updated_at = now()
+			where charger_id = (select id from ev_chargers where charge_point_id = $1)
+			  and reservation_id = $2
+			  and status = 'Reserved'
+		`, chargePointID, req.ReservationID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update reservation status after cancel", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "CancelReservation accepted by charger", "chargePointID", chargePointID, "reservationId", req.ReservationID)
 	}
 }
 

@@ -84,9 +84,15 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
-// handleCommandResponse processes the charger's response to a CSMS-initiated command
-// and persists relevant data back to the database.
-func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, action string, requestPayload json.RawMessage, responsePayload json.RawMessage) {
+// HandleResponse processes the charger's CallResult for a CSMS-initiated command
+// and persists relevant data (e.g. status columns) back to the database.
+//
+// This is called inside SubscribeChargePoint right after cp.Call() returns.
+// cp.Call() is a blocking request-response: it sends the OCPP Call [2, ...],
+// then waits (up to 30s) for the charger's CallResult [3, ...] to arrive
+// via the WebSocket. Once cp.Call() unblocks, the response is already in hand,
+// so we process it here as a normal return value — not as an async event.
+func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action string, requestPayload json.RawMessage, responsePayload json.RawMessage) {
 	switch action {
 	case "GetLocalListVersion":
 		var resp struct {
@@ -304,7 +310,7 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 			}
 			slog.InfoContext(ctx, "command executed", "chargePointID", cp.Identity, "action", cmd.Action, "response", string(raw))
 
-			h.handleCommandResponse(ctx, cp.Identity, cmd.Action, cmd.Payload, raw)
+			h.HandleResponse(ctx, cp.Identity, cmd.Action, cmd.Payload, raw)
 		}()
 	}
 }

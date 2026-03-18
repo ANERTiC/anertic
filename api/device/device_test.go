@@ -603,8 +603,9 @@ func TestUpdate(t *testing.T) {
 
 		name := "Updated"
 		_, err = Update(ctx, &UpdateParams{
-			ID:   cr.ID,
-			Name: &name,
+			ID:     cr.ID,
+			SiteID: siteID,
+			Name:   &name,
 		})
 		require.NoError(t, err)
 
@@ -633,8 +634,9 @@ func TestUpdate(t *testing.T) {
 
 		brand := "Siemens"
 		_, err = Update(ctx, &UpdateParams{
-			ID:    cr.ID,
-			Brand: &brand,
+			ID:     cr.ID,
+			SiteID: siteID,
+			Brand:  &brand,
 		})
 		require.NoError(t, err)
 
@@ -665,10 +667,11 @@ func TestUpdate(t *testing.T) {
 		brand := "Siemens"
 		model := "PAC2200"
 		_, err = Update(ctx, &UpdateParams{
-			ID:    cr.ID,
-			Name:  &name,
-			Brand: &brand,
-			Model: &model,
+			ID:     cr.ID,
+			SiteID: siteID,
+			Name:   &name,
+			Brand:  &brand,
+			Model:  &model,
 		})
 		require.NoError(t, err)
 
@@ -695,7 +698,7 @@ func TestUpdate(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, err = Update(ctx, &UpdateParams{ID: cr.ID})
+		_, err = Update(ctx, &UpdateParams{ID: cr.ID, SiteID: siteID})
 		require.NoError(t, err)
 
 		got, err := Get(ctx, &GetParams{ID: cr.ID})

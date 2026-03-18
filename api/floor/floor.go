@@ -10,11 +10,9 @@ import (
 	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
-	"github.com/lib/pq"
 	"github.com/moonrhythm/validator"
 
 	"github.com/anertic/anertic/api/iam"
-	"github.com/anertic/anertic/pkg/devicestatus"
 )
 
 var (
@@ -35,22 +33,12 @@ func (p *ListParams) Valid() error {
 	return v.Error()
 }
 
-type RoomItem struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Type             string   `json:"type"`
-	DeviceCount      int      `json:"deviceCount"`
-	LivePowerW       *float64 `json:"livePowerW"`
-	ConnectionStatus string   `json:"connectionStatus"`
-}
-
 type Item struct {
-	SiteID    string     `json:"siteId"`
-	Name      string     `json:"name"`
-	Level     int        `json:"level"`
-	Rooms     []RoomItem `json:"rooms"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	SiteID    string    `json:"siteId"`
+	Name      string    `json:"name"`
+	Level     int       `json:"level"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type ListResult struct {
@@ -65,7 +53,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return nil, err
 	}
 
-	floors := make([]Item, 0)
+	items := make([]Item, 0)
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
 			"site_id",
@@ -94,98 +82,14 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		); err != nil {
 			return err
 		}
-		f.Rooms = make([]RoomItem, 0)
-		floors = append(floors, f)
+		items = append(items, f)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if len(floors) == 0 {
-		return &ListResult{Items: floors}, nil
-	}
-
-	// Build level index for room attachment
-	levelIndex := make(map[int]int, len(floors))
-	levels := make([]int, len(floors))
-	for i, f := range floors {
-		levelIndex[f.Level] = i
-		levels[i] = f.Level
-	}
-
-	// Query rooms with device aggregation for the fetched floors
-	err = pgstmt.Select(func(b pgstmt.SelectStatement) {
-		b.Columns(
-			"r.id",
-			"r.name",
-			"r.type",
-			"r.level",
-			pgstmt.Raw("coalesce(agg.device_count, 0)"),
-			pgstmt.Raw("coalesce(agg.meter_count, 0)"),
-			pgstmt.Raw("coalesce(agg.online_count, 0)"),
-			"agg.last_seen_at",
-			"agg.live_power_w",
-		)
-		b.From("rooms r")
-		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
-			b.Columns(
-				pgstmt.Raw("count(distinct d.id) as device_count"),
-				pgstmt.Raw("count(m.*) as meter_count"),
-				pgstmt.Raw("count(m.*) filter (where m.is_online) as online_count"),
-				pgstmt.Raw("max(m.last_seen_at) as last_seen_at"),
-				pgstmt.Raw("sum((m.latest_reading->>'power_w')::numeric) as live_power_w"),
-			)
-			b.From("room_devices rd")
-			b.Join("devices d").On(func(c pgstmt.Cond) {
-				c.EqRaw("d.id", "rd.device_id")
-				c.IsNull("d.deleted_at")
-			})
-			b.LeftJoin("meters m").On(func(c pgstmt.Cond) {
-				c.EqRaw("m.device_id", "d.id")
-			})
-			b.Where(func(c pgstmt.Cond) {
-				c.EqRaw("rd.room_id", "r.id")
-			})
-		}, "agg").On(func(c pgstmt.Cond) {
-			c.Raw("true")
-		})
-		b.Where(func(c pgstmt.Cond) {
-			c.Mode().And()
-			c.Eq("r.site_id", p.SiteID)
-			c.IsNull("r.deleted_at")
-			c.Eq("r.level", pgstmt.Any(pq.Array(levels)))
-		})
-		b.OrderBy("r.created_at").Asc()
-	}).IterWith(ctx, func(scan pgsql.Scanner) error {
-		var ri RoomItem
-		var level int
-		var meterCount, onlineCount int
-		var lastSeenAt *time.Time
-		if err := scan(
-			&ri.ID,
-			&ri.Name,
-			&ri.Type,
-			&level,
-			&ri.DeviceCount,
-			&meterCount,
-			&onlineCount,
-			pgsql.Null(&lastSeenAt),
-			pgsql.Null(&ri.LivePowerW),
-		); err != nil {
-			return err
-		}
-		ri.ConnectionStatus = devicestatus.Derive(meterCount, onlineCount, lastSeenAt)
-		if idx, ok := levelIndex[level]; ok {
-			floors[idx].Rooms = append(floors[idx].Rooms, ri)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &ListResult{Items: floors}, nil
+	return &ListResult{Items: items}, nil
 }
 
 // Create
@@ -283,74 +187,6 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	r.Rooms = make([]RoomItem, 0)
-
-	// Fetch rooms on this floor with device aggregation
-	err = pgstmt.Select(func(b pgstmt.SelectStatement) {
-		b.Columns(
-			"r.id",
-			"r.name",
-			"r.type",
-			pgstmt.Raw("coalesce(agg.device_count, 0)"),
-			pgstmt.Raw("coalesce(agg.meter_count, 0)"),
-			pgstmt.Raw("coalesce(agg.online_count, 0)"),
-			"agg.last_seen_at",
-			"agg.live_power_w",
-		)
-		b.From("rooms r")
-		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
-			b.Columns(
-				pgstmt.Raw("count(distinct d.id) as device_count"),
-				pgstmt.Raw("count(m.*) as meter_count"),
-				pgstmt.Raw("count(m.*) filter (where m.is_online) as online_count"),
-				pgstmt.Raw("max(m.last_seen_at) as last_seen_at"),
-				pgstmt.Raw("sum((m.latest_reading->>'power_w')::numeric) as live_power_w"),
-			)
-			b.From("room_devices rd")
-			b.Join("devices d").On(func(c pgstmt.Cond) {
-				c.EqRaw("d.id", "rd.device_id")
-				c.IsNull("d.deleted_at")
-			})
-			b.LeftJoin("meters m").On(func(c pgstmt.Cond) {
-				c.EqRaw("m.device_id", "d.id")
-			})
-			b.Where(func(c pgstmt.Cond) {
-				c.EqRaw("rd.room_id", "r.id")
-			})
-		}, "agg").On(func(c pgstmt.Cond) {
-			c.Raw("true")
-		})
-		b.Where(func(c pgstmt.Cond) {
-			c.Mode().And()
-			c.Eq("r.site_id", p.SiteID)
-			c.Eq("r.level", p.Level)
-			c.IsNull("r.deleted_at")
-		})
-		b.OrderBy("r.created_at").Asc()
-	}).IterWith(ctx, func(scan pgsql.Scanner) error {
-		var ri RoomItem
-		var meterCount, onlineCount int
-		var lastSeenAt *time.Time
-		if err := scan(
-			&ri.ID,
-			&ri.Name,
-			&ri.Type,
-			&ri.DeviceCount,
-			&meterCount,
-			&onlineCount,
-			pgsql.Null(&lastSeenAt),
-			pgsql.Null(&ri.LivePowerW),
-		); err != nil {
-			return err
-		}
-		ri.ConnectionStatus = devicestatus.Derive(meterCount, onlineCount, lastSeenAt)
-		r.Rooms = append(r.Rooms, ri)
-		return nil
-	})
 	if err != nil {
 		return nil, err
 	}

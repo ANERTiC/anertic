@@ -1,10 +1,8 @@
 package floor
 
 import (
-	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/rs/xid"
@@ -59,36 +57,6 @@ func TestList(t *testing.T) {
 		assert.Equal(t, "Basement", r.Items[0].Name)
 		assert.Equal(t, 0, r.Items[1].Level)
 		assert.Equal(t, 3, r.Items[2].Level)
-	})
-
-	t.Run("with_rooms_inline", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1", Level: 1})
-		require.NoError(t, err)
-
-		roomID := seedRoom(t, ctx, siteID, "Office", "office", 1)
-
-		// Add device + meter to the room
-		deviceID := seedDevice(t, ctx, siteID, "Smart Meter")
-		seedMeter(t, ctx, deviceID, "MTR-FLR-001", true, ptrTime(time.Now()))
-		assignDeviceToRoom(t, ctx, roomID, deviceID)
-
-		r, err := List(ctx, &ListParams{SiteID: siteID})
-		require.NoError(t, err)
-		require.Len(t, r.Items, 1)
-		require.Len(t, r.Items[0].Rooms, 1)
-
-		rm := r.Items[0].Rooms[0]
-		assert.Equal(t, roomID, rm.ID)
-		assert.Equal(t, "Office", rm.Name)
-		assert.Equal(t, 1, rm.DeviceCount)
-		assert.Equal(t, "online", rm.ConnectionStatus)
 	})
 
 	t.Run("filter_by_search", func(t *testing.T) {
@@ -250,7 +218,7 @@ func TestGet(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("success_with_rooms", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -261,32 +229,11 @@ func TestGet(t *testing.T) {
 		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Level 2", Level: 2})
 		require.NoError(t, err)
 
-		roomID := seedRoom(t, ctx, siteID, "Conference Room", "office", 2)
-
 		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 2})
 		require.NoError(t, err)
 		assert.Equal(t, "Level 2", r.Name)
 		assert.Equal(t, 2, r.Level)
-		require.Len(t, r.Rooms, 1)
-		assert.Equal(t, roomID, r.Rooms[0].ID)
-		assert.Equal(t, "Conference Room", r.Rooms[0].Name)
-	})
-
-	t.Run("success_no_rooms", func(t *testing.T) {
-		t.Parallel()
-		tc := tu.Setup()
-		defer tc.Teardown()
-
-		userID, siteID := seedTestData(t, tc)
-		ctx := auth.WithAccountID(tc.Ctx(), userID)
-
-		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Empty Floor", Level: 5})
-		require.NoError(t, err)
-
-		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 5})
-		require.NoError(t, err)
-		assert.Equal(t, "Empty Floor", r.Name)
-		assert.Empty(t, r.Rooms)
+		assert.Equal(t, siteID, r.SiteID)
 	})
 
 	t.Run("not_found", func(t *testing.T) {
@@ -386,7 +333,12 @@ func TestDelete(t *testing.T) {
 		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 3", Level: 3})
 		require.NoError(t, err)
 
-		roomID := seedRoom(t, ctx, siteID, "Room A", "office", 3)
+		// Create a room on level 3
+		roomID := xid.New().String()
+		_, err = pgctx.Exec(ctx, `
+			insert into rooms (id, site_id, name, type, level) values ($1, $2, $3, $4, $5)
+		`, roomID, siteID, "Room A", "office", 3)
+		require.NoError(t, err)
 
 		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, Level: 3})
 		require.NoError(t, err)
@@ -471,58 +423,4 @@ func seedUser(t *testing.T, tc *tu.Context) string {
 	require.NoError(t, err)
 
 	return userID
-}
-
-// seedRoom creates a room on a specific floor level and returns its ID.
-func seedRoom(t *testing.T, ctx context.Context, siteID, name, typ string, level int) string {
-	t.Helper()
-	id := xid.New().String()
-	_, err := pgctx.Exec(ctx, `
-		insert into rooms (id, site_id, name, type, level) values ($1, $2, $3, $4, $5)
-	`, id, siteID, name, typ, level)
-	require.NoError(t, err)
-	return id
-}
-
-// seedDevice creates a device and returns its ID.
-func seedDevice(t *testing.T, ctx context.Context, siteID, name string) string {
-	t.Helper()
-	id := xid.New().String()
-	_, err := pgctx.Exec(ctx, `
-		insert into devices (id, site_id, name, type) values ($1, $2, $3, $4)
-	`, id, siteID, name, "meter")
-	require.NoError(t, err)
-	return id
-}
-
-// seedMeter inserts a meter attached to a device.
-func seedMeter(t *testing.T, ctx context.Context, deviceID, serialNumber string, isOnline bool, lastSeenAt *time.Time) {
-	t.Helper()
-	_, err := pgctx.Exec(ctx, `
-		insert into meters (id, device_id, serial_number, protocol, is_online, last_seen_at)
-		values ($1, $2, $3, $4, $5, $6)
-		on conflict (serial_number) do nothing
-	`,
-		xid.New().String(),
-		deviceID,
-		serialNumber,
-		"mqtt",
-		isOnline,
-		lastSeenAt,
-	)
-	require.NoError(t, err)
-}
-
-// assignDeviceToRoom creates a room_devices association.
-func assignDeviceToRoom(t *testing.T, ctx context.Context, roomID, deviceID string) {
-	t.Helper()
-	_, err := pgctx.Exec(ctx, `
-		insert into room_devices (room_id, device_id) values ($1, $2)
-		on conflict (room_id, device_id) do nothing
-	`, roomID, deviceID)
-	require.NoError(t, err)
-}
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }

@@ -7,10 +7,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/acoshift/pgsql/pgctx"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
-	"github.com/shopspring/decimal"
+
+	"github.com/anertic/anertic/pkg/ingest"
+	"github.com/anertic/anertic/pkg/rdctx"
 )
 
 type Config struct {
@@ -27,23 +30,10 @@ type Pipeline struct {
 	topic string
 }
 
-// Reading represents a raw sensor reading from MQTT.
-type Reading struct {
-	MeterID             string          `json:"meter_id"`
-	PowerW              decimal.Decimal `json:"power_w"`
-	EnergyKWh           decimal.Decimal `json:"energy_kwh"`
-	VoltageV            decimal.Decimal `json:"voltage_v"`
-	CurrentA            decimal.Decimal `json:"current_a"`
-	Frequency           decimal.Decimal `json:"frequency"`
-	PF                  decimal.Decimal `json:"pf"`
-	ApparentPowerVA     decimal.Decimal `json:"apparent_power_va"`
-	ReactivePowerVAR    decimal.Decimal `json:"reactive_power_var"`
-	ApparentEnergyKVAh  decimal.Decimal `json:"apparent_energy_kvah"`
-	ReactiveEnergyKVARh decimal.Decimal `json:"reactive_energy_kvarh"`
-	THDV                decimal.Decimal `json:"thd_v"`
-	THDI                decimal.Decimal `json:"thd_i"`
-	TemperatureC        decimal.Decimal `json:"temperature_c"`
-	Timestamp           string          `json:"timestamp"`
+// MQTTReading represents the MQTT payload which includes meter_id.
+type MQTTReading struct {
+	MeterID string `json:"meter_id"`
+	ingest.Reading
 }
 
 func New(cfg Config) (*Pipeline, error) {
@@ -87,6 +77,10 @@ func (p *Pipeline) Close() {
 }
 
 func (p *Pipeline) Run(ctx context.Context) error {
+	// Inject DB and Redis into context for pkg/ingest.ProcessReading
+	ctx = pgctx.NewContext(ctx, p.db)
+	ctx = rdctx.NewContext(ctx, p.redis)
+
 	token := p.mqtt.Connect()
 	if token.Wait() && token.Error() != nil {
 		return token.Error()
@@ -104,93 +98,13 @@ func (p *Pipeline) Run(ctx context.Context) error {
 }
 
 func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
-	var r Reading
+	var r MQTTReading
 	if err := json.Unmarshal(msg.Payload(), &r); err != nil {
 		slog.Error("failed to parse reading", "error", err, "topic", msg.Topic())
 		return
 	}
 
-	ts, err := time.Parse(time.RFC3339, r.Timestamp)
-	if err != nil {
-		ts = time.Now()
-	}
-
-	// Insert into TimescaleDB
-	_, err = p.db.ExecContext(ctx, `
-		insert into meter_readings (
-			time,
-			meter_id,
-			power_w,
-			energy_kwh,
-			voltage_v,
-			current_a,
-			frequency,
-			pf,
-			apparent_power_va,
-			reactive_power_var,
-			apparent_energy_kvah,
-			reactive_energy_kvarh,
-			thd_v,
-			thd_i,
-			temperature_c
-		) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-	`,
-		ts,
-		r.MeterID,
-		r.PowerW,
-		r.EnergyKWh,
-		r.VoltageV,
-		r.CurrentA,
-		r.Frequency,
-		r.PF,
-		r.ApparentPowerVA,
-		r.ReactivePowerVAR,
-		r.ApparentEnergyKVAh,
-		r.ReactiveEnergyKVARh,
-		r.THDV,
-		r.THDI,
-		r.TemperatureC,
-	)
-	if err != nil {
-		slog.Error("failed to insert reading", "error", err)
-		return
-	}
-
-	// Update meter's latest reading
-	latestReading, _ := json.Marshal(map[string]any{
-		"time":                ts,
-		"powerW":              r.PowerW,
-		"energyKwh":           r.EnergyKWh,
-		"voltageV":            r.VoltageV,
-		"currentA":            r.CurrentA,
-		"frequency":           r.Frequency,
-		"pf":                  r.PF,
-		"apparentPowerVa":     r.ApparentPowerVA,
-		"reactivePowerVar":    r.ReactivePowerVAR,
-		"apparentEnergyKvah":  r.ApparentEnergyKVAh,
-		"reactiveEnergyKvarh": r.ReactiveEnergyKVARh,
-		"thdV":                r.THDV,
-		"thdI":                r.THDI,
-		"temperatureC":        r.TemperatureC,
-	})
-	_, err = p.db.ExecContext(ctx, `
-		update meters
-		set latest_reading = $1,
-		    is_online = true,
-		    last_seen_at = $2
-		where id = $3
-	`,
-		latestReading,
-		ts,
-		r.MeterID,
-	)
-	if err != nil {
-		slog.Error("failed to update meter latest reading", "error", err)
-	}
-
-	// Publish to Redis for real-time WebSocket fan-out
-	data, _ := json.Marshal(r)
-	if err := p.redis.Publish(ctx, "readings:realtime", data).Err(); err != nil {
-		slog.Error("failed to publish reading", "error", err)
+	if err := ingest.ProcessReading(ctx, r.MeterID, &r.Reading); err != nil {
+		slog.Error("failed to process reading", "error", err, "meter_id", r.MeterID)
 	}
 }

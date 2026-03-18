@@ -12,6 +12,7 @@ import (
 	"github.com/anertic/anertic/api/charger"
 	"github.com/anertic/anertic/api/connector"
 	"github.com/anertic/anertic/api/device"
+	"github.com/anertic/anertic/api/floor"
 	"github.com/anertic/anertic/api/insight"
 	"github.com/anertic/anertic/api/meter"
 	"github.com/anertic/anertic/api/reading"
@@ -90,6 +91,13 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /meter.get", am.Handler(meter.Get))
 	a.Handle("POST /meter.update", am.Handler(meter.Update))
 	a.Handle("POST /meter.delete", am.Handler(meter.Delete))
+
+	// Floors
+	a.Handle("POST /floor.list", am.Handler(floor.List))
+	a.Handle("POST /floor.create", am.Handler(floor.Create))
+	a.Handle("POST /floor.get", am.Handler(floor.Get))
+	a.Handle("POST /floor.update", am.Handler(floor.Update))
+	a.Handle("POST /floor.delete", am.Handler(floor.Delete))
 
 	// Rooms
 	a.Handle("POST /room.list", am.Handler(room.List))

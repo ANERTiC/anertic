@@ -31,6 +31,7 @@ type ListParams struct {
 	SiteID string `json:"siteId"`
 	Type   string `json:"type"`
 	Search string `json:"search"`
+	Level  *int   `json:"level"`
 }
 
 func (p *ListParams) Valid() error {
@@ -111,6 +112,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			}
 			if p.Search != "" {
 				c.ILike("r.name", "%"+p.Search+"%")
+			}
+			if p.Level != nil {
+				c.Eq("r.level", *p.Level)
 			}
 		})
 		b.OrderBy("r.created_at").Desc()

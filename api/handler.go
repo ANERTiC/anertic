@@ -114,6 +114,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.getDiagnostics", am.Handler(charger.GetDiagnostics))
 	a.Handle("POST /charger.getLocalListVersion", am.Handler(charger.GetLocalListVersion))
 	a.Handle("POST /charger.sendLocalList", am.Handler(charger.SendLocalList))
+	a.Handle("POST /charger.setChargingProfile", am.Handler(charger.SetChargingProfile))
+	a.Handle("POST /charger.clearChargingProfile", am.Handler(charger.ClearChargingProfile))
+	a.Handle("POST /charger.getCompositeSchedule", am.Handler(charger.GetCompositeSchedule))
 
 	// Connectors
 	a.Handle("POST /connector.list", am.Handler(connector.List))

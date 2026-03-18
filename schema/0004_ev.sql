@@ -32,7 +32,16 @@ create table if not exists ev_chargers
     firmware_status          text                    not null default 'Idle', -- Idle, Downloading, Downloaded, DownloadFailed, Installing, Installed, InstallationFailed
     diagnostics_status       text                    not null default 'Idle', -- Idle, Uploading, Uploaded, UploadFailed
     -- local auth list management (GetLocalListVersion / SendLocalList)
-    local_list_version       integer                 not null default 0,
+    local_list_version                integer  not null default 0,
+    -- command status tracking (0=pending, 1=ok, 2=error)
+    get_local_list_version_status     smallint not null default 0,
+    send_local_list_status            smallint not null default 0,
+    unlock_connector_status           smallint not null default 0,
+    change_availability_status        smallint not null default 0,
+    clear_cache_status                smallint not null default 0,
+    change_configuration_status       smallint not null default 0,
+    update_firmware_status            smallint not null default 0,
+    get_diagnostics_status            smallint not null default 0,
     --
     current_session          jsonb,
     last_heartbeat_at        timestamptz,
@@ -279,23 +288,3 @@ create index if not exists idx_ev_message_log_charger on ev_message_log (charger
 create index if not exists idx_ev_message_log_action on ev_message_log (action, created_at desc);
 create index if not exists idx_ev_message_log_message_id on ev_message_log (charge_point_id, message_id);
 
--- ============================================================
--- Command Status Tracking
--- ============================================================
-
--- ev_charger_commands: tracks CSMS→CP command lifecycle
--- status: pending → success | failed
-create table if not exists ev_charger_commands
-(
-    id               text        not null primary key,
-    charger_id       text        not null references ev_chargers (id),
-    action           text        not null,
-    status           text        not null default 'pending',
-    request_payload  jsonb       not null default '{}',
-    response_payload jsonb,
-    created_at       timestamptz not null default now(),
-    updated_at       timestamptz not null default now()
-);
-
-create index if not exists idx_ev_charger_commands_charger on ev_charger_commands (charger_id, created_at desc);
-create index if not exists idx_ev_charger_commands_status on ev_charger_commands (status) where status = 'pending';

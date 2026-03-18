@@ -35,8 +35,7 @@ func (p *UpdateFirmwareParams) Valid() error {
 }
 
 type UpdateFirmwareResult struct {
-	ID        string `json:"id"`
-	CommandID string `json:"commandID"`
+	ID string `json:"id"`
 }
 
 func UpdateFirmware(ctx context.Context, p *UpdateFirmwareParams) (*UpdateFirmwareResult, error) {
@@ -109,20 +108,21 @@ func UpdateFirmware(ctx context.Context, p *UpdateFirmwareParams) (*UpdateFirmwa
 		return nil, err
 	}
 
-	cmdID := xid.New().String()
 	_, err = pgctx.Exec(ctx, `
-		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
-		values ($1, $2, 'UpdateFirmware', 'pending', $3)
-	`, cmdID, p.ID, payload)
+		update ev_chargers
+		set update_firmware_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "UpdateFirmware", payload); err != nil {
+	if err := ocpp.SendCommand(ctx, chargePointID, "UpdateFirmware", payload); err != nil {
 		return nil, err
 	}
 
-	return &UpdateFirmwareResult{ID: recordID, CommandID: cmdID}, nil
+	return &UpdateFirmwareResult{ID: recordID}, nil
 }
 
 // GetDiagnostics
@@ -145,8 +145,7 @@ func (p *GetDiagnosticsParams) Valid() error {
 }
 
 type GetDiagnosticsResult struct {
-	ID        string `json:"id"`
-	CommandID string `json:"commandID"`
+	ID string `json:"id"`
 }
 
 func GetDiagnostics(ctx context.Context, p *GetDiagnosticsParams) (*GetDiagnosticsResult, error) {
@@ -225,18 +224,19 @@ func GetDiagnostics(ctx context.Context, p *GetDiagnosticsParams) (*GetDiagnosti
 		return nil, err
 	}
 
-	cmdID := xid.New().String()
 	_, err = pgctx.Exec(ctx, `
-		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
-		values ($1, $2, 'GetDiagnostics', 'pending', $3)
-	`, cmdID, p.ID, payload)
+		update ev_chargers
+		set get_diagnostics_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "GetDiagnostics", payload); err != nil {
+	if err := ocpp.SendCommand(ctx, chargePointID, "GetDiagnostics", payload); err != nil {
 		return nil, err
 	}
 
-	return &GetDiagnosticsResult{ID: recordID, CommandID: cmdID}, nil
+	return &GetDiagnosticsResult{ID: recordID}, nil
 }

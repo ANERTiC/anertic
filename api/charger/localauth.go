@@ -8,7 +8,6 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
-	"github.com/rs/xid"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
@@ -27,8 +26,7 @@ func (p *GetLocalListVersionParams) Valid() error {
 }
 
 type GetLocalListVersionResult struct {
-	CommandID   string `json:"commandID"`
-	ListVersion int    `json:"listVersion"`
+	ListVersion int `json:"listVersion"`
 }
 
 func GetLocalListVersion(ctx context.Context, p *GetLocalListVersionParams) (*GetLocalListVersionResult, error) {
@@ -63,16 +61,17 @@ func GetLocalListVersion(ctx context.Context, p *GetLocalListVersionParams) (*Ge
 		return nil, err
 	}
 
-	cmdID := xid.New().String()
 	_, err = pgctx.Exec(ctx, `
-		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
-		values ($1, $2, 'GetLocalListVersion', 'pending', $3)
-	`, cmdID, p.ID, payload)
+		update ev_chargers
+		set get_local_list_version_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "GetLocalListVersion", payload); err != nil {
+	if err := ocpp.SendCommand(ctx, chargePointID, "GetLocalListVersion", payload); err != nil {
 		return nil, err
 	}
 
@@ -87,7 +86,7 @@ func GetLocalListVersion(ctx context.Context, p *GetLocalListVersionParams) (*Ge
 		return nil, err
 	}
 
-	return &GetLocalListVersionResult{CommandID: cmdID, ListVersion: listVersion}, nil
+	return &GetLocalListVersionResult{ListVersion: listVersion}, nil
 }
 
 // SendLocalList
@@ -119,8 +118,7 @@ func (p *SendLocalListParams) Valid() error {
 }
 
 type SendLocalListResult struct {
-	CommandID string `json:"commandID"`
-	Status    string `json:"status"`
+	Status string `json:"status"`
 }
 
 func SendLocalList(ctx context.Context, p *SendLocalListParams) (*SendLocalListResult, error) {
@@ -170,18 +168,19 @@ func SendLocalList(ctx context.Context, p *SendLocalListParams) (*SendLocalListR
 		return nil, err
 	}
 
-	cmdID := xid.New().String()
 	_, err = pgctx.Exec(ctx, `
-		insert into ev_charger_commands (id, charger_id, action, status, request_payload)
-		values ($1, $2, 'SendLocalList', 'pending', $3)
-	`, cmdID, p.ID, payload)
+		update ev_chargers
+		set send_local_list_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ocpp.SendCommand(ctx, chargePointID, cmdID, "SendLocalList", payload); err != nil {
+	if err := ocpp.SendCommand(ctx, chargePointID, "SendLocalList", payload); err != nil {
 		return nil, err
 	}
 
-	return &SendLocalListResult{CommandID: cmdID, Status: "Accepted"}, nil
+	return &SendLocalListResult{Status: "Accepted"}, nil
 }

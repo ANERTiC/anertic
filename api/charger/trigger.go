@@ -64,13 +64,17 @@ func TriggerMessage(ctx context.Context, p *TriggerMessageParams) (*TriggerMessa
 		return nil, err
 	}
 
-	payload, err := json.Marshal(struct {
+	// OCPP 1.6 TriggerMessage.req: connectorId is optional per spec.
+	// Omit it when 0 so chargers that strictly validate don't reject the request.
+	type triggerPayload struct {
 		RequestedMessage string `json:"requestedMessage"`
-		ConnectorID      int    `json:"connectorId"`
-	}{
-		RequestedMessage: p.RequestedMessage,
-		ConnectorID:      p.ConnectorID,
-	})
+		ConnectorID      *int   `json:"connectorId,omitempty"`
+	}
+	tp := triggerPayload{RequestedMessage: p.RequestedMessage}
+	if p.ConnectorID > 0 {
+		tp.ConnectorID = &p.ConnectorID
+	}
+	payload, err := json.Marshal(tp)
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,8 @@ create table if not exists ev_chargers
     -- firmware management
     firmware_status          text                    not null default 'Idle', -- Idle, Downloading, Downloaded, DownloadFailed, Installing, Installed, InstallationFailed
     diagnostics_status       text                    not null default 'Idle', -- Idle, Uploading, Uploaded, UploadFailed
+    -- local auth list management (GetLocalListVersion / SendLocalList)
+    local_list_version       integer                 not null default 0,
     --
     current_session          jsonb,
     last_heartbeat_at        timestamptz,

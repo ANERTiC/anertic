@@ -10,6 +10,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	"github.com/shopspring/decimal"
 )
 
 type Config struct {
@@ -28,21 +29,21 @@ type Pipeline struct {
 
 // Reading represents a raw sensor reading from MQTT.
 type Reading struct {
-	MeterID            string  `json:"meter_id"`
-	PowerW             float64 `json:"power_w"`
-	EnergyKWh          float64 `json:"energy_kwh"`
-	VoltageV           float64 `json:"voltage_v"`
-	CurrentA           float64 `json:"current_a"`
-	Frequency          float64 `json:"frequency"`
-	PF                 float64 `json:"pf"`
-	ApparentPowerVA    float64 `json:"apparent_power_va"`
-	ReactivePowerVAR   float64 `json:"reactive_power_var"`
-	ApparentEnergyKVAh float64 `json:"apparent_energy_kvah"`
-	ReactiveEnergyKVARh float64 `json:"reactive_energy_kvarh"`
-	THDV               float64 `json:"thd_v"`
-	THDI               float64 `json:"thd_i"`
-	TemperatureC       float64 `json:"temperature_c"`
-	Timestamp          string  `json:"timestamp"`
+	MeterID             string          `json:"meter_id"`
+	PowerW              decimal.Decimal `json:"power_w"`
+	EnergyKWh           decimal.Decimal `json:"energy_kwh"`
+	VoltageV            decimal.Decimal `json:"voltage_v"`
+	CurrentA            decimal.Decimal `json:"current_a"`
+	Frequency           decimal.Decimal `json:"frequency"`
+	PF                  decimal.Decimal `json:"pf"`
+	ApparentPowerVA     decimal.Decimal `json:"apparent_power_va"`
+	ReactivePowerVAR    decimal.Decimal `json:"reactive_power_var"`
+	ApparentEnergyKVAh  decimal.Decimal `json:"apparent_energy_kvah"`
+	ReactiveEnergyKVARh decimal.Decimal `json:"reactive_energy_kvarh"`
+	THDV                decimal.Decimal `json:"thd_v"`
+	THDI                decimal.Decimal `json:"thd_i"`
+	TemperatureC        decimal.Decimal `json:"temperature_c"`
+	Timestamp           string          `json:"timestamp"`
 }
 
 func New(cfg Config) (*Pipeline, error) {

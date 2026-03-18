@@ -6,6 +6,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
+	"github.com/shopspring/decimal"
 )
 
 // Query
@@ -25,11 +26,11 @@ func (p *QueryParams) Valid() error {
 }
 
 type Reading struct {
-	Time      time.Time `json:"time"`
-	PowerW    float64   `json:"powerW"`
-	EnergyKWh float64   `json:"energyKwh"`
-	VoltageV  float64   `json:"voltageV"`
-	CurrentA  float64   `json:"currentA"`
+	Time      time.Time       `json:"time"`
+	PowerW    decimal.Decimal `json:"powerW"`
+	EnergyKWh decimal.Decimal `json:"energyKwh"`
+	VoltageV  decimal.Decimal `json:"voltageV"`
+	CurrentA  decimal.Decimal `json:"currentA"`
 }
 
 type QueryResult struct {
@@ -146,10 +147,10 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 	err := pgctx.QueryRow(ctx, `
 		select
 			m.last_seen_at,
-			coalesce((m.latest_reading->>'powerW')::float8, 0),
-			coalesce((m.latest_reading->>'energyKwh')::float8, 0),
-			coalesce((m.latest_reading->>'voltageV')::float8, 0),
-			coalesce((m.latest_reading->>'currentA')::float8, 0)
+			coalesce((m.latest_reading->>'powerW')::numeric, 0),
+			coalesce((m.latest_reading->>'energyKwh')::numeric, 0),
+			coalesce((m.latest_reading->>'voltageV')::numeric, 0),
+			coalesce((m.latest_reading->>'currentA')::numeric, 0)
 		from meters m
 		where m.device_id = $1
 		  and m.latest_reading is not null

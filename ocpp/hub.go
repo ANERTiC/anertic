@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/acoshift/pgsql/pgctx"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -75,6 +76,32 @@ func (h *Hub) ListLocal() []string {
 	return ids
 }
 
+// handleCommandResponse processes the charger's response to a CSMS-initiated command
+// and persists relevant data back to the database.
+func (h *Hub) handleCommandResponse(ctx context.Context, chargePointID string, action string, raw json.RawMessage) {
+	switch action {
+	case "GetLocalListVersion":
+		var resp struct {
+			ListVersion int `json:"listVersion"`
+		}
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse GetLocalListVersion response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set local_list_version = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, resp.ListVersion)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update local_list_version", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		slog.InfoContext(ctx, "updated local_list_version from charger", "chargePointID", chargePointID, "listVersion", resp.ListVersion)
+	}
+}
+
 // command is a message received from Redis pub/sub to execute on a charge point.
 type command struct {
 	Action  string          `json:"action"`
@@ -105,6 +132,8 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 				return
 			}
 			slog.InfoContext(ctx, "command executed", "chargePointID", cp.Identity, "action", cmd.Action, "response", string(raw))
+
+			h.handleCommandResponse(ctx, cp.Identity, cmd.Action, raw)
 		}()
 	}
 }

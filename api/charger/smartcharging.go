@@ -10,6 +10,7 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
+	"github.com/shopspring/decimal"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
@@ -18,9 +19,9 @@ import (
 // SetChargingProfile
 
 type ChargingSchedulePeriod struct {
-	StartPeriod  int     `json:"startPeriod"`
-	Limit        float64 `json:"limit"`
-	NumberPhases *int    `json:"numberPhases"`
+	StartPeriod  int             `json:"startPeriod"`
+	Limit        decimal.Decimal `json:"limit"`
+	NumberPhases *int            `json:"numberPhases"`
 }
 
 type ChargingSchedule struct {
@@ -28,7 +29,7 @@ type ChargingSchedule struct {
 	StartSchedule          string                   `json:"startSchedule"`
 	ChargingRateUnit       string                   `json:"chargingRateUnit"`
 	ChargingSchedulePeriod []ChargingSchedulePeriod `json:"chargingSchedulePeriod"`
-	MinChargingRate        *float64                 `json:"minChargingRate"`
+	MinChargingRate        *decimal.Decimal          `json:"minChargingRate"`
 }
 
 type ChargingProfile struct {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/rs/xid"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,7 +34,7 @@ func TestSetChargingProfile(t *testing.T) {
 			ChargingSchedule: &ChargingSchedule{
 				ChargingRateUnit: "W",
 				ChargingSchedulePeriod: []ChargingSchedulePeriod{
-					{StartPeriod: 0, Limit: 11000},
+					{StartPeriod: 0, Limit: decimal.NewFromInt(11000)},
 				},
 			},
 		}
@@ -78,7 +79,7 @@ func TestSetChargingProfile(t *testing.T) {
 			ChargingSchedule: &ChargingSchedule{
 				ChargingRateUnit: "A",
 				ChargingSchedulePeriod: []ChargingSchedulePeriod{
-					{StartPeriod: 0, Limit: 16},
+					{StartPeriod: 0, Limit: decimal.NewFromInt(16)},
 				},
 			},
 		}

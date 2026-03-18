@@ -109,9 +109,9 @@ create table if not exists meters
 (
     id            varchar(20) primary key not null,
     device_id     varchar(20) references devices (id),
+    name          text                    not null default '',
     serial_number text                    not null unique,
     protocol      text                    not null default 'mqtt', -- 'mqtt', 'http'
-    vendor        text                    not null default '',
     phase         smallint                not null default 0, -- 0: unassigned, 1: L1, 2: L2, 3: L3
     channel       text                    not null default '', -- 'pv', 'grid', 'battery', 'load', '' (general)
     config        jsonb                   not null default '{}',

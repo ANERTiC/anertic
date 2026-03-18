@@ -26,7 +26,6 @@ func TestCreate(t *testing.T) {
 			DeviceID:     deviceID,
 			SerialNumber: "SN-001",
 			Protocol:     "mqtt",
-			Vendor:       "Eastron",
 			Phase:        1,
 			Channel:      "load",
 		})
@@ -38,7 +37,6 @@ func TestCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "SN-001", got.SerialNumber)
 		assert.Equal(t, "mqtt", got.Protocol)
-		assert.Equal(t, "Eastron", got.Vendor)
 		assert.Equal(t, 1, got.Phase)
 		assert.Equal(t, "load", got.Channel)
 		assert.Equal(t, deviceID, got.DeviceID)
@@ -203,7 +201,6 @@ func TestGet(t *testing.T) {
 			DeviceID:     deviceID,
 			SerialNumber: "GET-SN-001",
 			Protocol:     "mqtt",
-			Vendor:       "Schneider",
 			Phase:        3,
 			Channel:      "grid",
 		})
@@ -214,7 +211,6 @@ func TestGet(t *testing.T) {
 		require.NotNil(t, r)
 		assert.Equal(t, cr.ID, r.ID)
 		assert.Equal(t, "GET-SN-001", r.SerialNumber)
-		assert.Equal(t, "Schneider", r.Vendor)
 		assert.Equal(t, 3, r.Phase)
 		assert.Equal(t, "grid", r.Channel)
 		assert.False(t, r.IsOnline)
@@ -240,30 +236,28 @@ func TestUpdate(t *testing.T) {
 	userID, siteID, deviceID := seedTestData(t, tc)
 	ctx := auth.WithAccountID(tc.Ctx(), userID)
 
-	t.Run("update vendor only", func(t *testing.T) {
+	t.Run("update phase only", func(t *testing.T) {
 		cr, err := Create(ctx, &CreateParams{
 			SiteID:       siteID,
 			DeviceID:     deviceID,
 			SerialNumber: "UPD-SN-001",
 			Protocol:     "mqtt",
-			Vendor:       "Eastron",
 			Phase:        1,
 			Channel:      "load",
 		})
 		require.NoError(t, err)
 
-		vendor := "Schneider"
+		phase := 2
 		_, err = Update(ctx, &UpdateParams{
 			SiteID: siteID,
 			ID:     cr.ID,
-			Vendor: &vendor,
+			Phase:  &phase,
 		})
 		require.NoError(t, err)
 
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
-		assert.Equal(t, "Schneider", got.Vendor)
-		assert.Equal(t, 1, got.Phase)
+		assert.Equal(t, 2, got.Phase)
 		assert.Equal(t, "load", got.Channel)
 	})
 
@@ -273,19 +267,16 @@ func TestUpdate(t *testing.T) {
 			DeviceID:     deviceID,
 			SerialNumber: "UPD-SN-002",
 			Protocol:     "http",
-			Vendor:       "ABB",
 			Phase:        1,
 			Channel:      "pv",
 		})
 		require.NoError(t, err)
 
-		vendor := "Siemens"
 		phase := 3
 		channel := "grid"
 		_, err = Update(ctx, &UpdateParams{
 			SiteID:  siteID,
 			ID:      cr.ID,
-			Vendor:  &vendor,
 			Phase:   &phase,
 			Channel: &channel,
 		})
@@ -293,20 +284,19 @@ func TestUpdate(t *testing.T) {
 
 		got, err := Get(ctx, &GetParams{ID: cr.ID})
 		require.NoError(t, err)
-		assert.Equal(t, "Siemens", got.Vendor)
 		assert.Equal(t, 3, got.Phase)
 		assert.Equal(t, "grid", got.Channel)
 	})
 
 	t.Run("validation error missing id", func(t *testing.T) {
-		vendor := "X"
-		_, err := Update(ctx, &UpdateParams{SiteID: siteID, Vendor: &vendor})
+		phase := 1
+		_, err := Update(ctx, &UpdateParams{SiteID: siteID, Phase: &phase})
 		require.Error(t, err)
 	})
 
 	t.Run("validation error missing siteId", func(t *testing.T) {
-		vendor := "X"
-		_, err := Update(ctx, &UpdateParams{ID: "some-id", Vendor: &vendor})
+		phase := 1
+		_, err := Update(ctx, &UpdateParams{ID: "some-id", Phase: &phase})
 		require.Error(t, err)
 	})
 }

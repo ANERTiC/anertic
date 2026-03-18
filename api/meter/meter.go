@@ -40,9 +40,9 @@ func (p *ListParams) Valid() error {
 type Item struct {
 	ID            string          `json:"id"`
 	DeviceID      string          `json:"deviceId"`
+	Name          string          `json:"name"`
 	SerialNumber  string          `json:"serialNumber"`
 	Protocol      string          `json:"protocol"`
-	Vendor        string          `json:"vendor"`
 	Phase         int             `json:"phase"`
 	Channel       string          `json:"channel"`
 	IsOnline      bool            `json:"isOnline"`
@@ -74,9 +74,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Columns(
 			"id",
 			"device_id",
+			"name",
 			"serial_number",
 			"protocol",
-			"vendor",
 			"phase",
 			"channel",
 			"is_online",
@@ -95,9 +95,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		err := scan(
 			&it.ID,
 			&it.DeviceID,
+			&it.Name,
 			&it.SerialNumber,
 			&it.Protocol,
-			&it.Vendor,
 			&it.Phase,
 			&it.Channel,
 			&it.IsOnline,
@@ -124,9 +124,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 type CreateParams struct {
 	SiteID       string `json:"siteId"`
 	DeviceID     string `json:"deviceId"`
+	Name         string `json:"name"`
 	SerialNumber string `json:"serialNumber"`
 	Protocol     string `json:"protocol"`
-	Vendor       string `json:"vendor"`
 	Phase        int    `json:"phase"`
 	Channel      string `json:"channel"`
 }
@@ -161,18 +161,18 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 		insert into meters (
 			id,
 			device_id,
+			name,
 			serial_number,
 			protocol,
-			vendor,
 			phase,
 			channel
 		) values ($1, $2, $3, $4, $5, $6, $7)
 	`,
 		id,
 		p.DeviceID,
+		p.Name,
 		p.SerialNumber,
 		p.Protocol,
-		p.Vendor,
 		p.Phase,
 		p.Channel,
 	)
@@ -212,9 +212,9 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		select
 			id,
 			device_id,
+			name,
 			serial_number,
 			protocol,
-			vendor,
 			phase,
 			channel,
 			is_online,
@@ -227,9 +227,9 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	`, p.ID).Scan(
 		&r.ID,
 		&r.DeviceID,
+		&r.Name,
 		&r.SerialNumber,
 		&r.Protocol,
-		&r.Vendor,
 		&r.Phase,
 		&r.Channel,
 		&r.IsOnline,
@@ -251,11 +251,12 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 // Update
 
 type UpdateParams struct {
-	SiteID  string  `json:"siteId"`
-	ID      string  `json:"id"`
-	Vendor  *string `json:"vendor"`
-	Phase   *int    `json:"phase"`
-	Channel *string `json:"channel"`
+	SiteID       string  `json:"siteId"`
+	ID           string  `json:"id"`
+	Name         *string `json:"name"`
+	SerialNumber *string `json:"serialNumber"`
+	Phase        *int    `json:"phase"`
+	Channel      *string `json:"channel"`
 }
 
 func (p *UpdateParams) Valid() error {
@@ -275,8 +276,11 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 
 	_, err := pgstmt.Update(func(b pgstmt.UpdateStatement) {
 		b.Table("meters")
-		if p.Vendor != nil {
-			b.Set("vendor").To(*p.Vendor)
+		if p.Name != nil {
+			b.Set("name").To(*p.Name)
+		}
+		if p.SerialNumber != nil {
+			b.Set("serial_number").To(*p.SerialNumber)
 		}
 		if p.Phase != nil {
 			b.Set("phase").To(*p.Phase)
@@ -289,6 +293,9 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 			c.Eq("id", p.ID)
 		})
 	}).ExecWith(ctx)
+	if pgsql.IsUniqueViolation(err) {
+		return nil, ErrDuplicate
+	}
 	if err != nil {
 		return nil, err
 	}

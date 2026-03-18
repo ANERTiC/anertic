@@ -40,9 +40,9 @@ export interface MeterReading {
 export interface Meter {
   id: string
   deviceId: string
+  name: string
   serialNumber: string
   protocol: MeterProtocol
-  vendor: string
   phase: number
   channel: MeterChannel
   isOnline: boolean
@@ -151,7 +151,7 @@ export function MeterCard({
         {/* Identity */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate font-mono text-[13px] font-semibold tracking-tight">{meter.serialNumber}</p>
+            <p className="truncate font-mono text-[13px] font-semibold tracking-tight">{meter.name || meter.serialNumber}</p>
             {meter.phase > 0 && (
               <span className="rounded bg-foreground/5 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-foreground/70">
                 L{meter.phase}
@@ -159,8 +159,12 @@ export function MeterCard({
             )}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-            <span>{meter.vendor}</span>
-            <span className="text-muted-foreground/20">&middot;</span>
+            {meter.name && (
+              <>
+                <span className="font-mono">{meter.serialNumber}</span>
+                <span className="text-muted-foreground/20">&middot;</span>
+              </>
+            )}
             <span className={cn("inline-flex items-center gap-0.5 font-medium", proto.color)}>
               <ProtoIcon className="size-2.5" />
               {proto.label}
@@ -296,12 +300,106 @@ function TabButton({
   )
 }
 
+// --- Readings Empty State ---
+
+const GHOST_METRICS = [
+  { metric: "power_w", unit: "W", primary: true },
+  { metric: "energy_kwh", unit: "kWh", primary: true },
+  { metric: "voltage_v", unit: "V", primary: false },
+  { metric: "current_a", unit: "A", primary: false },
+  { metric: "frequency", unit: "Hz", primary: false },
+  { metric: "pf", unit: "", primary: false },
+] as const
+
+function ReadingsEmptyState({
+  channel,
+  isOnline,
+  protocol,
+}: {
+  channel: MeterChannel
+  isOnline: boolean
+  protocol: MeterProtocol
+}) {
+  const channelCfg = CHANNEL_CONFIG[channel]
+  const protoCfg = PROTOCOL_CONFIG[protocol]
+
+  return (
+    <div className="relative">
+      {/* Ghost metric grid — skeletal placeholders */}
+      <div className="grid grid-cols-3 gap-1.5 lg:grid-cols-6">
+        {GHOST_METRICS.map((g, i) => (
+          <div
+            key={g.metric}
+            className={cn(
+              "rounded-lg px-3 py-2.5",
+              g.primary
+                ? "border border-dashed border-border/30 bg-card/50"
+                : "border border-dashed border-transparent bg-muted/15",
+            )}
+            style={{ animationDelay: `${i * 120}ms` }}
+          >
+            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/25">
+              {formatMetricLabel(g.metric)}
+            </p>
+            <div className="mt-1.5 flex items-baseline gap-1">
+              <div className={cn(
+                "h-4 rounded-sm bg-muted-foreground/[0.06]",
+                g.primary ? "w-14" : "w-10",
+              )} />
+              {g.unit && (
+                <span className="text-[9px] text-muted-foreground/15">{g.unit}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Overlay message */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border/40 bg-card/95 px-5 py-3.5 shadow-sm backdrop-blur-sm">
+          {isOnline ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                </span>
+                <p className="text-xs font-semibold text-foreground/80">
+                  Awaiting first reading
+                </p>
+              </div>
+              <p className="text-[11px] text-muted-foreground/50">
+                Meter is online via {protoCfg.label} — data will appear shortly
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <div className={cn("flex size-5 items-center justify-center rounded-md", channelCfg.bg)}>
+                  <RiPulseLine className={cn("size-3", channelCfg.color, "opacity-40")} />
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground/70">
+                  No readings yet
+                </p>
+              </div>
+              <p className="max-w-[220px] text-center text-[11px] leading-relaxed text-muted-foreground/40">
+                Configure your meter to push data via {protoCfg.label} — check the Configure tab for connection details
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- Readings Panel ---
 
 function ReadingsPanel({ meter }: { meter: Meter }) {
   const proto = PROTOCOL_CONFIG[meter.protocol]
   const readings = meter.latestReadings ?? []
   const config = meter.config ?? {}
+  const channelCfg = CHANNEL_CONFIG[meter.channel]
 
   return (
     <>
@@ -319,38 +417,42 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-1.5 lg:grid-cols-6">
-          {readings.map((reading) => {
-            const isPrimary = reading.metric === "power_w" || reading.metric === "energy_kwh"
-            return (
-              <div
-                key={reading.metric}
-                className={cn(
-                  "rounded-lg px-3 py-2.5",
-                  isPrimary
-                    ? "border border-border/40 bg-card shadow-sm"
-                    : "border border-transparent bg-muted/30",
-                )}
-              >
-                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
-                  {formatMetricLabel(reading.metric)}
-                </p>
-                <p className={cn(
-                  "mt-1 font-mono tabular-nums leading-none tracking-tight",
-                  isPrimary ? "text-base font-bold" : "text-sm font-semibold text-foreground/80",
-                )}>
-                  {formatReadingValue(reading.value, reading.metric)}
-                  <span className={cn(
-                    "ml-1 font-sans font-normal",
-                    isPrimary ? "text-[10px] text-muted-foreground/60" : "text-[9px] text-muted-foreground/40",
+        {readings.length === 0 ? (
+          <ReadingsEmptyState channel={meter.channel} isOnline={meter.isOnline} protocol={meter.protocol} />
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5 lg:grid-cols-6">
+            {readings.map((reading) => {
+              const isPrimary = reading.metric === "power_w" || reading.metric === "energy_kwh"
+              return (
+                <div
+                  key={reading.metric}
+                  className={cn(
+                    "rounded-lg px-3 py-2.5",
+                    isPrimary
+                      ? "border border-border/40 bg-card shadow-sm"
+                      : "border border-transparent bg-muted/30",
+                  )}
+                >
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                    {formatMetricLabel(reading.metric)}
+                  </p>
+                  <p className={cn(
+                    "mt-1 font-mono tabular-nums leading-none tracking-tight",
+                    isPrimary ? "text-base font-bold" : "text-sm font-semibold text-foreground/80",
                   )}>
-                    {reading.unit}
-                  </span>
-                </p>
-              </div>
-            )
-          })}
-        </div>
+                    {formatReadingValue(reading.value, reading.metric)}
+                    <span className={cn(
+                      "ml-1 font-sans font-normal",
+                      isPrimary ? "text-[10px] text-muted-foreground/60" : "text-[9px] text-muted-foreground/40",
+                    )}>
+                      {reading.unit}
+                    </span>
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Connection summary */}
@@ -364,7 +466,6 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 lg:grid-cols-4">
           <InfoRow label="Serial" value={meter.serialNumber} mono />
           <InfoRow label="Protocol" value={proto.label} />
-          <InfoRow label="Vendor" value={meter.vendor} />
           <InfoRow label="Phase" value={meter.phase > 0 ? `L${meter.phase}` : "N/A"} />
           {Object.entries(config).map(([key, value]) => (
             <InfoRow key={key} label={key.replace(/_/g, " ")} value={value} mono={key === "topic" || key === "broker"} />
@@ -378,7 +479,8 @@ function ReadingsPanel({ meter }: { meter: Meter }) {
 // --- Configure Panel ---
 
 function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: string; onSaved?: () => void }) {
-  const [vendor, setVendor] = useState(meter.vendor)
+  const [name, setName] = useState(meter.name)
+  const [serialNumber, setSerialNumber] = useState(meter.serialNumber)
   const [channel, setChannel] = useState<MeterChannel>(meter.channel)
   const [phase, setPhase] = useState(meter.phase)
   const [saving, setSaving] = useState(false)
@@ -394,12 +496,13 @@ function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: stri
       await api("meter.update", {
         siteId,
         id: meter.id,
-        vendor,
+        name,
+        serialNumber,
         phase,
         channel,
       })
       toast.success("Meter updated", {
-        description: `${meter.serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
+        description: `${name || serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
       })
       onSaved?.()
     } catch (err: any) {
@@ -412,14 +515,28 @@ function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: stri
   return (
     <div className="px-4 py-4">
       <div className="space-y-4">
-        {/* Vendor */}
+        {/* Name */}
         <div>
-          <Label className="text-xs text-muted-foreground">Vendor</Label>
+          <Label className="text-xs text-muted-foreground">Name</Label>
           <Input
-            value={vendor}
-            onChange={(e) => setVendor(e.target.value)}
-            placeholder="e.g. Eastron"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Main Grid Meter"
             className="mt-1.5"
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground/40">
+            Optional display name — defaults to serial number
+          </p>
+        </div>
+
+        {/* Serial Number */}
+        <div>
+          <Label className="text-xs text-muted-foreground">Serial Number</Label>
+          <Input
+            value={serialNumber}
+            onChange={(e) => setSerialNumber(e.target.value)}
+            placeholder="e.g. SDM-2030-4821"
+            className="mt-1.5 font-mono text-sm"
           />
         </div>
 

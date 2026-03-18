@@ -506,7 +506,6 @@ function AddMeterDialog({
   const [channel, setChannel] = useState<MeterChannel>(DEVICE_CHANNEL_HINTS[deviceType][0] ?? "load")
   const [phase, setPhase] = useState(0)
   const [serialNumber, setSerialNumber] = useState("")
-  const [vendor, setVendor] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit() {
@@ -521,7 +520,6 @@ function AddMeterDialog({
         deviceId,
         serialNumber: serialNumber.trim(),
         protocol,
-        vendor: vendor.trim(),
         phase,
         channel,
       })
@@ -540,7 +538,6 @@ function AddMeterDialog({
 
   function resetForm() {
     setSerialNumber("")
-    setVendor("")
     setProtocol("mqtt")
     setChannel(DEVICE_CHANNEL_HINTS[deviceType][0] ?? "load")
     setPhase(0)
@@ -570,26 +567,15 @@ function AddMeterDialog({
         {/* Form */}
         <div className="max-h-[65vh] overflow-y-auto">
           <div className="space-y-5 p-6">
-            {/* Serial & Vendor */}
-            <div className="grid grid-cols-5 gap-3">
-              <div className="col-span-3">
-                <Label className="text-xs text-muted-foreground">Serial Number</Label>
-                <Input
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="e.g. SDM-2030-4821"
-                  className="mt-1.5 font-mono text-sm"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-xs text-muted-foreground">Vendor</Label>
-                <Input
-                  value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
-                  placeholder="e.g. Eastron"
-                  className="mt-1.5"
-                />
-              </div>
+            {/* Serial Number */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Serial Number</Label>
+              <Input
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="e.g. SDM-2030-4821"
+                className="mt-1.5 font-mono text-sm"
+              />
             </div>
 
             {/* Channel */}

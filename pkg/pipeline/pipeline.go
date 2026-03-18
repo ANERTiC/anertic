@@ -28,14 +28,21 @@ type Pipeline struct {
 
 // Reading represents a raw sensor reading from MQTT.
 type Reading struct {
-	MeterID   string  `json:"meter_id"`
-	PowerW    float64 `json:"power_w"`
-	EnergyKWh float64 `json:"energy_kwh"`
-	VoltageV  float64 `json:"voltage_v"`
-	CurrentA  float64 `json:"current_a"`
-	Frequency float64 `json:"frequency"`
-	PF        float64 `json:"pf"`
-	Timestamp string  `json:"timestamp"`
+	MeterID            string  `json:"meter_id"`
+	PowerW             float64 `json:"power_w"`
+	EnergyKWh          float64 `json:"energy_kwh"`
+	VoltageV           float64 `json:"voltage_v"`
+	CurrentA           float64 `json:"current_a"`
+	Frequency          float64 `json:"frequency"`
+	PF                 float64 `json:"pf"`
+	ApparentPowerVA    float64 `json:"apparent_power_va"`
+	ReactivePowerVAR   float64 `json:"reactive_power_var"`
+	ApparentEnergyKVAh float64 `json:"apparent_energy_kvah"`
+	ReactiveEnergyKVARh float64 `json:"reactive_energy_kvarh"`
+	THDV               float64 `json:"thd_v"`
+	THDI               float64 `json:"thd_i"`
+	TemperatureC       float64 `json:"temperature_c"`
+	Timestamp          string  `json:"timestamp"`
 }
 
 func New(cfg Config) (*Pipeline, error) {
@@ -108,8 +115,8 @@ func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
 	}
 
 	// Insert into TimescaleDB
-	_, err = p.db.ExecContext(ctx,
-		`INSERT INTO readings (
+	_, err = p.db.ExecContext(ctx, `
+		insert into meter_readings (
 			time,
 			meter_id,
 			power_w,
@@ -117,8 +124,16 @@ func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
 			voltage_v,
 			current_a,
 			frequency,
-			pf
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			pf,
+			apparent_power_va,
+			reactive_power_var,
+			apparent_energy_kvah,
+			reactive_energy_kvarh,
+			thd_v,
+			thd_i,
+			temperature_c
+		) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	`,
 		ts,
 		r.MeterID,
 		r.PowerW,
@@ -127,6 +142,13 @@ func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
 		r.CurrentA,
 		r.Frequency,
 		r.PF,
+		r.ApparentPowerVA,
+		r.ReactivePowerVAR,
+		r.ApparentEnergyKVAh,
+		r.ReactiveEnergyKVARh,
+		r.THDV,
+		r.THDI,
+		r.TemperatureC,
 	)
 	if err != nil {
 		slog.Error("failed to insert reading", "error", err)
@@ -135,13 +157,20 @@ func (p *Pipeline) handleMessage(ctx context.Context, msg mqtt.Message) {
 
 	// Update meter's latest reading
 	latestReading, _ := json.Marshal(map[string]any{
-		"time":      ts,
-		"powerW":    r.PowerW,
-		"energyKwh": r.EnergyKWh,
-		"voltageV":  r.VoltageV,
-		"currentA":  r.CurrentA,
-		"frequency": r.Frequency,
-		"pf":        r.PF,
+		"time":                ts,
+		"powerW":              r.PowerW,
+		"energyKwh":           r.EnergyKWh,
+		"voltageV":            r.VoltageV,
+		"currentA":            r.CurrentA,
+		"frequency":           r.Frequency,
+		"pf":                  r.PF,
+		"apparentPowerVa":     r.ApparentPowerVA,
+		"reactivePowerVar":    r.ReactivePowerVAR,
+		"apparentEnergyKvah":  r.ApparentEnergyKVAh,
+		"reactiveEnergyKvarh": r.ReactiveEnergyKVARh,
+		"thdV":                r.THDV,
+		"thdI":                r.THDI,
+		"temperatureC":        r.TemperatureC,
 	})
 	_, err = p.db.ExecContext(ctx, `
 		update meters

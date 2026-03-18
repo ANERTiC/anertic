@@ -49,7 +49,7 @@ func Query(ctx context.Context, p *QueryParams) (*QueryResult, error) {
 	var table string
 	switch interval {
 	case "raw":
-		table = "readings"
+		table = "meter_readings"
 	case "daily":
 		table = "readings_daily"
 	default:
@@ -145,7 +145,7 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 	var r Reading
 	err := pgctx.QueryRow(ctx, `
 		select
-			(m.latest_reading->>'time')::timestamptz,
+			m.last_seen_at,
 			coalesce((m.latest_reading->>'powerW')::float8, 0),
 			coalesce((m.latest_reading->>'energyKwh')::float8, 0),
 			coalesce((m.latest_reading->>'voltageV')::float8, 0),
@@ -153,7 +153,7 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 		from meters m
 		where m.device_id = $1
 		  and m.latest_reading is not null
-		order by (m.latest_reading->>'time')::timestamptz desc
+		order by m.last_seen_at desc
 		limit 1
 	`, p.DeviceID).Scan(
 		&r.Time,

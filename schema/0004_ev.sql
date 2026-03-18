@@ -45,6 +45,7 @@ create table if not exists ev_chargers
     set_charging_profile_status       smallint not null default 0,
     clear_charging_profile_status     smallint not null default 0,
     get_composite_schedule_status     smallint not null default 0,
+    trigger_message_status            smallint not null default 0,
     --
     current_session          jsonb,
     last_heartbeat_at        timestamptz,

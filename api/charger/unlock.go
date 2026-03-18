@@ -27,7 +27,9 @@ func (p *UnlockConnectorParams) Valid() error {
 	return v.Error()
 }
 
-func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*struct{}, error) {
+type UnlockConnectorResult struct{}
+
+func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*UnlockConnectorResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -63,9 +65,19 @@ func UnlockConnector(ctx context.Context, p *UnlockConnectorParams) (*struct{}, 
 		return nil, err
 	}
 
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set unlock_connector_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := ocpp.SendCommand(ctx, chargePointID, "UnlockConnector", payload); err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	return &UnlockConnectorResult{}, nil
 }

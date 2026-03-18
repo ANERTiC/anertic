@@ -28,7 +28,9 @@ func (p *ChangeAvailabilityParams) Valid() error {
 	return v.Error()
 }
 
-func ChangeAvailability(ctx context.Context, p *ChangeAvailabilityParams) (*struct{}, error) {
+type ChangeAvailabilityResult struct{}
+
+func ChangeAvailability(ctx context.Context, p *ChangeAvailabilityParams) (*ChangeAvailabilityResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -66,9 +68,19 @@ func ChangeAvailability(ctx context.Context, p *ChangeAvailabilityParams) (*stru
 		return nil, err
 	}
 
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set change_availability_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := ocpp.SendCommand(ctx, chargePointID, "ChangeAvailability", payload); err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	return &ChangeAvailabilityResult{}, nil
 }

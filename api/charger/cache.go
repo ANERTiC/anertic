@@ -25,7 +25,9 @@ func (p *ClearCacheParams) Valid() error {
 	return v.Error()
 }
 
-func ClearCache(ctx context.Context, p *ClearCacheParams) (*struct{}, error) {
+type ClearCacheResult struct{}
+
+func ClearCache(ctx context.Context, p *ClearCacheParams) (*ClearCacheResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -59,9 +61,19 @@ func ClearCache(ctx context.Context, p *ClearCacheParams) (*struct{}, error) {
 		return nil, err
 	}
 
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set clear_cache_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := ocpp.SendCommand(ctx, chargePointID, "ClearCache", payload); err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	return &ClearCacheResult{}, nil
 }

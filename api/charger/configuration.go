@@ -29,7 +29,9 @@ func (p *ChangeConfigurationParams) Valid() error {
 	return v.Error()
 }
 
-func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*struct{}, error) {
+type ChangeConfigurationResult struct{}
+
+func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*ChangeConfigurationResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
 	}
@@ -69,9 +71,19 @@ func ChangeConfiguration(ctx context.Context, p *ChangeConfigurationParams) (*st
 		return nil, err
 	}
 
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set change_configuration_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := ocpp.SendCommand(ctx, chargePointID, "ChangeConfiguration", payload); err != nil {
 		return nil, err
 	}
 
-	return new(struct{}), nil
+	return &ChangeConfigurationResult{}, nil
 }

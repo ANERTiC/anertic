@@ -108,6 +108,16 @@ func UpdateFirmware(ctx context.Context, p *UpdateFirmwareParams) (*UpdateFirmwa
 		return nil, err
 	}
 
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set update_firmware_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := ocpp.SendCommand(ctx, chargePointID, "UpdateFirmware", payload); err != nil {
 		return nil, err
 	}
@@ -210,6 +220,16 @@ func GetDiagnostics(ctx context.Context, p *GetDiagnosticsParams) (*GetDiagnosti
 	}
 
 	payload, err := json.Marshal(pl)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = pgctx.Exec(ctx, `
+		update ev_chargers
+		set get_diagnostics_status = 0,
+		    updated_at = now()
+		where id = $1
+	`, p.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ import {
   RiChargingPile2Line,
   RiUserLine,
   RiSpeedLine,
+  RiRemoteControlLine,
   RiCalendarCheckLine,
   RiCalendarCloseLine,
   RiLoader4Line,
@@ -64,6 +65,7 @@ import {
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog'
 import { cn } from '~/lib/utils'
+import { CommandsTab } from '~/components/commands-tab'
 
 // --- Types ---
 
@@ -801,6 +803,10 @@ export default function ChargerDetail() {
               <RiSettings3Line className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
+            <TabsTrigger value="commands">
+              <RiRemoteControlLine className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Commands</span>
+            </TabsTrigger>
             <TabsTrigger value="log">
               <RiHistoryLine className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">OCPP Logs</span>
@@ -922,6 +928,18 @@ export default function ChargerDetail() {
         {/* Settings */}
         <TabsContent value="settings" className="mt-4">
           <SettingsTab charger={charger} />
+        </TabsContent>
+
+        {/* Commands */}
+        <TabsContent value="commands" className="mt-4">
+          <CommandsTab
+            chargerId={charger.id}
+            connectors={charger.connectors.map((c) => ({
+              id: c.id,
+              status: c.status,
+            }))}
+            ocppVersion={charger.ocppVersion}
+          />
         </TabsContent>
 
         {/* OCPP Logs */}

@@ -63,15 +63,17 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			c.EqRaw("sm.site_id", "s.id")
 		})
 		b.Where(func(c pgstmt.Cond) {
+			c.Mode().And()
 			c.Eq("sm.user_id", userID)
+			if p.Search != "" {
+				search := "%" + p.Search + "%"
+				c.And(func(w pgstmt.Cond) {
+					w.Mode().Or()
+					w.ILike("s.name", search)
+					w.ILike("s.address", search)
+				})
+			}
 		})
-		if p.Search != "" {
-			b.Where(func(c pgstmt.Cond) {
-				c.Mode().Or()
-				c.ILike("s.name", "%"+p.Search+"%")
-				c.ILike("s.address", "%"+p.Search+"%")
-			})
-		}
 		b.OrderBy("s.created_at DESC")
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item

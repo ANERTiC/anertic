@@ -35,8 +35,7 @@ type Context struct {
 func Setup() *Context {
 	dbSource := os.Getenv("TEST_DB_URL")
 	if dbSource == "" {
-		// Same host/user as DB_URL in CLAUDE.md; %s is the ephemeral test database name.
-		dbSource = "postgres://anertic:anertic@localhost:5432/%s?sslmode=disable"
+		panic("TEST_DB_URL env required")
 	}
 
 	redisURL := cmp.Or(os.Getenv("TEST_REDIS_URL"), "redis://localhost:6379")

@@ -645,7 +645,7 @@ func TestDelete(t *testing.T) {
 		t.Skip("TEST_DB_URL not set, skipping integration test")
 	}
 
-	t.Run("success_removes_site_and_membership", func(t *testing.T) {
+	t.Run("success_soft_deletes_site_row", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
 		defer tc.Teardown()
@@ -657,13 +657,22 @@ func TestDelete(t *testing.T) {
 		require.NoError(t, err)
 
 		var n int
-		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1`, siteID).Scan(&n)
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1 and deleted_at is null`, siteID).Scan(&n)
 		require.NoError(t, err)
 		assert.Equal(t, 0, n)
 
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1`, siteID).Scan(&n)
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+
+		var deletedAt *time.Time
+		err = pgctx.QueryRow(tc.Ctx(), `select deleted_at from sites where id = $1`, siteID).Scan(&deletedAt)
+		require.NoError(t, err)
+		require.NotNil(t, deletedAt)
+
 		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from site_members where site_id = $1`, siteID).Scan(&n)
 		require.NoError(t, err)
-		assert.Equal(t, 0, n)
+		assert.Equal(t, 1, n)
 	})
 
 	t.Run("success_owner_star_role", func(t *testing.T) {
@@ -689,6 +698,27 @@ func TestDelete(t *testing.T) {
 		actx := auth.WithAccountID(ctx, userID)
 		_, err = Delete(actx, &DeleteParams{ID: siteID})
 		require.NoError(t, err)
+
+		var deletedAt *time.Time
+		err = pgctx.QueryRow(tc.Ctx(), `select deleted_at from sites where id = $1`, siteID).Scan(&deletedAt)
+		require.NoError(t, err)
+		require.NotNil(t, deletedAt)
+	})
+
+	t.Run("second_delete_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
 	})
 
 	t.Run("forbidden_viewer", func(t *testing.T) {
@@ -709,7 +739,7 @@ func TestDelete(t *testing.T) {
 		assert.Equal(t, iam.ErrForbidden, err)
 
 		var n int
-		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1`, siteID).Scan(&n)
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1 and deleted_at is null`, siteID).Scan(&n)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})

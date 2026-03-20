@@ -275,13 +275,15 @@ func AcceptInvite(ctx context.Context, p *AcceptInviteParams) (*struct{}, error)
 	var siteID, email, role string
 	err := pgctx.QueryRow(ctx, `
 		select
-			site_id,
-			email,
-			role
-		from site_member_invitations
-		where id = $1
-		  and status = 'pending'
-		  and expires_at > now()
+			i.site_id,
+			i.email,
+			i.role
+		from site_member_invitations i
+		join sites s on s.id = i.site_id
+		where i.id = $1
+		  and i.status = 'pending'
+		  and i.expires_at > now()
+		  and s.deleted_at is null
 	`,
 		p.ID,
 	).Scan(
@@ -390,6 +392,7 @@ func MyInvites(ctx context.Context, _ *struct{}) (*MyInvitesResult, error) {
 		where i.email = $1
 		  and i.status = 'pending'
 		  and i.expires_at > now()
+		  and s.deleted_at is null
 		order by i.created_at desc
 	`,
 		email,

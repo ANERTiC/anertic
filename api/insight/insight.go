@@ -70,6 +70,7 @@ func Summary(ctx context.Context, p *SummaryParams) (*SummaryResult, error) {
 		select savings_target_kwh
 		from sites
 		where id = $1
+		  and deleted_at is null
 	`, p.SiteID).Scan(&r.SavingsTarget)
 
 	pgctx.QueryRow(ctx, `

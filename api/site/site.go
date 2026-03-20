@@ -65,6 +65,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("sm.user_id", userID)
+			c.IsNull("s.deleted_at")
 			if p.Search != "" {
 				search := "%" + p.Search + "%"
 				c.And(func(w pgstmt.Cond) {
@@ -223,6 +224,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			created_at
 		from sites
 		where id = $1
+		  and deleted_at is null
 	`, p.ID).Scan(
 		&r.ID,
 		&r.Name,
@@ -290,6 +292,7 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		b.Set("updated_at").ToRaw("NOW()")
 		b.Where(func(c pgstmt.Cond) {
 			c.Eq("id", p.ID)
+			c.IsNull("deleted_at")
 		})
 	}).ExecWith(ctx)
 	if err != nil {
@@ -355,6 +358,7 @@ func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error)
 		b.Set("updated_at").ToRaw("NOW()")
 		b.Where(func(c pgstmt.Cond) {
 			c.Eq("id", p.ID)
+			c.IsNull("deleted_at")
 		})
 	}).ExecWith(ctx)
 	if err != nil {
@@ -376,9 +380,8 @@ func (p *DeleteParams) Valid() error {
 	return v.Error()
 }
 
-// Delete permanently removes a site and dependent application data in one transaction.
-// Order respects FKs under schema/: EV charger subtree, room assignments, meter readings,
-// meters/devices, rooms/floors, insights, aggregates, memberships, then the site row.
+// Delete soft-deletes the site (sets deleted_at). Child rows are retained; the site no
+// longer appears in the API or ingest (see iam.InSite, ValidateSite, list queries).
 func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
@@ -387,53 +390,23 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	err := pgctx.RunInTx(ctx, func(ctx context.Context) error {
-		siteID := p.ID
-
-		stmts := []string{
-			`delete from ev_charging_profiles where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_reservations where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_firmware_updates where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_configurations where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_connectors where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_authorization_tags where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_charging_sessions where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_meter_values where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_message_log where charger_id in (select id from ev_chargers where site_id = $1)`,
-			`delete from ev_chargers where site_id = $1`,
-			`delete from room_devices where room_id in (select id from rooms where site_id = $1) or device_id in (select id from devices where site_id = $1)`,
-			`delete from meter_readings where meter_id in (select id from meters where site_id = $1)`,
-			`delete from meters where site_id = $1`,
-			`delete from devices where site_id = $1`,
-			`delete from rooms where site_id = $1`,
-			`delete from floors where site_id = $1`,
-			`delete from insights where site_id = $1`,
-			`delete from anomalies where site_id = $1`,
-			`delete from site_energy_daily where site_id = $1`,
-			`delete from site_member_invitations where site_id = $1`,
-			`delete from site_members where site_id = $1`,
-			`delete from sites where id = $1`,
-		}
-
-		for i, q := range stmts {
-			res, err := pgctx.Exec(ctx, q, siteID)
-			if err != nil {
-				return err
-			}
-			if i == len(stmts)-1 {
-				n, err := res.RowsAffected()
-				if err != nil {
-					return err
-				}
-				if n == 0 {
-					return ErrNotFound
-				}
-			}
-		}
-		return nil
-	})
+	res, err := pgctx.Exec(ctx, `
+		update sites
+		set
+			deleted_at = now(),
+			updated_at = now()
+		where id = $1
+		  and deleted_at is null
+	`, p.ID)
 	if err != nil {
 		return nil, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, ErrNotFound
 	}
 
 	return new(struct{}), nil

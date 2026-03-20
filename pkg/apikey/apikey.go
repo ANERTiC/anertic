@@ -43,6 +43,7 @@ func ValidateSite(ctx context.Context, rawKey string) (siteID string, err error)
 		select id
 		from sites
 		where api_key = $1
+		  and deleted_at is null
 	`, hashed).Scan(&siteID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrInvalid

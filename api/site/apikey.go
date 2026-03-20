@@ -46,6 +46,7 @@ func GetApiKey(ctx context.Context, p *GetApiKeyParams) (*GetApiKeyResult, error
 			api_key_created_at
 		from sites
 		where id = $1
+		  and deleted_at is null
 	`, p.SiteID).Scan(
 		&key,
 		pgsql.Null(&createdAt),
@@ -95,6 +96,7 @@ func RegenerateApiKey(ctx context.Context, p *RegenerateApiKeyParams) (*Regenera
 			api_key_created_at = now(),
 			updated_at = now()
 		where id = $1
+		  and deleted_at is null
 	`, p.SiteID, hashed)
 	if err != nil {
 		return nil, err

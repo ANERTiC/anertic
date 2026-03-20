@@ -91,7 +91,7 @@ func (w *Worker) generateInsights(ctx context.Context) {
 }
 
 func (w *Worker) listActiveSites(ctx context.Context) ([]string, error) {
-	rows, err := w.db.QueryContext(ctx, `select id from sites`)
+	rows, err := w.db.QueryContext(ctx, `select id from sites where deleted_at is null`)
 	if err != nil {
 		return nil, err
 	}

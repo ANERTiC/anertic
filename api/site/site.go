@@ -364,6 +364,81 @@ func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error)
 	return new(struct{}), nil
 }
 
+// Delete
+
+type DeleteParams struct {
+	ID string `json:"id"`
+}
+
+func (p *DeleteParams) Valid() error {
+	v := validator.New()
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+// Delete permanently removes a site and dependent application data in one transaction.
+// Order respects FKs under schema/: EV charger subtree, room assignments, meter readings,
+// meters/devices, rooms/floors, insights, aggregates, memberships, then the site row.
+func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.RequireSiteOwner(ctx, p.ID); err != nil {
+		return nil, err
+	}
+
+	err := pgctx.RunInTx(ctx, func(ctx context.Context) error {
+		siteID := p.ID
+
+		stmts := []string{
+			`delete from ev_charging_profiles where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_reservations where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_firmware_updates where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_configurations where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_connectors where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_authorization_tags where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_charging_sessions where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_meter_values where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_message_log where charger_id in (select id from ev_chargers where site_id = $1)`,
+			`delete from ev_chargers where site_id = $1`,
+			`delete from room_devices where room_id in (select id from rooms where site_id = $1) or device_id in (select id from devices where site_id = $1)`,
+			`delete from meter_readings where meter_id in (select id from meters where site_id = $1)`,
+			`delete from meters where site_id = $1`,
+			`delete from devices where site_id = $1`,
+			`delete from rooms where site_id = $1`,
+			`delete from floors where site_id = $1`,
+			`delete from insights where site_id = $1`,
+			`delete from anomalies where site_id = $1`,
+			`delete from site_energy_daily where site_id = $1`,
+			`delete from site_member_invitations where site_id = $1`,
+			`delete from site_members where site_id = $1`,
+			`delete from sites where id = $1`,
+		}
+
+		for i, q := range stmts {
+			res, err := pgctx.Exec(ctx, q, siteID)
+			if err != nil {
+				return err
+			}
+			if i == len(stmts)-1 {
+				n, err := res.RowsAffected()
+				if err != nil {
+					return err
+				}
+				if n == 0 {
+					return ErrNotFound
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
 func createStarterDevice(ctx context.Context, siteID string) error {
 	// Grid meter
 	gridDeviceID := xid.New().String()

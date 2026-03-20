@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/tu"
 )
 
@@ -636,6 +637,125 @@ func TestCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "สำนักงานใหญ่", got.Name)
 		assert.Equal(t, "กรุงเทพมหานคร", got.Address)
+	})
+}
+
+func TestDelete(t *testing.T) {
+	if os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("TEST_DB_URL not set, skipping integration test")
+	}
+
+	t.Run("success_removes_site_and_membership", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		var n int
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1`, siteID).Scan(&n)
+		require.NoError(t, err)
+		assert.Equal(t, 0, n)
+
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from site_members where site_id = $1`, siteID).Scan(&n)
+		require.NoError(t, err)
+		assert.Equal(t, 0, n)
+	})
+
+	t.Run("success_owner_star_role", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		ctx := tc.Ctx()
+		userID := xid.New().String()
+		siteID := xid.New().String()
+
+		_, err := pgctx.Exec(ctx, `
+			insert into users (id, email, name) values ($1, $2, $3)
+		`, userID, userID+"@test.com", "Owner")
+		require.NoError(t, err)
+		_, err = pgctx.Exec(ctx, `insert into sites (id, name) values ($1, $2)`, siteID, "S")
+		require.NoError(t, err)
+		_, err = pgctx.Exec(ctx, `
+			insert into site_members (site_id, user_id, role) values ($1, $2, '*')
+		`, siteID, userID)
+		require.NoError(t, err)
+
+		actx := auth.WithAccountID(ctx, userID)
+		_, err = Delete(actx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+	})
+
+	t.Run("forbidden_viewer", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithOwner(t, tc)
+		viewerID := seedUser(t, tc)
+		_, err := pgctx.Exec(tc.Ctx(), `
+			insert into site_members (site_id, user_id, role) values ($1, $2, 'viewer')
+		`, siteID, viewerID)
+		require.NoError(t, err)
+
+		ctx := auth.WithAccountID(tc.Ctx(), viewerID)
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+
+		var n int
+		err = pgctx.QueryRow(tc.Ctx(), `select count(*) from sites where id = $1`, siteID).Scan(&n)
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("forbidden_editor", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithOwner(t, tc)
+		editorID := seedUser(t, tc)
+		_, err := pgctx.Exec(tc.Ctx(), `
+			insert into site_members (site_id, user_id, role) values ($1, $2, 'editor')
+		`, siteID, editorID)
+		require.NoError(t, err)
+
+		ctx := auth.WithAccountID(tc.Ctx(), editorID)
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("forbidden_not_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithOwner(t, tc)
+		otherID := seedUser(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), otherID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("validation_missing_id", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, _ := seedSiteWithOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: ""})
+		require.Error(t, err)
 	})
 }
 

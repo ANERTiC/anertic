@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import {
@@ -38,7 +39,8 @@ import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { cn } from '~/lib/utils'
-import { api } from '~/lib/api'
+import { api, ApiError } from '~/lib/api'
+import { removeCookie } from '~/lib/cookie'
 import { getUser } from '~/lib/auth'
 import { Skeleton } from '~/components/ui/skeleton'
 
@@ -172,6 +174,7 @@ function SectionHeader({
 // --- Main Component ---
 
 export default function Settings() {
+  const navigate = useNavigate()
   const { mutate: globalMutate } = useSWRConfig()
   const siteId = useSiteId()
   const currentUser = getUser()
@@ -208,6 +211,7 @@ export default function Settings() {
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingSite, setDeletingSite] = useState(false)
   const [members, setMembers] = useState<SiteMember[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
   const [showInviteForm, setShowInviteForm] = useState(false)
@@ -410,6 +414,36 @@ export default function Settings() {
     navigator.clipboard.writeText(generatedApiKey)
     setCopiedKey(true)
     setTimeout(() => setCopiedKey(false), 2000)
+  }
+
+  const myMemberRole = members.find((m) => m.userId === currentUser?.id)?.role
+  const isSiteOwner = myMemberRole === '*'
+
+  async function handleDeleteSite() {
+    if (!siteId) return
+    setDeletingSite(true)
+    try {
+      await api('site.delete', { id: siteId })
+      toast.success('Site deleted')
+      removeCookie('anertic_current_site')
+      await globalMutate(
+        (key) => Array.isArray(key) && key[0] === 'site.list',
+        undefined,
+        { revalidate: true }
+      )
+      navigate('/sites')
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Failed to delete site'
+      toast.error(msg)
+    } finally {
+      setDeletingSite(false)
+      setShowDeleteConfirm(false)
+    }
   }
 
   async function handleRegenerateApiKey() {
@@ -1328,50 +1362,65 @@ export default function Settings() {
       {/* ──────────────────────────────
           DANGER ZONE
           ────────────────────────────── */}
-      <Card className="border-red-200/50 py-0">
-        <CardContent className="p-6">
-          <SectionHeader
-            icon={RiShieldLine}
-            title="Danger Zone"
-            description="Irreversible actions that affect your site"
-          />
+      {membersData !== undefined && (
+        <Card className="border-red-200/50 py-0">
+          <CardContent className="p-6">
+            <SectionHeader
+              icon={RiShieldLine}
+              title="Danger Zone"
+              description="Destructive actions for this site"
+            />
 
-          <div className="mt-6 flex items-center justify-between rounded-lg border border-red-200/50 bg-red-500/5 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Delete this site</p>
-              <p className="text-xs text-muted-foreground">
-                Permanently remove this site, all devices, and historical data.
-                This cannot be undone.
-              </p>
-            </div>
-            {showDeleteConfirm ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="destructive" size="sm" className="gap-1.5">
-                  <RiDeleteBinLine className="size-3.5" />
-                  Confirm Delete
-                </Button>
+            {isSiteOwner ? (
+              <div className="mt-6 flex flex-col gap-3 rounded-lg border border-red-200/50 bg-red-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Delete this site</p>
+                  <p className="text-xs text-muted-foreground">
+                    Marks the site as deleted. You will lose access in the app;
+                    devices and history remain in the system.
+                  </p>
+                </div>
+                {showDeleteConfirm ? (
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deletingSite}
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={deletingSite}
+                      onClick={() => void handleDeleteSite()}
+                    >
+                      <RiDeleteBinLine className="size-3.5" />
+                      {deletingSite ? 'Deleting…' : 'Confirm delete'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <RiAlertLine className="size-3.5" />
+                    Delete site
+                  </Button>
+                )}
               </div>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <RiAlertLine className="size-3.5" />
-                Delete Site
-              </Button>
+              <p className="mt-6 text-xs text-muted-foreground">
+                Only the site owner can delete this site.
+              </p>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

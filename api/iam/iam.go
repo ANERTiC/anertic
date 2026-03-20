@@ -15,9 +15,9 @@ var (
 	ErrForbidden = arpc.NewErrorCode("iam/forbidden", "you do not have access to this site")
 )
 
-// RequireSiteOwner allows only the site owner role (`*`, matching site.create and ListRoles).
+// SiteOwner allows only the site owner role (`*`, matching site.create and ListRoles).
 // The literal "owner" is accepted for compatibility with older test data and seeds.
-func RequireSiteOwner(ctx context.Context, siteID string) error {
+func SiteOwner(ctx context.Context, siteID string) error {
 	userID := auth.AccountID(ctx)
 
 	var role string

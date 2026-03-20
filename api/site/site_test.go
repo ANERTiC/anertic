@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anertic/anertic/api/auth"
+	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/tu"
 )
 
@@ -637,6 +638,183 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, "สำนักงานใหญ่", got.Name)
 		assert.Equal(t, "กรุงเทพมหานคร", got.Address)
 	})
+}
+
+func TestDelete(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithWildcardOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		// Verify deleted_at is set in the database
+		var deletedAt *time.Time
+		err = pgctx.QueryRow(ctx, `
+			select deleted_at
+			from sites
+			where id = $1
+		`, siteID).Scan(
+			&deletedAt,
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, deletedAt)
+	})
+
+	t.Run("deleted_site_not_in_list", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithWildcardOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		// Verify site appears in list before delete
+		listBefore, err := List(ctx, &ListParams{})
+		require.NoError(t, err)
+		require.Len(t, listBefore.Items, 1)
+		assert.Equal(t, siteID, listBefore.Items[0].ID)
+
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		// Verify site is excluded from list after delete
+		listAfter, err := List(ctx, &ListParams{})
+		require.NoError(t, err)
+		assert.Empty(t, listAfter.Items)
+	})
+
+	t.Run("deleted_site_not_in_get", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithWildcardOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		// Verify get works before delete
+		_, err := Get(ctx, &GetParams{ID: siteID})
+		require.NoError(t, err)
+
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		// Verify get returns not found after delete
+		_, err = Get(ctx, &GetParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("double_delete_returns_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedSiteWithWildcardOwner(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: siteID})
+		require.NoError(t, err)
+
+		_, err = Delete(ctx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("forbidden_for_non_owner", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithWildcardOwner(t, tc)
+
+		viewerID := seedUser(t, tc)
+		_, err := pgctx.Exec(tc.Ctx(), `
+			insert into site_members (site_id, user_id, role) values ($1, $2, $3)
+		`, siteID, viewerID, "viewer")
+		require.NoError(t, err)
+
+		viewerCtx := auth.WithAccountID(tc.Ctx(), viewerID)
+		_, err = Delete(viewerCtx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("forbidden_for_editor", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithWildcardOwner(t, tc)
+
+		editorID := seedUser(t, tc)
+		_, err := pgctx.Exec(tc.Ctx(), `
+			insert into site_members (site_id, user_id, role) values ($1, $2, $3)
+		`, siteID, editorID, "editor")
+		require.NoError(t, err)
+
+		editorCtx := auth.WithAccountID(tc.Ctx(), editorID)
+		_, err = Delete(editorCtx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("validation_error_empty_id", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID := seedUser(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Delete(ctx, &DeleteParams{ID: ""})
+		require.Error(t, err)
+	})
+
+	t.Run("forbidden_for_non_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedSiteWithWildcardOwner(t, tc)
+
+		nonMemberID := seedUser(t, tc)
+		nonMemberCtx := auth.WithAccountID(tc.Ctx(), nonMemberID)
+
+		_, err := Delete(nonMemberCtx, &DeleteParams{ID: siteID})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+}
+
+// seedSiteWithWildcardOwner creates a user, a site, and membership with role '*'. Returns userID and siteID.
+func seedSiteWithWildcardOwner(t *testing.T, tc *tu.Context) (userID, siteID string) {
+	t.Helper()
+	ctx := tc.Ctx()
+
+	userID = xid.New().String()
+	siteID = xid.New().String()
+
+	_, err := pgctx.Exec(ctx, `
+		insert into users (id, email, name) values ($1, $2, $3)
+	`, userID, userID+"@test.com", "Owner")
+	require.NoError(t, err)
+
+	_, err = pgctx.Exec(ctx, `
+		insert into sites (id, name) values ($1, $2)
+	`, siteID, "Test Site")
+	require.NoError(t, err)
+
+	_, err = pgctx.Exec(ctx, `
+		insert into site_members (site_id, user_id, role) values ($1, $2, $3)
+	`, siteID, userID, "*")
+	require.NoError(t, err)
+
+	return userID, siteID
 }
 
 // seedUser creates a standalone user for testing and returns their ID.

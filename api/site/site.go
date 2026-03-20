@@ -391,9 +391,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'grid')
+		) values ($1, $2, $3, $4, 'mqtt', 'grid')
 	`,
 		gridMeterID,
 		siteID,
@@ -432,9 +431,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Huawei', 'pv')
+		) values ($1, $2, $3, $4, 'mqtt', 'pv')
 	`,
 		solarMeterID,
 		siteID,
@@ -473,9 +471,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'load')
+		) values ($1, $2, $3, $4, 'mqtt', 'load')
 	`,
 		floorMeterID,
 		siteID,
@@ -514,9 +511,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Tesla', 'battery')
+		) values ($1, $2, $3, $4, 'mqtt', 'battery')
 	`,
 		batteryMeterID,
 		siteID,

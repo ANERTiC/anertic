@@ -63,15 +63,17 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			c.EqRaw("sm.site_id", "s.id")
 		})
 		b.Where(func(c pgstmt.Cond) {
+			c.Mode().And()
 			c.Eq("sm.user_id", userID)
+			if p.Search != "" {
+				search := "%" + p.Search + "%"
+				c.And(func(w pgstmt.Cond) {
+					w.Mode().Or()
+					w.ILike("s.name", search)
+					w.ILike("s.address", search)
+				})
+			}
 		})
-		if p.Search != "" {
-			b.Where(func(c pgstmt.Cond) {
-				c.Mode().Or()
-				c.ILike("s.name", "%"+p.Search+"%")
-				c.ILike("s.address", "%"+p.Search+"%")
-			})
-		}
 		b.OrderBy("s.created_at DESC")
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it Item
@@ -391,9 +393,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'grid')
+		) values ($1, $2, $3, $4, 'mqtt', 'grid')
 	`,
 		gridMeterID,
 		siteID,
@@ -432,9 +433,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Huawei', 'pv')
+		) values ($1, $2, $3, $4, 'mqtt', 'pv')
 	`,
 		solarMeterID,
 		siteID,
@@ -473,9 +473,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Eastron', 'load')
+		) values ($1, $2, $3, $4, 'mqtt', 'load')
 	`,
 		floorMeterID,
 		siteID,
@@ -514,9 +513,8 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 			device_id,
 			serial_number,
 			protocol,
-			vendor,
 			channel
-		) values ($1, $2, $3, $4, 'mqtt', 'Tesla', 'battery')
+		) values ($1, $2, $3, $4, 'mqtt', 'battery')
 	`,
 		batteryMeterID,
 		siteID,

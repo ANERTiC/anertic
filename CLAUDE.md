@@ -24,6 +24,9 @@ make fmt-check
 go test ./...
 go test ./pkg/wsredis/   # single package
 
+# DB integration tests (`api/*_test.go`, `schema`) use `pkg/tu`. If `TEST_DB_URL` is unset,
+# it defaults to `postgres://anertic:anertic@localhost:5432/%s?sslmode=disable` (run `make dev-up` first).
+
 # Stop dependencies
 make dev-down
 ```

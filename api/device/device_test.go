@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -17,10 +16,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("empty_list", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -395,10 +390,6 @@ func TestList(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -519,10 +510,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -580,10 +567,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("update_name_only", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -722,10 +705,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()

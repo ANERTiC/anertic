@@ -1,7 +1,6 @@
 package site
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,10 +16,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("empty_when_no_memberships", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -641,10 +636,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success_soft_deletes_site_row", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()

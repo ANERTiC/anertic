@@ -380,8 +380,8 @@ func (p *DeleteParams) Valid() error {
 	return v.Error()
 }
 
-// Delete soft-deletes the site (sets deleted_at). Child rows are retained; the site no
-// longer appears in the API or ingest (see iam.InSite, ValidateSite, list queries).
+// Delete sets sites.deleted_at only. Child rows are unchanged; excluded from API via
+// iam.InSite, list queries, ValidateSite, etc.
 func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err
@@ -392,9 +392,7 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 
 	res, err := pgctx.Exec(ctx, `
 		update sites
-		set
-			deleted_at = now(),
-			updated_at = now()
+		set deleted_at = now()
 		where id = $1
 		  and deleted_at is null
 	`, p.ID)

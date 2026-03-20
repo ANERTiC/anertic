@@ -5,8 +5,8 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: anertic
-      POSTGRES_USER: anertic
-      POSTGRES_PASSWORD: anertic
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
     volumes:
       - pgdata:/home/postgres/pgdata/data
       - ../migration:/docker-entrypoint-initdb.d

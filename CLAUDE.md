@@ -24,7 +24,7 @@ make fmt-check
 go test ./...
 go test ./pkg/wsredis/   # single package
 
-# DB integration tests (`api/*_test.go`, `schema`) require `TEST_DB_URL` (e.g. `postgres://anertic:anertic@localhost:5432/%s?sslmode=disable` after `make dev-up`); unset panics in `pkg/tu.Setup`.
+# DB integration tests (`api/*_test.go`, `schema`) require `TEST_DB_URL` (e.g. `postgres://postgres:password@localhost:5432/%s?sslmode=disable` after `make dev-up`); unset panics in `pkg/tu.Setup`.
 
 # Stop dependencies
 make dev-down
@@ -84,7 +84,7 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
+| `DB_URL` | `postgres://postgres:password@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
 | `REDIS_URL` | `redis://localhost:6379` | Redis |
 | `ADDR` | `:8080` | API server address |
 | `OCPP_ADDR` | `:8081` | OCPP server address |

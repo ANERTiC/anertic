@@ -50,7 +50,7 @@ func run() error {
 	defer cancel()
 
 	// Connect to PostgreSQL and inject into context
-	db, err := sql.Open("postgres", cfg.StringDefault("DB_URL", "postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable"))
+	db, err := sql.Open("postgres", cfg.StringDefault("DB_URL", "postgres://postgres:password@localhost:5432/anertic?sslmode=disable"))
 	if err != nil {
 		return err
 	}

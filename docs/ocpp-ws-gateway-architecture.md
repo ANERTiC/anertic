@@ -284,7 +284,7 @@ All EV-related tables use the `ev_` prefix. Schema defined in `schema/0004_ev.sq
 
 | Env Var | Default | Description |
 |---|---|---|
-| `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL connection |
+| `DB_URL` | `postgres://postgres:password@localhost:5432/anertic?sslmode=disable` | PostgreSQL connection |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection (pool: 20, min idle: 5) |
 | `OCPP_ADDR` | `:8081` | Gateway listen address |
 

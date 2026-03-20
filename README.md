@@ -71,6 +71,6 @@ make dev-down
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL connection string |
+| `DB_URL` | `postgres://postgres:password@localhost:5432/anertic?sslmode=disable` | PostgreSQL connection string |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
 | `ADDR` | `:8080` | API server listen address |

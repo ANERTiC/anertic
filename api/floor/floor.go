@@ -24,8 +24,8 @@ var (
 	ErrDeviceNotFound = arpc.NewErrorCode("floor/device-not-found", "device not found")
 )
 
-// FloorStats holds pre-computed aggregate stats stored in the stats JSONB column.
-type FloorStats struct {
+// Stats holds pre-computed aggregate stats stored in the stats JSONB column.
+type Stats struct {
 	DeviceCount      int             `json:"deviceCount"`
 	LivePowerW       decimal.Decimal `json:"livePowerW"`
 	ConnectionStatus string          `json:"connectionStatus"`
@@ -48,7 +48,7 @@ type Item struct {
 	SiteID    string     `json:"siteId"`
 	Name      string     `json:"name"`
 	Level     int        `json:"level"`
-	Stats     FloorStats `json:"stats"`
+	Stats     Stats `json:"stats"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 }

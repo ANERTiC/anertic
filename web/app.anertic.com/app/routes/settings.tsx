@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router'
+import { useFetcher, redirect } from 'react-router'
+import type { Route } from './+types/settings'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import {
@@ -170,11 +171,26 @@ function SectionHeader({
   )
 }
 
+// --- Action ---
+
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  const formData = await request.formData()
+  const intent = formData.get('intent')
+
+  if (intent === 'delete') {
+    const siteId = formData.get('siteId') as string
+    await api('site.delete', { id: siteId })
+    return redirect('/')
+  }
+
+  throw new Response('Invalid intent', { status: 400 })
+}
+
 // --- Main Component ---
 
 export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
-  const navigate = useNavigate()
+  const deleteFetcher = useFetcher()
   const siteId = useSiteId()
   const currentUser = getUser()
   const [mounted, setMounted] = useState(false)
@@ -210,7 +226,7 @@ export default function Settings() {
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deletingSite, setDeletingSite] = useState(false)
+  const deletingSite = deleteFetcher.state !== 'idle'
   const [members, setMembers] = useState<SiteMember[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
   const [showInviteForm, setShowInviteForm] = useState(false)
@@ -1331,6 +1347,7 @@ export default function Settings() {
       {/* ──────────────────────────────
           DANGER ZONE
           ────────────────────────────── */}
+      {members.some((m) => m.userId === currentUser?.id && m.role === '*') && (
       <Card className="border-red-200/50 py-0">
         <CardContent className="p-6">
           <SectionHeader
@@ -1356,28 +1373,20 @@ export default function Settings() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={deletingSite}
-                  onClick={async () => {
-                    setDeletingSite(true)
-                    try {
-                      await api('site.delete', { id: siteId })
-                      toast.success('Site deleted')
-                      navigate('/dashboard')
-                    } catch (err: unknown) {
-                      const msg =
-                        err instanceof Error ? err.message : 'Failed to delete site'
-                      toast.error(msg)
-                      setDeletingSite(false)
-                    }
-                  }}
-                >
-                  <RiDeleteBinLine className="size-3.5" />
-                  {deletingSite ? 'Deleting…' : 'Confirm Delete'}
-                </Button>
+                <deleteFetcher.Form method="post">
+                  <input type="hidden" name="intent" value="delete" />
+                  <input type="hidden" name="siteId" value={siteId} />
+                  <Button
+                    type="submit"
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={deletingSite}
+                  >
+                    <RiDeleteBinLine className="size-3.5" />
+                    {deletingSite ? 'Deleting…' : 'Confirm Delete'}
+                  </Button>
+                </deleteFetcher.Form>
               </div>
             ) : (
               <Button
@@ -1393,6 +1402,7 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }

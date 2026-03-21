@@ -3,7 +3,6 @@ package floor
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -12,10 +11,10 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
-	"github.com/shopspring/decimal"
 
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/devicestatus"
+	"github.com/anertic/anertic/pkg/floor"
 )
 
 var (
@@ -23,13 +22,6 @@ var (
 	ErrDuplicate      = arpc.NewErrorCode("floor/duplicate-level", "a floor with this level already exists")
 	ErrDeviceNotFound = arpc.NewErrorCode("floor/device-not-found", "device not found")
 )
-
-// Stats holds pre-computed aggregate stats stored in the stats JSONB column.
-type Stats struct {
-	DeviceCount      int             `json:"deviceCount"`
-	LivePowerW       decimal.Decimal `json:"livePowerW"`
-	ConnectionStatus string          `json:"connectionStatus"`
-}
 
 // List
 
@@ -48,7 +40,7 @@ type Item struct {
 	SiteID    string     `json:"siteId"`
 	Name      string     `json:"name"`
 	Level     int        `json:"level"`
-	Stats     Stats `json:"stats"`
+	Stats     floor.Stats `json:"stats"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 }
@@ -86,19 +78,15 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.OrderBy("level").Asc()
 	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var f Item
-		var statsJSON []byte
 		if err := scan(
 			&f.SiteID,
 			&f.Level,
 			&f.Name,
-			&statsJSON,
+			pgsql.JSON(&f.Stats),
 			&f.CreatedAt,
 			&f.UpdatedAt,
 		); err != nil {
 			return err
-		}
-		if len(statsJSON) > 0 {
-			json.Unmarshal(statsJSON, &f.Stats)
 		}
 		items = append(items, f)
 		return nil
@@ -196,7 +184,6 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	}
 
 	var r GetResult
-	var statsJSON []byte
 	err := pgctx.QueryRow(ctx, `
 		select
 			site_id,
@@ -208,11 +195,14 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		from floors
 		where site_id = $1
 		  and level = $2
-	`, p.SiteID, p.Level).Scan(
+	`,
+		p.SiteID,
+		p.Level,
+	).Scan(
 		&r.SiteID,
 		&r.Level,
 		&r.Name,
-		&statsJSON,
+		pgsql.JSON(&r.Stats),
 		&r.CreatedAt,
 		&r.UpdatedAt,
 	)
@@ -221,9 +211,6 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	}
 	if err != nil {
 		return nil, err
-	}
-	if len(statsJSON) > 0 {
-		json.Unmarshal(statsJSON, &r.Stats)
 	}
 
 	r.Devices = make([]DeviceItem, 0)
@@ -336,7 +323,6 @@ func Update(ctx context.Context, p *UpdateParams) (*UpdateResult, error) {
 	}
 
 	var r UpdateResult
-	var statsJSON []byte
 	err = pgctx.QueryRow(ctx, `
 		select
 			site_id,
@@ -348,19 +334,19 @@ func Update(ctx context.Context, p *UpdateParams) (*UpdateResult, error) {
 		from floors
 		where site_id = $1
 		  and level = $2
-	`, p.SiteID, p.Level).Scan(
+	`,
+		p.SiteID,
+		p.Level,
+	).Scan(
 		&r.SiteID,
 		&r.Level,
 		&r.Name,
-		&statsJSON,
+		pgsql.JSON(&r.Stats),
 		&r.CreatedAt,
 		&r.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
-	}
-	if len(statsJSON) > 0 {
-		json.Unmarshal(statsJSON, &r.Stats)
 	}
 
 	return &r, nil
@@ -517,7 +503,12 @@ func verifyFloorExists(ctx context.Context, siteID string, level int) error {
 			where site_id = $1
 			  and level = $2
 		)
-	`, siteID, level).Scan(&exists)
+	`,
+		siteID,
+		level,
+	).Scan(
+		&exists,
+	)
 	if err != nil {
 		return err
 	}
@@ -537,7 +528,12 @@ func verifyDeviceInSite(ctx context.Context, deviceID, siteID string) error {
 			  and site_id = $2
 			  and deleted_at is null
 		)
-	`, deviceID, siteID).Scan(&exists)
+	`,
+		deviceID,
+		siteID,
+	).Scan(
+		&exists,
+	)
 	if err != nil {
 		return err
 	}

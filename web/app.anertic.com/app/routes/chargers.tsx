@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router"
+import { Link } from "react-router"
 import {
   RiAddLine,
   RiChargingPile2Line,
@@ -367,7 +367,6 @@ function sessionDuration(startedAt?: string): string {
 // --- Main Component ---
 
 export default function Chargers() {
-  const navigate = useNavigate()
   const siteId = useSiteId()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
@@ -409,7 +408,7 @@ export default function Chargers() {
   return (
     <div
       className={cn(
-        "space-y-5 transition-opacity duration-500",
+        "flex flex-col gap-5 transition-opacity duration-500 motion-reduce:transition-none",
         mounted ? "opacity-100" : "opacity-0",
       )}
     >
@@ -421,15 +420,17 @@ export default function Chargers() {
             Fleet management and monitoring
           </p>
         </div>
-        <Button size="sm" className="shrink-0" onClick={() => navigate(`/chargers/new?site=${siteId}`)}>
-          <RiAddLine className="size-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">Add Charger</span>
+        <Button size="sm" className="shrink-0" asChild>
+          <Link to={`/chargers/new?site=${siteId}`}>
+            <RiAddLine aria-hidden="true" data-icon="inline-start" />
+            <span className="hidden sm:inline">Add Charger</span>
+            <span className="sr-only sm:hidden">Add Charger</span>
+          </Link>
         </Button>
       </div>
 
       {/* Fleet Summary Strip */}
       <Card className="overflow-hidden py-0">
-
         <CardContent className="p-0">
           <div className="grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-6">
             <FleetCell
@@ -479,10 +480,11 @@ export default function Chargers() {
       </Card>
 
       {/* Search + Filter */}
-      <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <RiSearchLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <RiSearchLine aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label="Search chargers"
             placeholder="Search chargers..."
             className="pl-9"
             value={search}
@@ -516,7 +518,7 @@ export default function Chargers() {
       {/* Charger Grid */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <RiChargingPileLine className="mb-3 size-10 text-muted-foreground" />
+          <RiChargingPileLine aria-hidden="true" className="mb-3 size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             {search || statusFilter
               ? "No chargers match your filters"
@@ -529,9 +531,7 @@ export default function Chargers() {
             <ChargerCard
               key={charger.id}
               charger={charger}
-              onClick={() =>
-                navigate(`/chargers/${charger.id}?site=${siteId}`)
-              }
+              href={`/chargers/${charger.id}?site=${siteId}`}
             />
           ))}
         </div>
@@ -580,7 +580,7 @@ function FleetCell({
             c.text,
           )}
         >
-          <Icon className="size-3" />
+          <Icon aria-hidden="true" className="size-3" />
           {label}
         </div>
         <p
@@ -599,106 +599,100 @@ function FleetCell({
 
 function ChargerCard({
   charger,
-  onClick,
+  href,
 }: {
   charger: Charger
-  onClick: () => void
+  href: string
 }) {
   const isCharging =
     charger.status === "Charging" || charger.status === "Preparing"
   const isFaulted = charger.status === "Faulted"
   const isOnline = !!charger.lastHeartbeatAt
-  const powerPercent =
-    charger.maxPowerKw > 0
-      ? (charger.currentPowerKw / charger.maxPowerKw) * 100
-      : 0
 
   return (
-    <Card
+    <Link
+      to={href}
       className={cn(
-        "group h-full cursor-pointer overflow-hidden py-0 transition-all hover:shadow-md",
+        "group block h-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-colors hover:shadow-md",
         isFaulted && "border-red-200",
       )}
-      onClick={onClick}
     >
-      <CardContent className="flex h-full flex-col p-0">
-        <div className="flex flex-1 flex-col p-4">
-          {/* Top row */}
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="relative flex size-2.5">
-                  {isCharging && (
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                  )}
-                  {isFaulted && (
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  )}
-                  <span
-                    className={cn(
-                      "relative inline-flex size-2.5 rounded-full",
-                      statusDot(charger.status),
-                    )}
-                  />
-                </span>
-                <h3 className="text-base font-semibold tracking-tight">
-                  {charger.chargePointId}
-                </h3>
-                <Badge
-                  className={cn("text-[10px]", statusColor(charger.status))}
-                >
-                  {charger.status}
-                </Badge>
-              </div>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {charger.vendor} {charger.model}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                {isOnline ? (
-                  <RiSignalWifiLine className="size-3 text-emerald-500" />
-                ) : (
-                  <RiSignalWifiOffLine className="size-3 text-red-400" />
+      <div className="flex h-full flex-col p-4">
+        {/* Top row */}
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="relative flex size-2.5">
+                {isCharging && (
+                  <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-blue-400 opacity-75" />
                 )}
-                <span className="tabular-nums">
-                  {timeAgo(charger.lastHeartbeatAt)}
-                </span>
-              </div>
-              <RiArrowRightSLine className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </div>
-          </div>
-
-          {/* Connectors */}
-          <div className="mt-3 flex-1 space-y-2">
-            {charger.connectors.map((conn) => (
-              <ConnectorRow key={conn.id} connector={conn} />
-            ))}
-          </div>
-
-          {/* Bottom stats */}
-          <div className="mt-3 flex items-center justify-between border-t pt-3">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1 tabular-nums">
-                <RiFlashlightLine className="size-3" />
-                {formatEnergy(charger.todayEnergyKwh)} today
+                {isFaulted && (
+                  <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-red-400 opacity-75" />
+                )}
+                <span
+                  className={cn(
+                    "relative inline-flex size-2.5 rounded-full",
+                    statusDot(charger.status),
+                  )}
+                />
               </span>
-              <span className="flex items-center gap-1 tabular-nums">
-                <RiLoopLeftLine className="size-3" />
-                {charger.todaySessions} sessions
-              </span>
+              <h3 className="text-base font-semibold tracking-tight">
+                {charger.chargePointId}
+              </h3>
+              <Badge
+                className={cn("text-[10px]", statusColor(charger.status))}
+              >
+                {charger.status}
+              </Badge>
             </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {charger.vendor} {charger.model}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {isOnline ? (
+                <RiSignalWifiLine aria-hidden="true" className="size-3 text-emerald-500" />
+              ) : (
+                <RiSignalWifiOffLine aria-hidden="true" className="size-3 text-red-400" />
+              )}
               <span className="tabular-nums">
-                OCPP {charger.ocppVersion}
+                {timeAgo(charger.lastHeartbeatAt)}
               </span>
-              <span>&middot;</span>
-              <span className="tabular-nums">{charger.maxPowerKw} kW</span>
             </div>
+            <RiArrowRightSLine aria-hidden="true" className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Connectors */}
+        <div className="mt-3 flex flex-1 flex-col gap-2">
+          {charger.connectors.map((conn) => (
+            <ConnectorRow key={conn.id} connector={conn} />
+          ))}
+        </div>
+
+        {/* Bottom stats */}
+        <div className="mt-3 flex items-center justify-between border-t pt-3">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 tabular-nums">
+              <RiFlashlightLine aria-hidden="true" className="size-3" />
+              {formatEnergy(charger.todayEnergyKwh)} today
+            </span>
+            <span className="flex items-center gap-1 tabular-nums">
+              <RiLoopLeftLine aria-hidden="true" className="size-3" />
+              {charger.todaySessions} sessions
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="tabular-nums">
+              OCPP {charger.ocppVersion}
+            </span>
+            <span>&middot;</span>
+            <span className="tabular-nums">{charger.maxPowerKw} kW</span>
+          </div>
+        </div>
+      </div>
+    </Link>
   )
 }
 
@@ -720,7 +714,7 @@ function ConnectorRow({ connector }: { connector: ConnectorStatus }) {
     >
       <div className="flex items-center gap-2">
         <div className="relative">
-          <RiPlugLine className="size-4 text-muted-foreground" />
+          <RiPlugLine aria-hidden="true" className="size-4 text-muted-foreground" />
           <span
             className={cn(
               "absolute -right-0.5 -top-0.5 size-2 rounded-full ring-2 ring-white",
@@ -767,7 +761,7 @@ function ConnectorRow({ connector }: { connector: ConnectorStatus }) {
       )}
       {connector.sessionStartedAt && (isActive || isSuspended) && (
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <RiTimeLine className="size-3" />
+          <RiTimeLine aria-hidden="true" className="size-3" />
           {sessionDuration(connector.sessionStartedAt)}
         </span>
       )}

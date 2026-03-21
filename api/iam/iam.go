@@ -13,8 +13,8 @@ var (
 	ErrForbidden = arpc.NewErrorCode("iam/forbidden", "you do not have access to this site")
 )
 
-// InSiteOwner checks if the current authenticated user is an owner (role = '*') of the given site.
-func InSiteOwner(ctx context.Context, siteID string) error {
+// SiteOwner checks if the current authenticated user is an owner (role = '*') of the given site.
+func SiteOwner(ctx context.Context, siteID string) error {
 	userID := auth.AccountID(ctx)
 
 	var b bool

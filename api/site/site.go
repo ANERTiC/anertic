@@ -383,7 +383,7 @@ func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
 		return nil, err
 	}
 
-	if err := iam.InSiteOwner(ctx, p.ID); err != nil {
+	if err := iam.SiteOwner(ctx, p.ID); err != nil {
 		return nil, err
 	}
 

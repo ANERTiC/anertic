@@ -159,6 +159,7 @@ export function CommandsTab({
       <Accordion
         type="multiple"
         defaultValue={['quick-actions', 'connector-control']}
+        className="[&_[data-slot=accordion-content]]:overflow-visible"
       >
         <QuickActionsSection chargerId={chargerId} />
         <ConnectorControlSection

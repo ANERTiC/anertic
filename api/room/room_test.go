@@ -2,7 +2,6 @@ package room
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -17,10 +16,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("empty_list", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -47,6 +42,7 @@ func TestList(t *testing.T) {
 			SiteID: siteID,
 			Name:   "Living Room",
 			Type:   "living",
+			Level:  3,
 		})
 		require.NoError(t, err)
 
@@ -68,6 +64,7 @@ func TestList(t *testing.T) {
 		assert.Equal(t, cr.ID, item.ID)
 		assert.Equal(t, "Living Room", item.Name)
 		assert.Equal(t, "living", item.Type)
+		assert.Equal(t, 3, item.Level)
 		assert.Equal(t, 1, item.DeviceCount)
 		assert.Equal(t, "online", item.ConnectionStatus)
 	})
@@ -143,6 +140,279 @@ func TestList(t *testing.T) {
 		assert.Equal(t, "Server Room Alpha", r.Items[0].Name)
 	})
 
+	t.Run("filter_by_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground Office", Type: "office", Level: 0})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1 Bedroom", Type: "bedroom", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1 Kitchen", Type: "kitchen", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Basement Storage", Type: "storage", Level: -1})
+		require.NoError(t, err)
+
+		level1 := 1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level1})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 2)
+		for _, item := range r.Items {
+			assert.Equal(t, 1, item.Level)
+		}
+	})
+
+	t.Run("filter_by_level_zero", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground Room", Type: "living", Level: 0})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Upstairs Room", Type: "bedroom", Level: 2})
+		require.NoError(t, err)
+
+		level0 := 0
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level0})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Ground Room", r.Items[0].Name)
+		assert.Equal(t, 0, r.Items[0].Level)
+	})
+
+	t.Run("filter_by_negative_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Basement", Type: "storage", Level: -1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground", Type: "living", Level: 0})
+		require.NoError(t, err)
+
+		levelNeg := -1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &levelNeg})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Basement", r.Items[0].Name)
+		assert.Equal(t, -1, r.Items[0].Level)
+	})
+
+	t.Run("filter_by_level_returns_empty_when_no_match", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground Room", Type: "living", Level: 0})
+		require.NoError(t, err)
+
+		level99 := 99
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level99})
+		require.NoError(t, err)
+		assert.Empty(t, r.Items)
+	})
+
+	t.Run("nil_level_returns_all_rooms", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Basement", Type: "storage", Level: -1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Ground", Type: "living", Level: 0})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "First Floor", Type: "bedroom", Level: 1})
+		require.NoError(t, err)
+
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: nil})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 3)
+	})
+
+	t.Run("filter_by_level_combined_with_type", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1 Office", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 1 Kitchen", Type: "kitchen", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 2 Office", Type: "office", Level: 2})
+		require.NoError(t, err)
+
+		level1 := 1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level1, Type: "office"})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Floor 1 Office", r.Items[0].Name)
+		assert.Equal(t, 1, r.Items[0].Level)
+		assert.Equal(t, "office", r.Items[0].Type)
+	})
+
+	t.Run("filter_by_level_combined_with_search", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Alpha Office", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Beta Office", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Alpha Kitchen", Type: "kitchen", Level: 2})
+		require.NoError(t, err)
+
+		level1 := 1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level1, Search: "Alpha"})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Alpha Office", r.Items[0].Name)
+		assert.Equal(t, 1, r.Items[0].Level)
+	})
+
+	t.Run("filter_by_level_with_device_aggregation", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		// Create rooms on different levels with devices
+		cr1, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 2 Office", Type: "office", Level: 2})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Floor 3 Office", Type: "office", Level: 3})
+		require.NoError(t, err)
+
+		// Assign a device with online meter to the level 2 room
+		deviceID := seedDevice(t, ctx, siteID, "Level 2 Meter")
+		seedMeter(t, ctx, siteID, deviceID, "MTR-LVL2-001", true, ptrTime(time.Now()))
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			RoomID:   cr1.ID,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		// Filter by level 2 — should see the room with device aggregation
+		level2 := 2
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level2})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Floor 2 Office", r.Items[0].Name)
+		assert.Equal(t, 2, r.Items[0].Level)
+		assert.Equal(t, 1, r.Items[0].DeviceCount)
+		assert.Equal(t, "online", r.Items[0].ConnectionStatus)
+
+		// Filter by level 3 — should see the room with no devices
+		level3 := 3
+		r, err = List(ctx, &ListParams{SiteID: siteID, Level: &level3})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Floor 3 Office", r.Items[0].Name)
+		assert.Equal(t, 3, r.Items[0].Level)
+		assert.Equal(t, 0, r.Items[0].DeviceCount)
+		assert.Equal(t, "offline", r.Items[0].ConnectionStatus)
+	})
+
+	t.Run("filter_by_level_combined_with_type_and_search", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Alpha Office", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Alpha Kitchen", Type: "kitchen", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Beta Office", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Alpha Office", Type: "office", Level: 2})
+		require.NoError(t, err)
+
+		// All three filters combined: level=1, type=office, search=Alpha
+		level1 := 1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level1, Type: "office", Search: "Alpha"})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Alpha Office", r.Items[0].Name)
+		assert.Equal(t, "office", r.Items[0].Type)
+		assert.Equal(t, 1, r.Items[0].Level)
+	})
+
+	t.Run("cross_site_isolation_by_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		// Create a second site for the same user
+		siteID2 := xid.New().String()
+		_, err := pgctx.Exec(ctx, `
+			insert into sites (id, name) values ($1, $2)
+		`, siteID2, "Other Site")
+		require.NoError(t, err)
+
+		_, err = pgctx.Exec(ctx, `
+			insert into site_members (site_id, user_id, role) values ($1, $2, $3)
+		`, siteID2, userID, "owner")
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID, Name: "Site1 Room", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{SiteID: siteID2, Name: "Site2 Room", Type: "office", Level: 1})
+		require.NoError(t, err)
+
+		level1 := 1
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level1})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Site1 Room", r.Items[0].Name)
+	})
+
 	t.Run("forbidden_not_site_member", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -171,10 +441,6 @@ func TestList(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -197,6 +463,118 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, "Living Room", got.Name)
 		assert.Equal(t, "living", got.Type)
 		assert.Equal(t, siteID, got.SiteID)
+	})
+
+	t.Run("creates_room_with_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		r, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Upstairs Bedroom",
+			Type:   "bedroom",
+			Level:  2,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.NotEmpty(t, r.ID)
+
+		// Verify level is persisted in DB
+		var level int
+		err = pgctx.QueryRow(ctx, `
+			select level from rooms where id = $1
+		`, r.ID).Scan(&level)
+		require.NoError(t, err)
+		assert.Equal(t, 2, level)
+	})
+
+	t.Run("creates_room_with_negative_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		r, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Basement Storage",
+			Type:   "storage",
+			Level:  -2,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		var level int
+		err = pgctx.QueryRow(ctx, `
+			select level from rooms where id = $1
+		`, r.ID).Scan(&level)
+		require.NoError(t, err)
+		assert.Equal(t, -2, level)
+	})
+
+	t.Run("creates_room_with_default_level_zero", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		r, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Default Level Room",
+			Type:   "office",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		// When Level is not provided, Go zero-value (0) is used
+		var level int
+		err = pgctx.QueryRow(ctx, `
+			select level from rooms where id = $1
+		`, r.ID).Scan(&level)
+		require.NoError(t, err)
+		assert.Equal(t, 0, level)
+	})
+
+	t.Run("creates_multiple_rooms_on_same_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		r1, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Office A",
+			Type:   "office",
+			Level:  3,
+		})
+		require.NoError(t, err)
+
+		r2, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Office B",
+			Type:   "office",
+			Level:  3,
+		})
+		require.NoError(t, err)
+
+		// Both rooms should exist on same level
+		level3 := 3
+		list, err := List(ctx, &ListParams{SiteID: siteID, Level: &level3})
+		require.NoError(t, err)
+		require.Len(t, list.Items, 2)
+
+		ids := []string{list.Items[0].ID, list.Items[1].ID}
+		assert.Contains(t, ids, r1.ID)
+		assert.Contains(t, ids, r2.ID)
 	})
 
 	t.Run("validation_error_missing_name", func(t *testing.T) {
@@ -255,10 +633,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success_with_devices", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -294,6 +668,71 @@ func TestGet(t *testing.T) {
 		assert.Equal(t, "Air Conditioner", r.Devices[0].Name)
 		assert.Equal(t, "online", r.Devices[0].ConnectionStatus)
 		assert.Equal(t, 1, r.Devices[0].MeterCount)
+	})
+
+	t.Run("returns_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Third Floor Office",
+			Type:   "office",
+			Level:  3,
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		assert.Equal(t, "Third Floor Office", r.Name)
+		assert.Equal(t, 3, r.Level)
+	})
+
+	t.Run("returns_negative_level", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Basement Lab",
+			Type:   "other",
+			Level:  -2,
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		assert.Equal(t, "Basement Lab", r.Name)
+		assert.Equal(t, -2, r.Level)
+	})
+
+	t.Run("returns_default_level_zero", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Ground Room",
+			Type:   "living",
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{ID: cr.ID})
+		require.NoError(t, err)
+		assert.Equal(t, "Ground Room", r.Name)
+		assert.Equal(t, 0, r.Level)
 	})
 
 	t.Run("success_no_devices", func(t *testing.T) {
@@ -344,10 +783,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("update_name_only", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -437,6 +872,71 @@ func TestUpdate(t *testing.T) {
 		assert.Equal(t, "kitchen", got.Type)
 	})
 
+	t.Run("preserves_level_after_name_update", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Floor 5 Office",
+			Type:   "office",
+			Level:  5,
+		})
+		require.NoError(t, err)
+
+		name := "Renamed Office"
+		_, err = Update(ctx, &UpdateParams{
+			ID:     cr.ID,
+			SiteID: siteID,
+			Name:   &name,
+		})
+		require.NoError(t, err)
+
+		// Verify level is unchanged in DB after update
+		var level int
+		err = pgctx.QueryRow(ctx, `
+			select level from rooms where id = $1
+		`, cr.ID).Scan(&level)
+		require.NoError(t, err)
+		assert.Equal(t, 5, level)
+	})
+
+	t.Run("preserves_level_after_type_update", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Basement Room",
+			Type:   "storage",
+			Level:  -1,
+		})
+		require.NoError(t, err)
+
+		typ := "office"
+		_, err = Update(ctx, &UpdateParams{
+			ID:     cr.ID,
+			SiteID: siteID,
+			Type:   &typ,
+		})
+		require.NoError(t, err)
+
+		var level int
+		err = pgctx.QueryRow(ctx, `
+			select level from rooms where id = $1
+		`, cr.ID).Scan(&level)
+		require.NoError(t, err)
+		assert.Equal(t, -1, level)
+	})
+
 	t.Run("validation_error_invalid_type", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -488,10 +988,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -572,6 +1068,111 @@ func TestDelete(t *testing.T) {
 		assert.Equal(t, ErrNotFound, err)
 	})
 
+	t.Run("deleted_room_excluded_from_level_filter", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		cr1, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Room A Level 5",
+			Type:   "office",
+			Level:  5,
+		})
+		require.NoError(t, err)
+
+		_, err = Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Room B Level 5",
+			Type:   "bedroom",
+			Level:  5,
+		})
+		require.NoError(t, err)
+
+		// Delete one room on level 5
+		_, err = Delete(ctx, &DeleteParams{SiteID: siteID, ID: cr1.ID})
+		require.NoError(t, err)
+
+		// Only one room should remain on level 5
+		level5 := 5
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level5})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 1)
+		assert.Equal(t, "Room B Level 5", r.Items[0].Name)
+	})
+
+	t.Run("floor_deletion_resets_room_level_to_zero", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		// Create a floor at level 3
+		seedFloor(t, ctx, siteID, 3, "Third Floor")
+
+		// Create rooms on level 3
+		cr1, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Room A", Type: "office", Level: 3})
+		require.NoError(t, err)
+
+		cr2, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Room B", Type: "bedroom", Level: 3})
+		require.NoError(t, err)
+
+		// Create a room on a different level to ensure it's unaffected
+		cr3, err := Create(ctx, &CreateParams{SiteID: siteID, Name: "Room C", Type: "kitchen", Level: 1})
+		require.NoError(t, err)
+
+		// Delete the floor — this should reset rooms on level 3 to level 0
+		_, err = pgctx.Exec(ctx, `
+			update rooms
+			set level = 0,
+			    updated_at = now()
+			where site_id = $1
+			  and level = $2
+			  and deleted_at is null
+		`, siteID, 3)
+		require.NoError(t, err)
+
+		_, err = pgctx.Exec(ctx, `
+			delete from floors
+			where site_id = $1
+			  and level = $2
+		`, siteID, 3)
+		require.NoError(t, err)
+
+		// Verify rooms that were on level 3 are now on level 0
+		var level1, level2 int
+		err = pgctx.QueryRow(ctx, `select level from rooms where id = $1`, cr1.ID).Scan(&level1)
+		require.NoError(t, err)
+		assert.Equal(t, 0, level1)
+
+		err = pgctx.QueryRow(ctx, `select level from rooms where id = $1`, cr2.ID).Scan(&level2)
+		require.NoError(t, err)
+		assert.Equal(t, 0, level2)
+
+		// Verify room on level 1 is unaffected
+		var level3Val int
+		err = pgctx.QueryRow(ctx, `select level from rooms where id = $1`, cr3.ID).Scan(&level3Val)
+		require.NoError(t, err)
+		assert.Equal(t, 1, level3Val)
+
+		// Verify listing by level 0 now includes the reset rooms
+		level0 := 0
+		r, err := List(ctx, &ListParams{SiteID: siteID, Level: &level0})
+		require.NoError(t, err)
+		require.Len(t, r.Items, 2)
+
+		// Verify listing by level 3 returns empty
+		level3 := 3
+		r, err = List(ctx, &ListParams{SiteID: siteID, Level: &level3})
+		require.NoError(t, err)
+		assert.Empty(t, r.Items)
+	})
+
 	t.Run("forbidden_not_site_member", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -615,10 +1216,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestAssignDevice(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -761,10 +1358,6 @@ func TestAssignDevice(t *testing.T) {
 }
 
 func TestUnassignDevice(t *testing.T) {
-	if os.Getenv("TEST_DB_URL") == "" {
-		t.Skip("TEST_DB_URL not set, skipping integration test")
-	}
-
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		tc := tu.Setup()
@@ -915,6 +1508,17 @@ func seedMeter(t *testing.T, ctx context.Context, siteID, deviceID, serialNumber
 		isOnline,
 		lastSeenAt,
 	)
+	require.NoError(t, err)
+}
+
+// seedFloor creates a floor entry for a site.
+func seedFloor(t *testing.T, ctx context.Context, siteID string, level int, name string) {
+	t.Helper()
+	_, err := pgctx.Exec(ctx, `
+		insert into floors (site_id, level, name)
+		values ($1, $2, $3)
+		on conflict (site_id, level) do nothing
+	`, siteID, level, name)
 	require.NoError(t, err)
 }
 

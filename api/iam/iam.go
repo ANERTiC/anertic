@@ -21,10 +21,12 @@ func SiteOwner(ctx context.Context, siteID string) error {
 	err := pgctx.QueryRow(ctx, `
 		select exists (
 			select 1
-			from site_members
-			where site_id = $1
-			  and user_id = $2
-			  and role = '*'
+			from site_members sm
+			join sites s on s.id = sm.site_id
+			where sm.site_id = $1
+			  and sm.user_id = $2
+			  and sm.role = '*'
+			  and s.deleted_at is null
 		)
 	`,
 		siteID,
@@ -47,9 +49,11 @@ func InSite(ctx context.Context, siteID string) error {
 	err := pgctx.QueryRow(ctx, `
 		select exists (
 			select 1
-			from site_members
-			where site_id = $1
-			  and user_id = $2
+			from site_members sm
+			join sites s on s.id = sm.site_id
+			where sm.site_id = $1
+			  and sm.user_id = $2
+			  and s.deleted_at is null
 		)
 	`,
 		siteID,

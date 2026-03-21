@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
+import useSWR from 'swr'
 import { cn } from '~/lib/utils'
 import {
   useRoomList,
@@ -73,6 +74,11 @@ export async function clientAction({ request }: { request: Request }) {
 
 export default function Rooms() {
   const siteId = useSiteId()
+  const { data: siteData } = useSWR(
+    ['site.get', siteId],
+    () => api<{ name: string }>('site.get', { id: siteId }),
+  )
+  const siteName = siteData?.name ?? 'Building'
   const [searchParams, setSearchParams] = useSearchParams()
   const activeLevel = Number(searchParams.get('floor') ?? '0')
   const setActiveLevel = useCallback(
@@ -336,8 +342,8 @@ export default function Rooms() {
             <div className="border-b px-4 py-3">
               <div className="flex items-center gap-2">
                 <RiBuilding2Line className="size-4 text-muted-foreground" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Building
+                <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {siteName}
                 </span>
               </div>
               {floorsLoading ? (
@@ -458,23 +464,22 @@ export default function Rooms() {
 
             {/* Add Floor — always visible at bottom */}
             {!floorsLoading && (
-              <div className="border-t p-2">
+              <div className="border-t p-1.5">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="w-full text-xs text-muted-foreground"
                   onClick={() => setAddFloorOpen(true)}
                 >
-                  <RiAddLine className="mr-1 size-3" />
-                  Add Floor
+                  <RiAddLine className="size-4" />
                 </Button>
               </div>
             )}
           </div>
         </aside>
 
-        {/* Floor Detail — key forces re-mount on floor switch for animations */}
-        <main key={activeLevel} className="min-w-0 flex-1 space-y-4">
+        {/* Floor Detail */}
+        <main className="min-w-0 flex-1 space-y-4">
           {/* Floor Header */}
           {floorsLoading ? (
             <div className="rounded-xl border bg-card p-4">
@@ -504,7 +509,7 @@ export default function Rooms() {
               </div>
             </div>
           ) : activeFloor && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 rounded-xl border bg-card duration-300">
+            <div key={activeLevel} className="animate-in fade-in slide-in-from-bottom-2 rounded-xl border bg-card duration-300">
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -788,7 +793,7 @@ export default function Rooms() {
               )}
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div key={activeLevel} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {rooms.map((room, i) => (
                 <div
                   key={room.id}

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   RiAddLine,
+  RiArrowDownLine,
+  RiArrowUpLine,
   RiCheckLine,
   RiCloseLine,
   RiSearchLine,
@@ -104,7 +106,7 @@ export function AddRoomDialog({
 
           <div className="grid gap-2">
             <Label>Room Type</Label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {roomTypes.map((rt) => {
                 const cfg = ROOM_TYPE_CONFIG[rt.value]
                 const Icon = cfg.icon
@@ -218,7 +220,7 @@ export function EditRoomDialog({
 
           <div className="grid gap-2">
             <Label>Room Type</Label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {roomTypes.map((rt) => {
                 const cfg = ROOM_TYPE_CONFIG[rt.value]
                 const Icon = cfg.icon
@@ -325,6 +327,52 @@ export function DeleteRoomDialog({
 
 // --- Add Floor Dialog ---
 
+type FloorPresetId = 'basement' | 'ground' | 'next' | 'rooftop' | 'custom'
+
+interface FloorPreset {
+  id: FloorPresetId
+  label: string
+  sublabel: string
+  getLevel: (floors: FloorItem[]) => number
+}
+
+const FLOOR_PRESETS: FloorPreset[] = [
+  {
+    id: 'basement',
+    label: 'Basement',
+    sublabel: 'Level −1',
+    getLevel: () => -1,
+  },
+  {
+    id: 'ground',
+    label: 'Ground',
+    sublabel: 'Level 0',
+    getLevel: () => 0,
+  },
+  {
+    id: 'next',
+    label: 'Next Floor',
+    sublabel: 'Auto +1',
+    getLevel: (floors) =>
+      floors.length > 0 ? Math.max(...floors.map((f) => f.level)) + 1 : 1,
+  },
+  {
+    id: 'rooftop',
+    label: 'Rooftop',
+    sublabel: 'Top level',
+    getLevel: (floors) =>
+      floors.length > 0 ? Math.max(...floors.map((f) => f.level)) + 1 : 2,
+  },
+]
+
+const PRESET_NAMES: Record<FloorPresetId, string> = {
+  basement: 'Basement',
+  ground: 'Ground Floor',
+  next: '',
+  rooftop: 'Rooftop',
+  custom: '',
+}
+
 export function AddFloorDialog({
   open,
   onOpenChange,
@@ -338,32 +386,67 @@ export function AddFloorDialog({
 }) {
   const siteId = useSiteId()
   const [name, setName] = useState('')
-  const [level, setLevel] = useState('')
+  const [preset, setPreset] = useState<FloorPresetId>('next')
+  const [customLevel, setCustomLevel] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const suggestedLevel =
-    floors.length > 0 ? Math.max(...floors.map((f) => f.level)) + 1 : 0
+  const existingLevels = useMemo(
+    () => new Set(floors.map((f) => f.level)),
+    [floors]
+  )
+
+  const resolvedLevel = useMemo(() => {
+    if (preset === 'custom') {
+      const n = Number(customLevel)
+      return isNaN(n) ? null : n
+    }
+    const p = FLOOR_PRESETS.find((x) => x.id === preset)
+    return p ? p.getLevel(floors) : null
+  }, [preset, customLevel, floors])
+
+  // Build sorted preview list: existing floors + the new one (if level is valid)
+  const previewFloors = useMemo(() => {
+    const existing = floors.map((f) => ({ level: f.level, name: f.name, isNew: false }))
+    if (resolvedLevel !== null && !existingLevels.has(resolvedLevel)) {
+      existing.push({ level: resolvedLevel, name: name.trim() || '(new floor)', isNew: true })
+    }
+    return existing.sort((a, b) => b.level - a.level) // highest first (top of building)
+  }, [floors, resolvedLevel, existingLevels, name])
+
+  const levelConflict = resolvedLevel !== null && existingLevels.has(resolvedLevel)
 
   useEffect(() => {
     if (!open) {
       setName('')
-      setLevel('')
+      setPreset('next')
+      setCustomLevel('')
     }
   }, [open])
+
+  // When switching to a named preset, pre-fill name if still empty
+  useEffect(() => {
+    const suggested = PRESET_NAMES[preset]
+    if (suggested && !name) {
+      setName(suggested)
+    }
+  }, [preset]) // intentionally exclude `name` — only trigger on preset change
 
   async function handleSubmit() {
     if (!name.trim()) {
       toast.error('Please enter a floor name')
       return
     }
-    const levelNum = level.trim() !== '' ? Number(level) : suggestedLevel
-    if (isNaN(levelNum)) {
-      toast.error('Level must be a number')
+    if (resolvedLevel === null || isNaN(resolvedLevel)) {
+      toast.error('Level must be a valid number')
+      return
+    }
+    if (levelConflict) {
+      toast.error(`Level ${resolvedLevel} already exists`)
       return
     }
     setLoading(true)
     try {
-      await createFloor({ siteId, name: name.trim(), level: levelNum })
+      await createFloor({ siteId, name: name.trim(), level: resolvedLevel })
       toast.success(`Floor "${name.trim()}" created`)
       onSuccess()
     } catch (err: unknown) {
@@ -383,7 +466,71 @@ export function AddFloorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
+        <div className="grid gap-5 py-1">
+          {/* Preset quick-select */}
+          <div className="grid gap-2">
+            <Label>Floor Type</Label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {FLOOR_PRESETS.map((p) => {
+                const level = p.getLevel(floors)
+                const conflict = existingLevels.has(level)
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPreset(p.id)}
+                    disabled={conflict}
+                    className={cn(
+                      'flex flex-col items-center gap-0.5 rounded-md border px-2 py-2 text-[11px] font-medium transition-colors',
+                      conflict && 'pointer-events-none opacity-40',
+                      preset === p.id && !conflict
+                        ? 'border-violet-500 bg-violet-500/10 text-violet-700'
+                        : 'border-transparent bg-muted/50 text-muted-foreground hover:bg-muted'
+                    )}
+                  >
+                    <span className="text-[12px] font-semibold leading-none">{p.label}</span>
+                    <span className="text-[10px] opacity-70">{p.sublabel}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Custom level row */}
+            <button
+              type="button"
+              onClick={() => setPreset('custom')}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-[12px] transition-colors',
+                preset === 'custom'
+                  ? 'border-violet-500 bg-violet-500/10 text-violet-700'
+                  : 'border-transparent bg-muted/50 text-muted-foreground hover:bg-muted'
+              )}
+            >
+              <span className="font-medium">Custom level</span>
+              {preset === 'custom' && (
+                <input
+                  type="number"
+                  className="ml-auto w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[12px] text-foreground outline-none focus:ring-1 focus:ring-violet-500"
+                  value={customLevel}
+                  onChange={(e) => setCustomLevel(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="e.g. 3"
+                  autoFocus
+                />
+              )}
+              {preset !== 'custom' && (
+                <span className="ml-auto text-[10px] opacity-60">integer</span>
+              )}
+            </button>
+
+            {levelConflict && (
+              <p className="text-[11px] text-destructive">
+                Level {resolvedLevel} is already taken. Choose a different level.
+              </p>
+            )}
+          </div>
+
+          {/* Floor name */}
           <div className="grid gap-2">
             <Label htmlFor="floor-name">Floor Name</Label>
             <Input
@@ -392,23 +539,65 @@ export function AddFloorDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              autoFocus
+              autoFocus={preset !== 'custom'}
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="floor-level">Level Number</Label>
-            <Input
-              id="floor-level"
-              type="number"
-              placeholder={String(suggestedLevel)}
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Use 0 for ground, negative for basement levels
-            </p>
-          </div>
+          {/* Building stack preview */}
+          {previewFloors.length > 0 && (
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5">
+                Building Stack
+                <span className="text-[10px] font-normal text-muted-foreground">
+                  — preview
+                </span>
+              </Label>
+              <div className="overflow-hidden rounded-md border border-border">
+                {/* Up indicator */}
+                <div className="flex items-center justify-center gap-1 border-b border-dashed border-border bg-muted/30 py-1 text-[10px] text-muted-foreground">
+                  <RiArrowUpLine className="size-3" />
+                  higher
+                </div>
+
+                <div className="divide-y divide-border/60">
+                  {previewFloors.map((f) => (
+                    <div
+                      key={f.level}
+                      className={cn(
+                        'flex items-center gap-2.5 px-3 py-2 text-[12px]',
+                        f.isNew
+                          ? 'bg-violet-500/8 font-semibold text-violet-700'
+                          : 'text-foreground/80'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'w-8 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-mono font-medium',
+                          f.isNew
+                            ? 'bg-violet-500/15 text-violet-700'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {f.level >= 0 ? `+${f.level}` : f.level}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                      {f.isNew && (
+                        <span className="shrink-0 rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-600">
+                          new
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Down indicator */}
+                <div className="flex items-center justify-center gap-1 border-t border-dashed border-border bg-muted/30 py-1 text-[10px] text-muted-foreground">
+                  <RiArrowDownLine className="size-3" />
+                  lower
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -419,7 +608,10 @@ export function AddFloorDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || levelConflict || resolvedLevel === null}
+          >
             <RiCheckLine className="mr-1.5 size-4" />
             Create Floor
           </Button>

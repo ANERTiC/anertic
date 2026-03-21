@@ -23,6 +23,7 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import {
   ROOM_TYPE_CONFIG,
+  ROOM_TYPE_BAR_COLORS,
   ROOM_STATUS_CONFIG,
   type RoomItem,
   type RoomDeviceItem,
@@ -116,11 +117,13 @@ function ExpandedDeviceList({
 
 export function RoomCard({
   room,
+  floorPowerW = 0,
   onEdit,
   onDelete,
   onAssignDevice,
 }: {
   room: RoomItem
+  floorPowerW?: number
   onEdit: (room: RoomItem) => void
   onDelete: (room: RoomItem) => void
   onAssignDevice: (room: RoomItem) => void
@@ -129,6 +132,10 @@ export function RoomCard({
   const config = ROOM_TYPE_CONFIG[room.type]
   const Icon = config.icon
   const statusCfg = ROOM_STATUS_CONFIG[room.connectionStatus]
+  const powerPercent =
+    floorPowerW > 0 && room.livePowerW
+      ? Math.round((room.livePowerW / floorPowerW) * 100)
+      : null
 
   return (
     <Card
@@ -136,7 +143,7 @@ export function RoomCard({
         'group py-0 transition-all duration-200 hover:shadow-md',
         isExpanded && 'ring-1 ring-violet-500/30',
         room.connectionStatus === 'degraded' && 'border-amber-500/30',
-        room.connectionStatus === 'offline' && 'border-red-500/30'
+        room.connectionStatus === 'offline' && 'border-red-500/30',
       )}
     >
       <CardContent className="p-0">
@@ -146,7 +153,7 @@ export function RoomCard({
             <div
               className={cn(
                 'flex size-10 items-center justify-center rounded-lg',
-                config.bg
+                config.bg,
               )}
             >
               <Icon className={cn('size-5', config.color)} />
@@ -162,7 +169,7 @@ export function RoomCard({
                   <span
                     className={cn(
                       'inline-block size-1.5 rounded-full',
-                      statusCfg.dot
+                      statusCfg.dot,
                     )}
                   />
                   {statusCfg.label}
@@ -202,14 +209,35 @@ export function RoomCard({
           </DropdownMenu>
         </div>
 
-        {/* Live Power */}
-        <div className="px-4 pb-4">
-          <p className="text-[10px] tracking-wider text-muted-foreground uppercase">
-            Live Power
-          </p>
-          <p className="text-lg font-bold tabular-nums">
-            {formatPower(room.livePowerW)}
-          </p>
+        {/* Live Power + Floor Share */}
+        <div className="px-4 pb-3">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                Live Power
+              </p>
+              <p className="text-lg font-bold tabular-nums">
+                {formatPower(room.livePowerW)}
+              </p>
+            </div>
+            {powerPercent !== null && (
+              <span className="pb-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                {powerPercent}% of floor
+              </span>
+            )}
+          </div>
+          {/* Power proportion bar */}
+          {powerPercent !== null && (
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  ROOM_TYPE_BAR_COLORS[room.type],
+                )}
+                style={{ width: `${Math.max(powerPercent, 2)}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Expand toggle */}

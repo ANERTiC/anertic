@@ -64,7 +64,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return nil, err
 	}
 
-	var items []Item
+	items := make([]Item, 0)
 
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
@@ -261,6 +261,8 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	if err := iam.InSite(ctx, r.SiteID); err != nil {
 		return nil, err
 	}
+
+	r.Devices = make([]DeviceItem, 0)
 
 	// Fetch assigned devices with meter aggregation
 	err = pgstmt.Select(func(b pgstmt.SelectStatement) {

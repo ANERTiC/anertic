@@ -16,6 +16,7 @@ import (
 
 	"github.com/anertic/anertic/api/auth/provider"
 	"github.com/anertic/anertic/api/conf"
+	"github.com/anertic/anertic/pkg/site"
 )
 
 const sessionName = "auth"
@@ -240,5 +241,24 @@ func upsertUser(ctx context.Context, provider, providerID, email, name, picture 
 	if err != nil {
 		return "", err
 	}
+
+	// Auto-add user to the demo site as a viewer
+	if site.DemoID != "" {
+		_, err = pgctx.Exec(ctx, `
+			insert into site_members (
+				site_id,
+				user_id,
+				role
+			) values ($1, $2, 'viewer')
+			on conflict (site_id, user_id) do nothing
+		`,
+			site.DemoID,
+			id,
+		)
+		if err != nil {
+			slog.ErrorContext(ctx, "auth: add user to demo site", "error", err)
+		}
+	}
+
 	return id, nil
 }

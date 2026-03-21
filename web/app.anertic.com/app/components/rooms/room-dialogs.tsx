@@ -7,6 +7,7 @@ import {
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
+import { useSearchParams } from 'react-router'
 import { cn } from '~/lib/utils'
 import { ROOM_TYPE_CONFIG } from '~/lib/room'
 import type { RoomItem, RoomType, FloorItem } from '~/lib/room'
@@ -46,6 +47,8 @@ export function AddRoomDialog({
   onSuccess: () => void
 }) {
   const siteId = useSiteId()
+  const [searchParams] = useSearchParams()
+  const level = Number(searchParams.get('floor') ?? '0')
   const [name, setName] = useState('')
   const [type, setType] = useState<RoomType>('living')
   const [loading, setLoading] = useState(false)
@@ -64,7 +67,7 @@ export function AddRoomDialog({
     }
     setLoading(true)
     try {
-      await createRoom({ siteId, name: name.trim(), type })
+      await createRoom({ siteId, name: name.trim(), type, level })
       toast.success(`Room "${name.trim()}" created`)
       onSuccess()
     } catch (err: unknown) {

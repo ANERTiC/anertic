@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   RiAddLine,
   RiSearchLine,
@@ -31,7 +32,18 @@ import { type RoomItem } from '~/lib/room'
 
 export default function Rooms() {
   const siteId = useSiteId()
-  const [activeLevel, setActiveLevel] = useState<number>(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeLevel = Number(searchParams.get('floor') ?? '0')
+  const setActiveLevel = useCallback(
+    (level: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('floor', String(level))
+        return next
+      })
+    },
+    [setSearchParams],
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')

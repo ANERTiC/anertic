@@ -64,6 +64,7 @@ export async function createRoom(params: {
   siteId: string
   name: string
   type: RoomType
+  level?: number
 }): Promise<{ id: string }> {
   return api<{ id: string }>('room.create', params)
 }

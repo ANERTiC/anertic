@@ -155,6 +155,7 @@ type CreateParams struct {
 	SiteID string `json:"siteId"`
 	Name   string `json:"name"`
 	Type   string `json:"type"`
+	Level  int    `json:"level"`
 }
 
 func (p *CreateParams) Valid() error {
@@ -184,13 +185,15 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 			id,
 			site_id,
 			name,
-			type
-		) values ($1, $2, $3, $4)
+			type,
+			level
+		) values ($1, $2, $3, $4, $5)
 	`,
 		id,
 		p.SiteID,
 		p.Name,
 		p.Type,
+		p.Level,
 	)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -648,7 +648,6 @@ function formatDateTime(dateStr: string): string {
 
 export default function ChargerDetail() {
   const { chargerId } = useParams()
-  const navigate = useNavigate()
   const siteId = useSiteId()
   const [mounted, setMounted] = useState(false)
 
@@ -680,32 +679,32 @@ export default function ChargerDetail() {
   return (
     <div
       className={cn(
-        'space-y-5 transition-opacity duration-500',
+        'flex flex-col gap-5 transition-opacity duration-500',
         mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
       {/* Header */}
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between">
           <div>
             <Button
               variant="ghost"
               size="sm"
               className="mb-2 -ml-2"
-              onClick={() =>
-                navigate(`/chargers${siteId ? `?site=${siteId}` : ''}`)
-              }
+              asChild
             >
-              <RiArrowLeftLine className="mr-1 size-4" />
-              Chargers
+              <Link to={`/chargers${siteId ? `?site=${siteId}` : ''}`}>
+                <RiArrowLeftLine aria-hidden="true" data-icon="inline-start" />
+                Chargers
+              </Link>
             </Button>
             <div className="flex items-center gap-3">
               <span className="relative flex size-3">
                 {isCharging && (
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                  <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-blue-400 opacity-75" />
                 )}
                 {isFaulted && (
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-red-400 opacity-75" />
                 )}
                 <span
                   className={cn(
@@ -732,9 +731,9 @@ export default function ChargerDetail() {
               </Badge>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 {isOnline ? (
-                  <RiSignalWifiLine className="size-3 text-emerald-500" />
+                  <RiSignalWifiLine aria-hidden="true" className="size-3 text-emerald-500" />
                 ) : (
-                  <RiSignalWifiOffLine className="size-3 text-red-400" />
+                  <RiSignalWifiOffLine aria-hidden="true" className="size-3 text-red-400" />
                 )}
                 {timeAgo(charger.lastHeartbeatAt)}
               </span>
@@ -745,11 +744,11 @@ export default function ChargerDetail() {
           </div>
           <div className="hidden gap-2 sm:flex">
             <Button variant="outline" size="sm">
-              <RiRestartLine className="mr-1.5 size-3.5" />
+              <RiRestartLine aria-hidden="true" data-icon="inline-start" />
               Reset
             </Button>
             <Button variant="outline" size="sm">
-              <RiShutDownLine className="mr-1.5 size-3.5" />
+              <RiShutDownLine aria-hidden="true" data-icon="inline-start" />
               Reboot
             </Button>
           </div>
@@ -757,18 +756,18 @@ export default function ChargerDetail() {
         {/* Mobile action buttons */}
         <div className="flex gap-2 sm:hidden">
           <Button variant="outline" size="sm" className="flex-1">
-            <RiRestartLine className="mr-1.5 size-3.5" />
+            <RiRestartLine aria-hidden="true" data-icon="inline-start" />
             Reset
           </Button>
           <Button variant="outline" size="sm" className="flex-1">
-            <RiShutDownLine className="mr-1.5 size-3.5" />
+            <RiShutDownLine aria-hidden="true" data-icon="inline-start" />
             Reboot
           </Button>
         </div>
       </div>
 
       {/* Connectors */}
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">
           Connectors
         </h2>
@@ -784,31 +783,31 @@ export default function ChargerDetail() {
         <div>
           <TabsList className="w-full sm:w-fit">
             <TabsTrigger value="analytics">
-              <RiBarChartBoxLine className="size-3.5 sm:mr-1.5" />
+              <RiBarChartBoxLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
             <TabsTrigger value="sessions">
-              <RiHistoryLine className="size-3.5 sm:mr-1.5" />
+              <RiHistoryLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Sessions</span>
             </TabsTrigger>
             <TabsTrigger value="reservations">
-              <RiCalendarCheckLine className="size-3.5 sm:mr-1.5" />
+              <RiCalendarCheckLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Reservations</span>
             </TabsTrigger>
             <TabsTrigger value="info">
-              <RiInformationLine className="size-3.5 sm:mr-1.5" />
+              <RiInformationLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Device Info</span>
             </TabsTrigger>
             <TabsTrigger value="settings">
-              <RiSettings3Line className="size-3.5 sm:mr-1.5" />
+              <RiSettings3Line aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
             <TabsTrigger value="commands">
-              <RiRemoteControlLine className="size-3.5 sm:mr-1.5" />
+              <RiRemoteControlLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Commands</span>
             </TabsTrigger>
             <TabsTrigger value="log">
-              <RiHistoryLine className="size-3.5 sm:mr-1.5" />
+              <RiHistoryLine aria-hidden="true" className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">OCPP Logs</span>
             </TabsTrigger>
           </TabsList>
@@ -821,9 +820,9 @@ export default function ChargerDetail() {
 
         {/* Sessions */}
         <TabsContent value="sessions" className="mt-4">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {activeSessions.length > 0 && (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   Active
                 </p>
@@ -842,7 +841,7 @@ export default function ChargerDetail() {
               </div>
             )}
             {completedSessions.length > 0 && (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   Recent
                 </p>
@@ -999,7 +998,7 @@ function AnalyticsTab({
   const currentHour = new Date().getHours()
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       {/* Summary Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -1015,9 +1014,9 @@ function AnalyticsTab({
             </p>
             <div className="mt-1 flex items-center gap-1">
               {summary.changeDirection === 'up' ? (
-                <RiArrowUpSLine className="size-4 text-emerald-500" />
+                <RiArrowUpSLine aria-hidden="true" className="size-4 text-emerald-500" />
               ) : (
-                <RiArrowDownSLine className="size-4 text-red-500" />
+                <RiArrowDownSLine aria-hidden="true" className="size-4 text-red-500" />
               )}
               <span
                 className={cn(
@@ -1127,10 +1126,10 @@ function AnalyticsTab({
                     style={{ height: `${Math.max(totalH, 2)}%` }}
                   >
                     <div
-                      className="w-full bg-blue-500 transition-all duration-500"
+                      className="w-full bg-blue-500 transition-[height] duration-500"
                       style={{ height: `${c1Pct}%` }}
                     />
-                    <div className="w-full flex-1 bg-cyan-400 transition-all duration-500" />
+                    <div className="w-full flex-1 bg-cyan-400 transition-[height] duration-500" />
                   </div>
                   {/* Label */}
                   <span className="mt-2 text-[10px] text-muted-foreground">
@@ -1176,7 +1175,7 @@ function AnalyticsTab({
                   </div>
                   <div
                     className={cn(
-                      'w-full rounded-t-sm transition-all duration-300',
+                      'w-full rounded-t-sm transition-[height] duration-300',
                       isFuture
                         ? 'bg-blue-100'
                         : isCurrent
@@ -1211,7 +1210,7 @@ function AnalyticsTab({
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <RiPlugLine className="size-4 text-muted-foreground" />
+                    <RiPlugLine aria-hidden="true" className="size-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium">Connector {connId}</h3>
                   </div>
                   <span className="text-sm font-bold tabular-nums">
@@ -1357,7 +1356,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* General Settings */}
       <Card>
         <CardContent className="p-5">
@@ -1390,7 +1389,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
           </div>
           <div className="mt-4 flex justify-end">
             <Button size="sm" onClick={handleSaveGeneral}>
-              <RiSaveLine className="mr-1.5 size-3.5" />
+              <RiSaveLine aria-hidden="true" data-icon="inline-start" />
               Save
             </Button>
           </div>
@@ -1477,9 +1476,10 @@ function SettingsTab({ charger }: { charger: Charger }) {
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
+                          aria-label={`Edit ${config.key}`}
                           onClick={() => handleEditConfig(config.key)}
                         >
-                          <RiEditLine className="size-3" />
+                          <RiEditLine aria-hidden="true" className="size-3" />
                         </Button>
                       ) : null}
                     </div>
@@ -1499,12 +1499,12 @@ function SettingsTab({ charger }: { charger: Charger }) {
             Set power limits and time-based charging schedules
           </p>
           <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
-            <RiFlashlightLine className="mx-auto size-8 text-muted-foreground/40" />
+            <RiFlashlightLine aria-hidden="true" className="mx-auto size-8 text-muted-foreground/40" />
             <p className="mt-2 text-sm text-muted-foreground">
               No charging profiles configured
             </p>
             <Button variant="outline" size="sm" className="mt-3">
-              <RiAddLine className="mr-1.5 size-3.5" />
+              <RiAddLine aria-hidden="true" data-icon="inline-start" />
               Create Profile
             </Button>
           </div>
@@ -1531,7 +1531,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
                   className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-2"
                 >
                   <span className="flex items-center gap-2 text-xs font-medium">
-                    <RiShieldKeyholeLine className="size-3.5 text-muted-foreground" />
+                    <RiShieldKeyholeLine aria-hidden="true" className="size-3.5 text-muted-foreground" />
                     {auth.idTag}
                   </span>
                   <Badge
@@ -1562,7 +1562,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
               }}
             />
             <Button size="sm" className="h-8" onClick={handleAddIdTag}>
-              <RiAddLine className="mr-1 size-3.5" />
+              <RiAddLine aria-hidden="true" data-icon="inline-start" />
               Add
             </Button>
           </div>
@@ -1577,9 +1577,9 @@ function SettingsTab({ charger }: { charger: Charger }) {
             Update firmware and request diagnostic uploads
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex flex-col gap-3 rounded-lg border p-4">
               <div className="flex items-center gap-2">
-                <RiUploadLine className="size-4 text-muted-foreground" />
+                <RiUploadLine aria-hidden="true" className="size-4 text-muted-foreground" />
                 <p className="text-xs font-medium">Firmware Update</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1603,13 +1603,13 @@ function SettingsTab({ charger }: { charger: Charger }) {
                 className="w-full"
                 onClick={handleFirmwareUpdate}
               >
-                <RiUploadLine className="mr-1.5 size-3.5" />
+                <RiUploadLine aria-hidden="true" data-icon="inline-start" />
                 Update Firmware
               </Button>
             </div>
-            <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex flex-col gap-3 rounded-lg border p-4">
               <div className="flex items-center gap-2">
-                <RiSettings3Line className="size-4 text-muted-foreground" />
+                <RiSettings3Line aria-hidden="true" className="size-4 text-muted-foreground" />
                 <p className="text-xs font-medium">Diagnostics</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1651,7 +1651,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
               className="border-red-300 text-red-700 hover:bg-red-50"
               onClick={handleDeleteCharger}
             >
-              <RiDeleteBinLine className="mr-1.5 size-3.5" />
+              <RiDeleteBinLine aria-hidden="true" data-icon="inline-start" />
               Delete
             </Button>
           </div>
@@ -1689,7 +1689,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <RiPlugLine className="size-5 text-muted-foreground" />
+                  <RiPlugLine aria-hidden="true" className="size-5 text-muted-foreground" />
                   <span
                     className={cn(
                       'absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-white',
@@ -1723,7 +1723,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   </p>
                   {connector.sessionStartedAt && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <RiTimeLine className="size-3" />
+                      <RiTimeLine aria-hidden="true" className="size-3" />
                       {sessionDuration(connector.sessionStartedAt)}
                     </span>
                   )}
@@ -1756,7 +1756,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   </div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100">
                     <div
-                      className="h-full rounded-full bg-blue-500 transition-all duration-1000"
+                      className="h-full rounded-full bg-blue-500 transition-[width] duration-1000"
                       style={{ width: `${powerPercent}%` }}
                     />
                   </div>
@@ -1768,7 +1768,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                     className="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50"
                     onClick={() => setStopOpen(true)}
                   >
-                    <RiShutDownLine className="mr-1 size-3" />
+                    <RiShutDownLine aria-hidden="true" data-icon="inline-start" />
                     Stop Charging
                   </Button>
                 </div>
@@ -1796,7 +1796,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             {isFaulted && connector.errorCode !== 'NoError' && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50/30 p-3">
                 <div className="flex items-center gap-2">
-                  <RiAlertLine className="size-4 text-red-500" />
+                  <RiAlertLine aria-hidden="true" className="size-4 text-red-500" />
                   <p className="text-xs font-medium text-red-700">
                     {connector.errorCode}
                   </p>
@@ -1808,7 +1808,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
             {connector.status === 'Available' && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <RiCheckboxCircleLine className="size-4 text-emerald-500" />
+                  <RiCheckboxCircleLine aria-hidden="true" className="size-4 text-emerald-500" />
                   Ready to charge
                 </div>
                 <Button
@@ -1816,7 +1816,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   className="h-7 text-xs"
                   onClick={() => setStartOpen(true)}
                 >
-                  <RiFlashlightLine className="mr-1 size-3" />
+                  <RiFlashlightLine aria-hidden="true" data-icon="inline-start" />
                   Start Charging
                 </Button>
               </div>
@@ -1893,7 +1893,7 @@ function StartChargingDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10">
-                  <RiChargingPile2Line className="size-4 text-blue-600" />
+                  <RiChargingPile2Line aria-hidden="true" className="size-4 text-blue-600" />
                 </div>
                 Start Charging
               </DialogTitle>
@@ -1902,10 +1902,10 @@ function StartChargingDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
+            <div className="flex flex-col gap-4 py-2">
               {/* Connector info */}
               <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
-                <RiPlugLine className="size-4 text-muted-foreground" />
+                <RiPlugLine aria-hidden="true" className="size-4 text-muted-foreground" />
                 <div className="flex-1 text-xs">
                   <span className="font-medium">Connector {connectorId}</span>
                   <span className="text-muted-foreground">
@@ -1925,7 +1925,7 @@ function StartChargingDialog({
                   htmlFor="idTag"
                   className="flex items-center gap-1.5 text-xs"
                 >
-                  <RiUserLine className="size-3" />
+                  <RiUserLine aria-hidden="true" className="size-3" />
                   ID Tag / Identifier
                 </Label>
                 <select
@@ -1953,7 +1953,7 @@ function StartChargingDialog({
                   htmlFor="powerLimit"
                   className="flex items-center gap-1.5 text-xs"
                 >
-                  <RiSpeedLine className="size-3" />
+                  <RiSpeedLine aria-hidden="true" className="size-3" />
                   Power Limit (kW)
                 </Label>
                 <Input
@@ -1976,7 +1976,7 @@ function StartChargingDialog({
                 Cancel
               </Button>
               <Button onClick={handleStart}>
-                <RiFlashlightLine className="mr-1.5 size-3.5" />
+                <RiFlashlightLine aria-hidden="true" data-icon="inline-start" />
                 Start Charging
               </Button>
             </DialogFooter>
@@ -1988,11 +1988,11 @@ function StartChargingDialog({
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <RiChargingPile2Line className="size-6 text-blue-500" />
+                <RiChargingPile2Line aria-hidden="true" className="size-6 text-blue-500" />
               </div>
             </div>
             <p className="mt-4 text-sm font-medium">
-              Sending RemoteStartTransaction...
+              Sending RemoteStartTransaction…
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Connector #{connectorId} &middot; ID Tag: {idTag}
@@ -2003,7 +2003,7 @@ function StartChargingDialog({
         {step === 'sent' && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
-              <RiCheckboxCircleLine className="size-8 text-emerald-500" />
+              <RiCheckboxCircleLine aria-hidden="true" className="size-8 text-emerald-500" />
             </div>
             <p className="mt-4 text-sm font-medium">Command Sent</p>
             <p className="mt-1 text-center text-xs text-muted-foreground">
@@ -2080,7 +2080,7 @@ function StopChargingDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-red-500/10">
-                  <RiShutDownLine className="size-4 text-red-600" />
+                  <RiShutDownLine aria-hidden="true" className="size-4 text-red-600" />
                 </div>
                 Stop Charging
               </DialogTitle>
@@ -2126,7 +2126,7 @@ function StopChargingDialog({
                 Cancel
               </Button>
               <Button variant="destructive" onClick={handleStop}>
-                <RiShutDownLine className="mr-1.5 size-3.5" />
+                <RiShutDownLine aria-hidden="true" data-icon="inline-start" />
                 Stop Charging
               </Button>
             </DialogFooter>
@@ -2138,11 +2138,11 @@ function StopChargingDialog({
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-red-100 border-t-red-500" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <RiShutDownLine className="size-6 text-red-500" />
+                <RiShutDownLine aria-hidden="true" className="size-6 text-red-500" />
               </div>
             </div>
             <p className="mt-4 text-sm font-medium">
-              Sending RemoteStopTransaction...
+              Sending RemoteStopTransaction…
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Connector #{connectorId}
@@ -2153,7 +2153,7 @@ function StopChargingDialog({
         {step === 'stopped' && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
-              <RiCheckboxCircleLine className="size-8 text-emerald-500" />
+              <RiCheckboxCircleLine aria-hidden="true" className="size-8 text-emerald-500" />
             </div>
             <p className="mt-4 text-sm font-medium">Charging Stopped</p>
             <p className="mt-1 text-center text-xs text-muted-foreground">
@@ -2183,12 +2183,12 @@ function SessionRow({
   const isActive = session.status === 'Active'
 
   return (
-    <div className="space-y-0">
+    <div>
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          'flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-all',
+          'flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-colors',
           isActive && 'border-blue-200 bg-blue-50/30',
           !isActive && 'hover:bg-muted/50',
           selected && !isActive && 'border-foreground/20 bg-muted/30',
@@ -2198,7 +2198,7 @@ function SessionRow({
         {/* Status dot */}
         <span className="relative flex size-2.5">
           {isActive && (
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+            <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-blue-400 opacity-75" />
           )}
           <span
             className={cn(
@@ -2210,7 +2210,7 @@ function SessionRow({
 
         {/* Connector */}
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <RiPlugLine className="size-3" />#{session.connectorId}
+          <RiPlugLine aria-hidden="true" className="size-3" />#{session.connectorId}
         </span>
 
         {/* Vehicle */}
@@ -2230,7 +2230,7 @@ function SessionRow({
 
         {/* Duration */}
         <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
-          <RiTimeLine className="size-3" />
+          <RiTimeLine aria-hidden="true" className="size-3" />
           {sessionDuration(session.startedAt, session.endedAt)}
         </span>
 
@@ -2241,6 +2241,7 @@ function SessionRow({
 
         {/* Expand indicator */}
         <RiArrowDownSLine
+          aria-hidden="true"
           className={cn(
             'size-4 text-muted-foreground transition-transform',
             selected && 'rotate-180'
@@ -2428,7 +2429,7 @@ function ReservationCard({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-lg border px-4 py-3 transition-all',
+        'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
         isActive && !isExpired
           ? 'border-emerald-200 bg-emerald-50/30'
           : 'bg-muted/20'
@@ -2488,10 +2489,10 @@ function ReservationCard({
           onClick={() => onCancel(reservation.reservationId)}
         >
           {isCancelling ? (
-            <RiLoader4Line className="size-3 animate-spin" />
+            <RiLoader4Line aria-hidden="true" className="size-3 animate-spin" />
           ) : (
             <>
-              <RiCalendarCloseLine className="mr-1 size-3" />
+              <RiCalendarCloseLine aria-hidden="true" data-icon="inline-start" />
               Cancel
             </>
           )}
@@ -2584,7 +2585,7 @@ function NewReservationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
-              <RiCalendarCheckLine className="size-4 text-emerald-600" />
+              <RiCalendarCheckLine aria-hidden="true" className="size-4 text-emerald-600" />
             </div>
             New Reservation
           </DialogTitle>
@@ -2593,7 +2594,7 @@ function NewReservationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="flex flex-col gap-4 py-2">
           {/* Connector selector */}
           <div className="grid gap-2">
             <Label className="text-xs">Connector</Label>
@@ -2607,7 +2608,7 @@ function NewReservationDialog({
                     disabled={!isAvailable}
                     onClick={() => setConnectorId(conn.id)}
                     className={cn(
-                      'flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-xs transition-all',
+                      'flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-xs transition-colors',
                       connectorId === conn.id
                         ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700'
                         : isAvailable
@@ -2615,7 +2616,7 @@ function NewReservationDialog({
                           : 'cursor-not-allowed opacity-40'
                     )}
                   >
-                    <RiPlugLine className="size-4" />
+                    <RiPlugLine aria-hidden="true" className="size-4" />
                     <span className="font-semibold">#{conn.id}</span>
                     <span
                       className={cn(
@@ -2644,7 +2645,7 @@ function NewReservationDialog({
               htmlFor="res-idTag"
               className="flex items-center gap-1.5 text-xs"
             >
-              <RiUserLine className="size-3" />
+              <RiUserLine aria-hidden="true" className="size-3" />
               ID Tag
             </Label>
             <Input
@@ -2679,7 +2680,7 @@ function NewReservationDialog({
               htmlFor="res-expiry"
               className="flex items-center gap-1.5 text-xs"
             >
-              <RiTimeLine className="size-3" />
+              <RiTimeLine aria-hidden="true" className="size-3" />
               Expiry Date &amp; Time
             </Label>
             <Input
@@ -2698,6 +2699,7 @@ function NewReservationDialog({
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <RiArrowDownSLine
+                  aria-hidden="true"
                   className={cn(
                     'size-3.5 transition-transform',
                     advancedOpen && 'rotate-180'
@@ -2735,12 +2737,12 @@ function NewReservationDialog({
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? (
               <>
-                <RiLoader4Line className="mr-1.5 size-3.5 animate-spin" />
-                Reserving...
+                <RiLoader4Line aria-hidden="true" data-icon="inline-start" className="animate-spin" />
+                Reserving…
               </>
             ) : (
               <>
-                <RiCalendarCheckLine className="mr-1.5 size-3.5" />
+                <RiCalendarCheckLine aria-hidden="true" data-icon="inline-start" />
                 Reserve Connector
               </>
             )}
@@ -2799,7 +2801,7 @@ function ReservationsTab({
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-28" />
           <Skeleton className="h-8 w-36" />
@@ -2812,12 +2814,12 @@ function ReservationsTab({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Reservations</h3>
         <Button size="sm" onClick={() => setNewDialogOpen(true)}>
-          <RiAddLine className="mr-1.5 size-3.5" />
+          <RiAddLine aria-hidden="true" data-icon="inline-start" />
           New Reservation
         </Button>
       </div>
@@ -2825,7 +2827,7 @@ function ReservationsTab({
       {/* Empty state */}
       {reservations.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-12 text-center">
-          <RiCalendarCheckLine className="size-10 text-muted-foreground/40" />
+          <RiCalendarCheckLine aria-hidden="true" className="size-10 text-muted-foreground/40" />
           <p className="mt-3 text-sm font-medium">No reservations yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Reserve a connector to hold it for a specific ID tag.
@@ -2836,7 +2838,7 @@ function ReservationsTab({
             className="mt-4"
             onClick={() => setNewDialogOpen(true)}
           >
-            <RiAddLine className="mr-1.5 size-3.5" />
+            <RiAddLine aria-hidden="true" data-icon="inline-start" />
             Create First Reservation
           </Button>
         </div>
@@ -2844,7 +2846,7 @@ function ReservationsTab({
 
       {/* Active section */}
       {activeReservations.length > 0 && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
             Active
           </p>
@@ -2868,6 +2870,7 @@ function ReservationsTab({
               className="flex w-full items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase hover:text-foreground"
             >
               <RiArrowDownSLine
+                aria-hidden="true"
                 className={cn(
                   'size-3.5 transition-transform',
                   pastOpen && 'rotate-180'
@@ -2876,7 +2879,7 @@ function ReservationsTab({
               Past ({pastReservations.length})
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2 space-y-2">
+          <CollapsibleContent className="mt-2 flex flex-col gap-2">
             {pastReservations.map((r) => (
               <ReservationCard
                 key={r.reservationId}

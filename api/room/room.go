@@ -64,7 +64,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		return nil, err
 	}
 
-	var items []Item
+	items := make([]Item, 0)
 
 	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
 		b.Columns(
@@ -155,6 +155,7 @@ type CreateParams struct {
 	SiteID string `json:"siteId"`
 	Name   string `json:"name"`
 	Type   string `json:"type"`
+	Level  int    `json:"level"`
 }
 
 func (p *CreateParams) Valid() error {
@@ -184,13 +185,15 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 			id,
 			site_id,
 			name,
-			type
-		) values ($1, $2, $3, $4)
+			type,
+			level
+		) values ($1, $2, $3, $4, $5)
 	`,
 		id,
 		p.SiteID,
 		p.Name,
 		p.Type,
+		p.Level,
 	)
 	if err != nil {
 		return nil, err
@@ -261,6 +264,8 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	if err := iam.InSite(ctx, r.SiteID); err != nil {
 		return nil, err
 	}
+
+	r.Devices = make([]DeviceItem, 0)
 
 	// Fetch assigned devices with meter aggregation
 	err = pgstmt.Select(func(b pgstmt.SelectStatement) {

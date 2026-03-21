@@ -509,7 +509,7 @@ export default function Rooms() {
               </div>
             </div>
           ) : activeFloor && (
-            <div key={activeLevel} className="animate-in fade-in slide-in-from-bottom-2 rounded-xl border bg-card duration-300">
+            <div className="rounded-xl border bg-card">
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">

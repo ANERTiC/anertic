@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
-import { useSearchParams } from 'react-router'
+import { useSearchParams, useFetcher } from 'react-router'
 import { cn } from '~/lib/utils'
 import { ROOM_TYPE_CONFIG } from '~/lib/room'
 import type { RoomItem, RoomType, FloorItem } from '~/lib/room'
@@ -21,7 +21,6 @@ import {
   assignDevice,
   unassignDevice,
   createFloor,
-  deleteFloor,
   assignFloorDevice,
   unassignFloorDevice,
   useAvailableDevices,
@@ -781,21 +780,15 @@ export function DeleteFloorDialog({
   onSuccess: () => void
 }) {
   const siteId = useSiteId()
-  const [loading, setLoading] = useState(false)
+  const fetcher = useFetcher()
+  const isDeleting = fetcher.state !== 'idle'
 
-  async function handleDelete() {
-    if (!floor) return
-    setLoading(true)
-    try {
-      await deleteFloor({ siteId, level: floor.level })
-      toast.success(`Floor "${floor.name}" deleted`)
+  useEffect(() => {
+    if (fetcher.data?.ok) {
+      toast.success(`Floor "${floor?.name}" deleted`)
       onSuccess()
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete floor')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [fetcher.data])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -813,18 +806,23 @@ export function DeleteFloorDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={loading}
+            disabled={isDeleting}
           >
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={loading}
-          >
-            <RiCloseLine className="mr-1.5 size-4" />
-            Delete Floor
-          </Button>
+          <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="delete-floor" />
+            <input type="hidden" name="siteId" value={siteId} />
+            <input type="hidden" name="level" value={floor?.level ?? 0} />
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={isDeleting}
+            >
+              <RiCloseLine className="mr-1.5 size-4" />
+              {isDeleting ? 'Deleting...' : 'Delete Floor'}
+            </Button>
+          </fetcher.Form>
         </DialogFooter>
       </DialogContent>
     </Dialog>

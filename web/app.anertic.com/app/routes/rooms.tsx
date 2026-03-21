@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useSearchParams, useFetcher, data } from 'react-router'
 import {
   RiAddLine,
   RiSearchLine,
@@ -58,6 +58,20 @@ import {
   type FloorItem,
 } from '~/lib/room'
 import { api } from '~/lib/api'
+
+export async function clientAction({ request }: { request: Request }) {
+  const formData = await request.formData()
+  const intent = formData.get('intent')
+
+  if (intent === 'delete-floor') {
+    const siteId = formData.get('siteId') as string
+    const level = Number(formData.get('level'))
+    await api('floor.delete', { siteId, level })
+    return data({ ok: true })
+  }
+
+  return data({ ok: false }, { status: 400 })
+}
 
 export default function Rooms() {
   const siteId = useSiteId()

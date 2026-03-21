@@ -21,8 +21,12 @@ import {
   assignDevice,
   unassignDevice,
   createFloor,
+  deleteFloor,
+  assignFloorDevice,
+  unassignFloorDevice,
   useAvailableDevices,
   useRoomDetail,
+  useFloorDetail,
 } from '~/hooks/use-rooms'
 import { useSiteId } from '~/layouts/site'
 import {
@@ -741,6 +745,223 @@ export function AssignDeviceDialog({
                         size="sm"
                         className="shrink-0 text-xs"
                         onClick={() => handleAssign(device.id, device.name)}
+                      >
+                        <RiAddLine className="mr-1 size-3.5" />
+                        Assign
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --- Delete Floor Dialog ---
+
+export function DeleteFloorDialog({
+  open,
+  onOpenChange,
+  floor,
+  onSuccess,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  floor: FloorItem | null
+  onSuccess: () => void
+}) {
+  const siteId = useSiteId()
+  const [loading, setLoading] = useState(false)
+
+  async function handleDelete() {
+    if (!floor) return
+    setLoading(true)
+    try {
+      await deleteFloor({ siteId, level: floor.level })
+      toast.success(`Floor "${floor.name}" deleted`)
+      onSuccess()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete floor')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete Floor</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete{' '}
+            <span className="font-medium text-foreground">{floor?.name}</span>?
+            Rooms on this floor will be moved to level 0.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={loading}
+          >
+            <RiCloseLine className="mr-1.5 size-4" />
+            Delete Floor
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --- Assign Floor Device Dialog ---
+
+export function AssignFloorDeviceDialog({
+  open,
+  onOpenChange,
+  floor,
+  onSuccess,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  floor: FloorItem | null
+  onSuccess: () => void
+}) {
+  const siteId = useSiteId()
+  const [search, setSearch] = useState('')
+  const { devices, isLoading } = useAvailableDevices(siteId, search)
+  const { data: floorDetail, mutate: mutateFloor } = useFloorDetail(
+    siteId,
+    open && floor ? floor.level : null,
+  )
+
+  const assignedIds = new Set((floorDetail?.devices ?? []).map((d) => d.id))
+
+  useEffect(() => {
+    if (!open) setSearch('')
+  }, [open])
+
+  async function handleAssign(deviceId: string, deviceName: string) {
+    if (!floor) return
+    try {
+      await assignFloorDevice({ siteId, level: floor.level, deviceId })
+      toast.success(`${deviceName} assigned to ${floor.name}`)
+      mutateFloor()
+      onSuccess()
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to assign device',
+      )
+    }
+  }
+
+  async function handleUnassign(deviceId: string, deviceName: string) {
+    if (!floor) return
+    try {
+      await unassignFloorDevice({ siteId, level: floor.level, deviceId })
+      toast.success(`${deviceName} removed from ${floor.name}`)
+      mutateFloor()
+      onSuccess()
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to unassign device',
+      )
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            Assign Device to {floor?.name ?? 'Floor'}
+          </DialogTitle>
+          <DialogDescription>
+            Select devices to assign directly to this floor.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="relative">
+          <RiSearchLine className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search devices..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+
+        <div className="-mx-1 max-h-64 overflow-y-auto">
+          {isLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Loading devices...
+            </p>
+          ) : devices.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No devices found
+            </p>
+          ) : (
+            <div className="space-y-1 px-1">
+              {devices.map((device) => {
+                const isAssigned = assignedIds.has(device.id)
+                return (
+                  <div
+                    key={device.id}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                  >
+                    <div className="relative shrink-0">
+                      <div className="flex size-8 items-center justify-center rounded-md bg-muted text-[10px] font-semibold text-muted-foreground uppercase">
+                        {device.type.slice(0, 2)}
+                      </div>
+                      <span
+                        className={cn(
+                          'absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-2 border-background',
+                          connectionStatusDot(device.connectionStatus),
+                        )}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{device.name}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">
+                        {device.type} · {device.connectionStatus}
+                      </p>
+                    </div>
+                    {isAssigned ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 text-xs"
+                        onClick={() =>
+                          handleUnassign(device.id, device.name)
+                        }
+                      >
+                        Unassign
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 text-xs"
+                        onClick={() =>
+                          handleAssign(device.id, device.name)
+                        }
                       >
                         <RiAddLine className="mr-1 size-3.5" />
                         Assign

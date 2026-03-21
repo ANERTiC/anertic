@@ -103,6 +103,8 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /floor.get", am.Handler(floor.Get))
 	a.Handle("POST /floor.update", am.Handler(floor.Update))
 	a.Handle("POST /floor.delete", am.Handler(floor.Delete))
+	a.Handle("POST /floor.assignDevice", am.Handler(floor.AssignDevice))
+	a.Handle("POST /floor.unassignDevice", am.Handler(floor.UnassignDevice))
 
 	// Rooms
 	a.Handle("POST /room.list", am.Handler(room.List))

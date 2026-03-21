@@ -60,12 +60,33 @@ export interface RoomGetResult extends RoomItem {
   devices: RoomDeviceItem[]
 }
 
+export interface FloorStats {
+  deviceCount: number
+  livePowerW: string
+  connectionStatus: ConnectionStatus
+}
+
 export interface FloorItem {
   siteId: string
   name: string
   level: number
+  stats: FloorStats
   createdAt: string
   updatedAt: string
+}
+
+export interface FloorDeviceItem {
+  id: string
+  name: string
+  type: string
+  tag: string
+  connectionStatus: ConnectionStatus
+  meterCount: number
+  lastSeenAt: string | null
+}
+
+export interface FloorGetResult extends FloorItem {
+  devices: FloorDeviceItem[]
 }
 
 // --- Config Maps ---

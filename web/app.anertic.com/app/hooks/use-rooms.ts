@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { api } from '~/lib/api'
-import type { RoomItem, RoomGetResult, FloorItem, RoomType } from '~/lib/room'
+import type { RoomItem, RoomGetResult, FloorItem, FloorGetResult, RoomType } from '~/lib/room'
 import type { DeviceListItem } from '~/lib/device'
 
 // ---- useRoomList ----
@@ -58,6 +58,16 @@ export function useAvailableDevices(siteId: string, search?: string) {
   return { devices: data?.items ?? [], isLoading }
 }
 
+// ---- useFloorDetail ----
+
+export function useFloorDetail(siteId: string, level: number | null) {
+  const { data, isLoading, error, mutate } = useSWR(
+    level !== null ? ['floor.get', siteId, level] : null,
+    () => api<FloorGetResult>('floor.get', { siteId, level })
+  )
+  return { data: data ?? null, isLoading, error, mutate }
+}
+
 // ---- Mutation helpers ----
 
 export async function createRoom(params: {
@@ -110,8 +120,24 @@ export async function updateFloor(params: {
   siteId: string
   level: number
   name?: string
-}): Promise<FloorItem> {
-  return api<FloorItem>('floor.update', params)
+}): Promise<{ item: FloorItem }> {
+  return api<{ item: FloorItem }>('floor.update', params)
+}
+
+export async function assignFloorDevice(params: {
+  siteId: string
+  level: number
+  deviceId: string
+}): Promise<void> {
+  await api('floor.assignDevice', params)
+}
+
+export async function unassignFloorDevice(params: {
+  siteId: string
+  level: number
+  deviceId: string
+}): Promise<void> {
+  await api('floor.unassignDevice', params)
 }
 
 export async function deleteFloor(params: {

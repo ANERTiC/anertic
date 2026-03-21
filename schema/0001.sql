@@ -57,7 +57,8 @@ create table if not exists sites
     webhook_url               text                    not null default '',
     metadata                  jsonb                   not null default '{}',
     created_at                timestamptz             not null default now(),
-    updated_at                timestamptz             not null default now()
+    updated_at                timestamptz             not null default now(),
+    deleted_at                timestamptz
 );
 
 create table if not exists site_members

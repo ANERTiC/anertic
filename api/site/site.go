@@ -65,6 +65,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
 			c.Eq("sm.user_id", userID)
+			c.IsNull("s.deleted_at")
 			if p.Search != "" {
 				search := "%" + p.Search + "%"
 				c.And(func(w pgstmt.Cond) {
@@ -223,6 +224,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			created_at
 		from sites
 		where id = $1
+		  and deleted_at is null
 	`, p.ID).Scan(
 		&r.ID,
 		&r.Name,
@@ -359,6 +361,48 @@ func UpdateTariff(ctx context.Context, p *UpdateTariffParams) (*struct{}, error)
 	}).ExecWith(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
+// Delete
+
+type DeleteParams struct {
+	ID string `json:"id"`
+}
+
+func (p *DeleteParams) Valid() error {
+	v := validator.New()
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+func Delete(ctx context.Context, p *DeleteParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	if err := iam.SiteOwner(ctx, p.ID); err != nil {
+		return nil, err
+	}
+
+	res, err := pgctx.Exec(ctx, `
+		update sites
+		set deleted_at = now(),
+		    updated_at = now()
+		where id = $1
+		  and deleted_at is null
+	`, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return nil, ErrNotFound
 	}
 
 	return new(struct{}), nil

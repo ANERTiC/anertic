@@ -173,6 +173,12 @@ export default function Rooms() {
       const remaining = floors.filter((f) => f.level !== deletedLevel)
       if (remaining.length > 0) {
         setActiveLevel(remaining[0].level)
+      } else {
+        // No floors left — clear the param
+        setSearchParams((prev) => {
+          prev.delete('floor')
+          return prev
+        })
       }
     }
   }, [deleteFloorFetcher.data])
@@ -383,19 +389,19 @@ export default function Rooms() {
                         key={floor.level}
                         onClick={() => setActiveLevel(floor.level)}
                         className={cn(
-                          'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all',
+                          'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-200 ease-out',
                           isActive
-                            ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20'
-                            : 'hover:bg-muted/50',
+                            ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20 scale-[1.02]'
+                            : 'scale-100 hover:bg-muted/50',
                         )}
                       >
                         {/* Riser dot */}
                         <div
                           className={cn(
-                            'mt-1.5 size-2 shrink-0 rounded-full border-2 transition-colors',
+                            'mt-1.5 shrink-0 rounded-full border-2 transition-all duration-200',
                             isActive
-                              ? 'border-primary bg-primary'
-                              : 'border-muted-foreground/30 bg-background',
+                              ? 'size-2.5 border-primary bg-primary shadow-[0_0_6px_rgba(99,102,241,0.4)]'
+                              : 'size-2 border-muted-foreground/30 bg-background',
                           )}
                         />
 
@@ -403,7 +409,7 @@ export default function Rooms() {
                           <div className="flex items-baseline justify-between gap-1">
                             <span
                               className={cn(
-                                'truncate text-sm font-semibold',
+                                'truncate text-sm font-semibold transition-colors duration-200',
                                 isActive
                                   ? 'text-primary'
                                   : 'text-foreground',
@@ -467,8 +473,8 @@ export default function Rooms() {
           </div>
         </aside>
 
-        {/* Floor Detail */}
-        <main className="min-w-0 flex-1 space-y-4">
+        {/* Floor Detail — key forces re-mount on floor switch for animations */}
+        <main key={activeLevel} className="min-w-0 flex-1 space-y-4">
           {/* Floor Header */}
           {floorsLoading ? (
             <div className="rounded-xl border bg-card p-4">
@@ -498,7 +504,7 @@ export default function Rooms() {
               </div>
             </div>
           ) : activeFloor && (
-            <div className="rounded-xl border bg-card">
+            <div className="animate-in fade-in slide-in-from-bottom-2 rounded-xl border bg-card duration-300">
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -633,16 +639,17 @@ export default function Rooms() {
                         (a, b) =>
                           (b.livePowerW ?? 0) - (a.livePowerW ?? 0),
                       )
-                      .map((room) => (
+                      .map((room, i) => (
                         <div
                           key={room.id}
                           className={cn(
-                            'h-full rounded-sm',
+                            'floor-bar-segment h-full rounded-sm',
                             ROOM_TYPE_BAR_COLORS[room.type],
                           )}
                           style={{
                             width: `${((room.livePowerW ?? 0) / floorSummary.totalPowerW) * 100}%`,
                             minWidth: '4px',
+                            animationDelay: `${i * 80}ms`,
                           }}
                           title={`${room.name}: ${formatPower(room.livePowerW)}`}
                         />
@@ -724,7 +731,7 @@ export default function Rooms() {
           )}
 
           {/* Search */}
-          <div className="relative">
+          <div className="animate-in fade-in slide-in-from-bottom-1 relative duration-200 delay-100">
             <RiSearchLine className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search rooms..."
@@ -782,20 +789,26 @@ export default function Rooms() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {rooms.map((room) => (
-                <RoomCard
+              {rooms.map((room, i) => (
+                <div
                   key={room.id}
-                  room={room}
-                  floorPowerW={floorSummary.totalPowerW}
-                  onEdit={(r) => setEditRoom(r)}
-                  onDelete={(r) => setDeleteRoom(r)}
-                  onAssignDevice={(r) => setAssignRoom(r)}
-                />
+                  className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <RoomCard
+                    room={room}
+                    floorPowerW={floorSummary.totalPowerW}
+                    onEdit={(r) => setEditRoom(r)}
+                    onDelete={(r) => setDeleteRoom(r)}
+                    onAssignDevice={(r) => setAssignRoom(r)}
+                  />
+                </div>
               ))}
               {/* Add Room card */}
               <button
                 onClick={() => setAddRoomOpen(true)}
-                className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                className="animate-in fade-in slide-in-from-bottom-3 flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-muted-foreground transition-colors fill-mode-both duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                style={{ animationDelay: `${rooms.length * 50}ms` }}
               >
                 <RiAddLine className="size-6" />
                 <span className="text-sm font-medium">Add Room</span>

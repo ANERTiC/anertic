@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import {
@@ -173,6 +174,7 @@ function SectionHeader({
 
 export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
+  const navigate = useNavigate()
   const siteId = useSiteId()
   const currentUser = getUser()
   const [mounted, setMounted] = useState(false)
@@ -208,6 +210,7 @@ export default function Settings() {
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingTariffs, setSavingTariffs] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingSite, setDeletingSite] = useState(false)
   const [members, setMembers] = useState<SiteMember[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
   const [showInviteForm, setShowInviteForm] = useState(false)
@@ -1353,9 +1356,27 @@ export default function Settings() {
                 >
                   Cancel
                 </Button>
-                <Button variant="destructive" size="sm" className="gap-1.5">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={deletingSite}
+                  onClick={async () => {
+                    setDeletingSite(true)
+                    try {
+                      await api('site.delete', { id: siteId })
+                      toast.success('Site deleted')
+                      navigate('/dashboard')
+                    } catch (err: unknown) {
+                      const msg =
+                        err instanceof Error ? err.message : 'Failed to delete site'
+                      toast.error(msg)
+                      setDeletingSite(false)
+                    }
+                  }}
+                >
                   <RiDeleteBinLine className="size-3.5" />
-                  Confirm Delete
+                  {deletingSite ? 'Deleting…' : 'Confirm Delete'}
                 </Button>
               </div>
             ) : (

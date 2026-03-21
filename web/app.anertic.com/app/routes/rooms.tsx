@@ -37,9 +37,8 @@ export default function Rooms() {
   const setActiveLevel = useCallback(
     (level: number) => {
       setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.set('floor', String(level))
-        return next
+        prev.set('floor', String(level))
+        return prev
       })
     },
     [setSearchParams],

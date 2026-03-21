@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
   RiChargingPile2Line,
   RiCpuLine,
@@ -131,14 +131,14 @@ export default function Dashboard() {
       <div className="mb-8 hidden overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-primary/5 p-6 sm:block">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <RiFlashlightLine className="size-4 text-primary" />
+            <RiFlashlightLine aria-hidden="true" className="size-4 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Live Energy Flow
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
             </span>
             Real-time
@@ -194,20 +194,20 @@ export default function Dashboard() {
       <div className="mb-8 overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-muted/30 via-background to-primary/5 sm:hidden">
         <div className="flex items-center justify-between border-b border-border/30 px-4 py-3">
           <div className="flex items-center gap-2">
-            <RiFlashlightLine className="size-4 text-primary" />
+            <RiFlashlightLine aria-hidden="true" className="size-4 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Energy Flow
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
             </span>
             Live
           </div>
         </div>
-        <div className="space-y-1 p-4">
+        <div className="flex flex-col gap-1 p-4">
           <div className="px-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
             Sources
           </div>
@@ -222,7 +222,7 @@ export default function Dashboard() {
 
           <div className="flex justify-center">
             <div className="flex items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 px-5 py-2.5">
-              <RiBattery2ChargeLine className="size-5 text-violet-600" />
+              <RiBattery2ChargeLine aria-hidden="true" className="size-5 text-violet-600" />
               <div>
                 <p className="text-base font-bold tabular-nums text-violet-700">
                   {Math.round(power.batterySoc)}%
@@ -281,7 +281,7 @@ export default function Dashboard() {
                 {/* Mini bar chart placeholder */}
                 <div className="mt-4 flex h-2 gap-0.5 overflow-hidden rounded-full">
                   <div
-                    className="rounded-full bg-amber-400 transition-all duration-700"
+                    className="rounded-full bg-amber-400 transition-[width] duration-700"
                     style={{
                       width: `${summary ? (summary.todaySolarKwh / Math.max(summary.todayEnergyKwh, 1)) * 100 : 60}%`,
                     }}
@@ -316,7 +316,7 @@ export default function Dashboard() {
           <CardContent className="flex h-full flex-col p-5">
             <div className="flex items-center gap-2">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <RiSparklingLine className="size-3.5 text-primary" />
+                <RiSparklingLine aria-hidden="true" className="size-3.5 text-primary" />
               </div>
               <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
                 AI Insight
@@ -328,11 +328,11 @@ export default function Dashboard() {
             </p>
             <div className="mt-4 flex items-center gap-2">
               <Badge variant="secondary" className="gap-1 text-xs">
-                <RiTimeLine className="size-3" />
+                <RiTimeLine aria-hidden="true" className="size-3" />
                 2 min ago
               </Badge>
               <Badge variant="secondary" className="gap-1 text-xs">
-                <RiLeafLine className="size-3" />
+                <RiLeafLine aria-hidden="true" className="size-3" />
                 Optimization
               </Badge>
             </div>
@@ -351,9 +351,11 @@ export default function Dashboard() {
                 : "Get started by creating a site"}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/sites/create")} className="gap-1.5">
-            <RiAddLine className="size-3.5" />
-            New site
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Link to="/sites/create">
+              <RiAddLine aria-hidden="true" data-icon="inline-start" />
+              New Site
+            </Link>
           </Button>
         </div>
 
@@ -364,12 +366,12 @@ export default function Dashboard() {
             ))}
           </div>
         ) : sites.length === 0 ? (
-          <button
-            onClick={() => navigate("/sites/create")}
-            className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-all hover:border-primary/30 hover:bg-primary/5"
+          <Link
+            to="/sites/create"
+            className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
           >
             <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">
-              <RiBuilding2Line className="size-6 text-muted-foreground transition-colors group-hover:text-primary" />
+              <RiBuilding2Line aria-hidden="true" className="size-6 text-muted-foreground transition-colors group-hover:text-primary" />
             </div>
             <div>
               <p className="text-sm font-semibold">Create your first site</p>
@@ -377,48 +379,18 @@ export default function Dashboard() {
                 Add a location to start monitoring energy production, consumption, and EV charging.
               </p>
             </div>
-            <RiArrowRightLine className="ml-auto size-5 text-muted-foreground/40 transition-all group-hover:translate-x-1 group-hover:text-primary" />
-          </button>
+            <RiArrowRightLine aria-hidden="true" className="ml-auto size-5 text-muted-foreground/40 transition-transform motion-reduce:transition-none group-hover:translate-x-1 group-hover:text-primary" />
+          </Link>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {sites.map((site, index) => {
-              const accent = getSiteAccent(index)
-              return (
-                <button
-                  key={site.id}
-                  onClick={() => handleSelectSite(site)}
-                  className={cn(
-                    "group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-all",
-                    "hover:border-border hover:shadow-md hover:-translate-y-0.5",
-                  )}
-                >
-                  <div className="flex w-full items-start justify-between">
-                    <div
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1",
-                        accent.bg,
-                        accent.text,
-                        accent.ring,
-                      )}
-                    >
-                      {site.name.charAt(0).toUpperCase()}
-                    </div>
-                    <RiArrowRightLine className="size-4 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-foreground/60" />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold">{site.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate max-w-full">
-                    {site.address || site.timezone}
-                  </p>
-                  {/* Decorative bottom accent */}
-                  <div
-                    className={cn(
-                      "absolute bottom-0 left-5 right-5 h-0.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-                      accent.dot,
-                    )}
-                  />
-                </button>
-              )
-            })}
+            {sites.map((site, index) => (
+              <SiteCard
+                key={site.id}
+                site={site}
+                accent={getSiteAccent(index)}
+                onSelect={handleSelectSite}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -427,6 +399,51 @@ export default function Dashboard() {
 }
 
 // --- Sub-components ---
+
+function SiteCard({
+  site,
+  accent,
+  onSelect,
+}: {
+  site: Site
+  accent: { bg: string; text: string; ring: string; dot: string }
+  onSelect: (site: Site) => void
+}) {
+  return (
+    <button
+      onClick={() => onSelect(site)}
+      className={cn(
+        "group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-colors",
+        "hover:border-border hover:shadow-md motion-reduce:transition-none",
+      )}
+    >
+      <div className="flex w-full items-start justify-between">
+        <div
+          className={cn(
+            "flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1",
+            accent.bg,
+            accent.text,
+            accent.ring,
+          )}
+        >
+          {site.name.charAt(0).toUpperCase()}
+        </div>
+        <RiArrowRightLine aria-hidden="true" className="size-4 text-muted-foreground/30 transition-transform motion-reduce:transition-none group-hover:translate-x-0.5 group-hover:text-foreground/60" />
+      </div>
+      <p className="mt-3 text-sm font-semibold">{site.name}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground truncate max-w-full">
+        {site.address || site.timezone}
+      </p>
+      {/* Decorative bottom accent */}
+      <div
+        className={cn(
+          "absolute bottom-0 left-5 right-5 h-0.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
+          accent.dot,
+        )}
+      />
+    </button>
+  )
+}
 
 function EnergyNode({
   icon: Icon,
@@ -456,7 +473,7 @@ function EnergyNode({
   return (
     <div className="flex flex-col items-center text-center">
       <div className={cn("flex size-12 items-center justify-center rounded-2xl shadow-lg", c.bg, c.glow)}>
-        <Icon className={cn("size-5", c.text)} />
+        <Icon aria-hidden="true" className={cn("size-5", c.text)} />
       </div>
       <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
         {value.toFixed(1)}
@@ -491,7 +508,7 @@ function FlowBar({
     <div className="flex flex-col items-center gap-1" style={{ width }}>
       <div className={cn("h-1.5 w-full rounded-full bg-gradient-to-r opacity-60", gradient)}>
         <div
-          className={cn("h-full w-1/3 rounded-full bg-gradient-to-r animate-pulse", gradient)}
+          className={cn("h-full w-1/3 rounded-full bg-gradient-to-r animate-pulse motion-reduce:animate-none", gradient)}
           style={{ opacity: 0.9 }}
         />
       </div>
@@ -511,7 +528,7 @@ function MiniStat({
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <Icon className="size-3.5 text-muted-foreground/50" />
+      <Icon aria-hidden="true" className="size-3.5 text-muted-foreground/50" />
       <div>
         <p className="text-lg font-bold tabular-nums leading-none">{value}</p>
         <p className="text-[11px] text-muted-foreground">{label}</p>
@@ -546,7 +563,7 @@ function MobileFlowNode({
   return (
     <div className={cn("rounded-lg border p-3", c.bg, c.border)}>
       <div className="flex items-center gap-1.5">
-        <Icon className={cn("size-3.5", c.icon)} />
+        <Icon aria-hidden="true" className={cn("size-3.5", c.icon)} />
         <span className={cn("text-[10px] font-semibold uppercase tracking-wider opacity-70", c.text)}>
           {label}
         </span>
@@ -568,10 +585,10 @@ function getGreeting() {
 }
 
 function formatDate() {
-  return new Date().toLocaleDateString("en-US", {
+  return new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  })
+  }).format(new Date())
 }

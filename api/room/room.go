@@ -244,6 +244,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			site_id,
 			name,
 			type,
+			level,
 			created_at,
 			updated_at
 		from rooms
@@ -254,6 +255,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.SiteID,
 		&r.Name,
 		&r.Type,
+		&r.Level,
 		&r.CreatedAt,
 		&r.UpdatedAt,
 	)

@@ -89,7 +89,6 @@ function SiteSwitcher({
   onSelect: (site: Site) => void
 }) {
   const { isMobile } = useSidebar()
-  const navigate = useNavigate()
 
   return (
     <SidebarMenu>
@@ -101,7 +100,7 @@ function SiteSwitcher({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <RiFlashlightLine className="size-4" />
+                <RiFlashlightLine aria-hidden="true" className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">
@@ -111,7 +110,7 @@ function SiteSwitcher({
                   {currentSite?.timezone || "Select a site"}
                 </span>
               </div>
-              <RiArrowUpDownLine className="ml-auto size-4" />
+              <RiArrowUpDownLine aria-hidden="true" className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -124,7 +123,7 @@ function SiteSwitcher({
               Sites
             </DropdownMenuLabel>
             {isLoading ? (
-              <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+              <DropdownMenuItem disabled>Loading&hellip;</DropdownMenuItem>
             ) : sites.length === 0 ? (
               <DropdownMenuItem disabled>No sites</DropdownMenuItem>
             ) : (
@@ -136,7 +135,7 @@ function SiteSwitcher({
                 >
                   <div
                     className={cn(
-                      "flex size-6 items-center justify-center rounded-md text-white text-xs font-semibold",
+                      "flex size-6 items-center justify-center rounded-md text-primary-foreground text-xs font-semibold",
                       getSiteColor(index),
                     )}
                   >
@@ -147,23 +146,21 @@ function SiteSwitcher({
               ))
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="gap-2 p-2"
-              onClick={() => navigate("/sites/create")}
-            >
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <RiAddLine className="size-4" />
-              </div>
-              <div className="font-medium text-muted-foreground">Add site</div>
+            <DropdownMenuItem asChild className="gap-2 p-2">
+              <NavLink to="/sites/create">
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <RiAddLine aria-hidden="true" className="size-4" />
+                </div>
+                <div className="font-medium text-muted-foreground">Add site</div>
+              </NavLink>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-2 p-2"
-              onClick={() => navigate("/")}
-            >
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <RiArrowLeftLine className="size-4" />
-              </div>
-              <div className="font-medium text-muted-foreground">Dashboard</div>
+            <DropdownMenuItem asChild className="gap-2 p-2">
+              <NavLink to="/">
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <RiArrowLeftLine aria-hidden="true" className="size-4" />
+                </div>
+                <div className="font-medium text-muted-foreground">Dashboard</div>
+              </NavLink>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -223,7 +220,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           : ""
                       }
                     >
-                      <item.icon className="size-4" />
+                      <item.icon aria-hidden="true" className="size-4" />
                       <span>{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -248,7 +245,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           : ""
                       }
                     >
-                      <RiSettings3Line className="size-4" />
+                      <RiSettings3Line aria-hidden="true" className="size-4" />
                       <span>Settings</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -264,7 +261,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Exit to dashboard">
               <NavLink to="/" end>
-                <RiArrowLeftLine className="size-4" />
+                <RiArrowLeftLine aria-hidden="true" className="size-4" />
                 <span>Exit to dashboard</span>
               </NavLink>
             </SidebarMenuButton>
@@ -276,7 +273,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className="h-8 w-8 rounded-lg">
+                  <Avatar className="size-8 rounded-lg">
                     <AvatarImage src={user?.picture} alt={user?.name || ""} />
                     <AvatarFallback className="rounded-lg">
                       {user?.name?.charAt(0)?.toUpperCase() || "U"}
@@ -296,7 +293,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
+                    <Avatar className="size-8 rounded-lg">
                       <AvatarImage src={user?.picture} alt={user?.name || ""} />
                       <AvatarFallback className="rounded-lg">
                         {user?.name?.charAt(0)?.toUpperCase() || "U"}
@@ -310,7 +307,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
-                  <RiLogoutBoxLine />
+                  <RiLogoutBoxLine aria-hidden="true" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

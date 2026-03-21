@@ -34,27 +34,28 @@ import { cn } from '~/lib/utils'
 import {
   useRoomList,
   useFloorList,
-  useRoomDetail,
+  useFloorDetail,
   updateFloor,
-  createRoom,
 } from '~/hooks/use-rooms'
-import { RoomCard, DeviceRow } from '~/components/rooms/room-card'
+import { RoomCard } from '~/components/rooms/room-card'
 import {
   AddRoomDialog,
   EditRoomDialog,
   DeleteRoomDialog,
   AddFloorDialog,
   AssignDeviceDialog,
+  DeleteFloorDialog,
+  AssignFloorDeviceDialog,
 } from '~/components/rooms/room-dialogs'
 import {
   formatPower,
   getFloorRoomSummary,
-  getFloorSummaries,
+  connectionStatusDot,
 } from '~/lib/room-helpers'
 import {
-  ROOM_TYPE_CONFIG,
   ROOM_TYPE_BAR_COLORS,
   type RoomItem,
+  type FloorItem,
 } from '~/lib/room'
 import { api } from '~/lib/api'
 
@@ -99,6 +100,8 @@ export default function Rooms() {
   const [editRoom, setEditRoom] = useState<RoomItem | null>(null)
   const [deleteRoom, setDeleteRoom] = useState<RoomItem | null>(null)
   const [assignRoom, setAssignRoom] = useState<RoomItem | null>(null)
+  const [deleteFloorTarget, setDeleteFloorTarget] = useState<FloorItem | null>(null)
+  const [assignFloorDeviceTarget, setAssignFloorDeviceTarget] = useState<FloorItem | null>(null)
 
   // Floor devices panel
   const [showFloorDevices, setShowFloorDevices] = useState(false)
@@ -129,66 +132,6 @@ export default function Rooms() {
     }
   }
 
-  // Assign device to floor — find or create a distribution room
-  async function assignDeviceToFloor() {
-    if (!activeFloor) return
-    const distRoom = rooms.find((r) => r.type === 'distribution')
-    if (distRoom) {
-      setAssignRoom(distRoom)
-      return
-    }
-    try {
-      const result = await createRoom({
-        siteId,
-        name: `${activeFloor.name} Distribution`,
-        type: 'distribution',
-        level: activeFloor.level,
-      })
-      await mutateRooms()
-      // Find the newly created room after mutation
-      setAssignRoom({
-        id: result.id,
-        siteId,
-        name: `${activeFloor.name} Distribution`,
-        type: 'distribution',
-        level: activeFloor.level,
-        deviceCount: 0,
-        livePowerW: null,
-        connectionStatus: 'offline',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : 'Failed to create distribution room',
-      )
-    }
-  }
-
-  // Delete floor via action
-  const deleteFloorFetcher = useFetcher()
-  const isDeletingFloor = deleteFloorFetcher.state !== 'idle'
-
-  useEffect(() => {
-    if (deleteFloorFetcher.data?.ok) {
-      toast.success('Floor deleted')
-      mutate()
-      const deletedLevel = Number(
-        deleteFloorFetcher.formData?.get('level'),
-      )
-      const remaining = floors.filter((f) => f.level !== deletedLevel)
-      if (remaining.length > 0) {
-        setActiveLevel(remaining[0].level)
-      } else {
-        // No floors left — clear the param
-        setSearchParams((prev) => {
-          prev.delete('floor')
-          return prev
-        })
-      }
-    }
-  }, [deleteFloorFetcher.data])
-
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 300)
@@ -210,9 +153,6 @@ export default function Rooms() {
     search: debouncedSearch || undefined,
   })
 
-  // All rooms for building-wide summaries
-  const { rooms: allRooms } = useRoomList(siteId)
-
   // Set initial active floor
   useEffect(() => {
     if (
@@ -229,13 +169,16 @@ export default function Rooms() {
     mutateFloors()
   }, [mutateRooms, mutateFloors])
 
-  // Per-floor summaries from all rooms
-  const floorSummaries = useMemo(
-    () => getFloorSummaries(allRooms),
-    [allRooms],
-  )
+  const siteSummary = useMemo(() => {
+    let totalPowerW = 0
+    let totalDevices = 0
+    for (const f of floors) {
+      totalPowerW += Number(f.stats.livePowerW)
+      totalDevices += f.stats.deviceCount
+    }
+    return { totalPowerW, totalDevices, roomCount: floors.length }
+  }, [floors])
 
-  const siteSummary = getFloorRoomSummary(allRooms)
   const floorSummary = getFloorRoomSummary(rooms)
   const activeFloor = floors.find((f) => f.level === activeLevel) ?? floors[0]
   const isLoading = floorsLoading || roomsLoading
@@ -294,7 +237,7 @@ export default function Rooms() {
         ) : (
           <>
             {sortedFloors.map((floor) => {
-              const summary = floorSummaries[floor.level]
+              const floorPower = Number(floor.stats.livePowerW)
               const isActive = floor.level === activeLevel
               return (
                 <button
@@ -316,8 +259,8 @@ export default function Rooms() {
                     {floor.name}
                   </span>
                   <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {formatPower(summary?.totalPowerW ?? 0)} ·{' '}
-                    {summary?.roomCount ?? 0} rm
+                    {formatPower(floorPower)} ·{' '}
+                    {floor.stats.deviceCount} dev
                   </span>
                 </button>
               )
@@ -381,13 +324,11 @@ export default function Rooms() {
                   </>
                 ) : sortedFloors.length > 0 ? (
                   sortedFloors.map((floor) => {
-                    const summary = floorSummaries[floor.level]
+                    const floorPower = Number(floor.stats.livePowerW)
                     const isActive = floor.level === activeLevel
                     const powerRatio =
                       siteSummary.totalPowerW > 0
-                        ? ((summary?.totalPowerW ?? 0) /
-                            siteSummary.totalPowerW) *
-                          100
+                        ? (floorPower / siteSummary.totalPowerW) * 100
                         : 0
 
                     return (
@@ -430,9 +371,9 @@ export default function Rooms() {
 
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                             <span className="font-medium tabular-nums">
-                              {formatPower(summary?.totalPowerW ?? 0)}
+                              {formatPower(floorPower)}
                             </span>
-                            <span>{summary?.roomCount ?? 0} rm</span>
+                            <span>{floor.stats.deviceCount} dev</span>
                           </div>
 
                           {/* Power proportion bar */}
@@ -600,7 +541,7 @@ export default function Rooms() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={assignDeviceToFloor}>
+                      <DropdownMenuItem onClick={() => setAssignFloorDeviceTarget(activeFloor)}>
                         <RiPlugLine className="mr-2 size-4" />
                         Assign Device
                       </DropdownMenuItem>
@@ -609,23 +550,13 @@ export default function Rooms() {
                         Add Room
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <deleteFloorFetcher.Form method="post">
-                        <input type="hidden" name="intent" value="delete-floor" />
-                        <input type="hidden" name="siteId" value={siteId} />
-                        <input type="hidden" name="level" value={activeFloor.level} />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          disabled={isDeletingFloor}
-                          onSelect={(e) => {
-                            e.preventDefault()
-                            const form = (e.target as HTMLElement).closest('form')
-                            if (form) form.requestSubmit()
-                          }}
-                        >
-                          <RiDeleteBinLine className="mr-2 size-4" />
-                          {isDeletingFloor ? 'Deleting...' : 'Delete Floor'}
-                        </DropdownMenuItem>
-                      </deleteFloorFetcher.Form>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeleteFloorTarget(activeFloor)}
+                      >
+                        <RiDeleteBinLine className="mr-2 size-4" />
+                        Delete Floor
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -689,7 +620,7 @@ export default function Rooms() {
               )}
 
               {/* Floor Devices Toggle */}
-              {floorSummary.totalDevices > 0 && (
+              {activeFloor && activeFloor.stats.deviceCount > 0 && (
                 <button
                   onClick={() => setShowFloorDevices((v) => !v)}
                   className="flex w-full items-center justify-center gap-1.5 border-t py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
@@ -697,15 +628,14 @@ export default function Rooms() {
                   <RiCpuLine className="size-3.5" />
                   {showFloorDevices ? (
                     <>
-                      <span>Hide devices</span>
+                      <span>Hide floor devices</span>
                       <RiArrowUpSLine className="size-3.5" />
                     </>
                   ) : (
                     <>
                       <span>
-                        {floorSummary.totalDevices} device
-                        {floorSummary.totalDevices !== 1 ? 's' : ''} on
-                        this floor
+                        {activeFloor.stats.deviceCount} floor device
+                        {activeFloor.stats.deviceCount !== 1 ? 's' : ''}
                       </span>
                       <RiArrowDownSLine className="size-3.5" />
                     </>
@@ -714,23 +644,8 @@ export default function Rooms() {
               )}
 
               {/* Floor Devices Panel — lazy loaded */}
-              {showFloorDevices && (
-                <div className="border-t bg-muted/10">
-                  {rooms.length > 0 ? (
-                    <div className="divide-y">
-                      {rooms.map((room) => (
-                        <FloorRoomDevices
-                          key={room.id}
-                          room={room}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="py-4 text-center text-xs text-muted-foreground">
-                      No rooms on this floor
-                    </p>
-                  )}
-                </div>
+              {showFloorDevices && activeFloor && (
+                <FloorDevicesPanel siteId={siteId} level={activeFloor.level} />
               )}
             </div>
           )}
@@ -871,44 +786,86 @@ export default function Rooms() {
         room={assignRoom}
         onSuccess={mutate}
       />
+      <DeleteFloorDialog
+        open={deleteFloorTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteFloorTarget(null)
+        }}
+        floor={deleteFloorTarget}
+        onSuccess={() => {
+          const remaining = floors.filter(
+            (f) => f.level !== deleteFloorTarget?.level,
+          )
+          setDeleteFloorTarget(null)
+          mutate()
+          if (remaining.length > 0) {
+            setActiveLevel(remaining[0].level)
+          } else {
+            setSearchParams((prev) => {
+              prev.delete('floor')
+              return prev
+            })
+          }
+        }}
+      />
+      <AssignFloorDeviceDialog
+        open={assignFloorDeviceTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setAssignFloorDeviceTarget(null)
+        }}
+        floor={assignFloorDeviceTarget}
+        onSuccess={mutate}
+      />
     </div>
   )
 }
 
-// --- Floor-level device list per room (lazy-loaded) ---
+// --- Floor-level device panel (lazy-loaded via useFloorDetail) ---
 
-function FloorRoomDevices({ room }: { room: RoomItem }) {
-  const { data, isLoading } = useRoomDetail(room.id)
-  const config = ROOM_TYPE_CONFIG[room.type]
-  const Icon = config.icon
+function FloorDevicesPanel({ siteId, level }: { siteId: string; level: number }) {
+  const { data, isLoading } = useFloorDetail(siteId, level)
 
   return (
-    <div>
-      {/* Room label */}
-      <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
-        <Icon className={cn('size-3.5', config.color)} />
-        <span className="font-medium text-foreground">{room.name}</span>
-        <span>·</span>
-        <span className="tabular-nums">{formatPower(room.livePowerW)}</span>
-        <span>·</span>
-        <span>{room.deviceCount} device{room.deviceCount !== 1 ? 's' : ''}</span>
-      </div>
-
-      {/* Devices */}
+    <div className="border-t bg-muted/10">
       {isLoading ? (
-        <div className="space-y-1 px-4 pb-2">
+        <div className="space-y-1 px-4 py-3">
           <Skeleton className="h-8 w-full rounded" />
           <Skeleton className="h-8 w-full rounded" />
         </div>
       ) : (data?.devices ?? []).length > 0 ? (
-        <div className="pb-1">
+        <div className="divide-y">
           {(data?.devices ?? []).map((device) => (
-            <DeviceRow key={device.id} device={device} />
+            <div
+              key={device.id}
+              className="flex items-center gap-3 px-4 py-2.5"
+            >
+              <div className="relative shrink-0">
+                <div className="flex size-7 items-center justify-center rounded-md bg-muted text-[10px] font-semibold text-muted-foreground uppercase">
+                  {device.type.slice(0, 2)}
+                </div>
+                <span
+                  className={cn(
+                    'absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-2 border-background',
+                    connectionStatusDot(device.connectionStatus),
+                  )}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{device.name}</p>
+                <p className="text-[10px] text-muted-foreground capitalize">
+                  {device.type} · {device.meterCount} meter
+                  {device.meterCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <span className="text-[10px] text-muted-foreground capitalize">
+                {device.connectionStatus}
+              </span>
+            </div>
           ))}
         </div>
       ) : (
-        <p className="px-4 pb-2 text-[10px] text-muted-foreground">
-          No devices assigned
+        <p className="py-4 text-center text-xs text-muted-foreground">
+          No floor-level devices
         </p>
       )}
     </div>

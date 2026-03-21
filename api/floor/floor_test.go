@@ -248,6 +248,63 @@ func TestGet(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 	})
+
+	t.Run("returns_floor_devices", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
+		require.NoError(t, err)
+		require.Len(t, r.Devices, 1)
+		assert.Equal(t, deviceID, r.Devices[0].ID)
+		assert.Equal(t, "Test Device", r.Devices[0].Name)
+		assert.Equal(t, "meter", r.Devices[0].Type)
+		assert.Equal(t, "", r.Devices[0].Tag)
+		assert.Equal(t, "offline", r.Devices[0].ConnectionStatus)
+		assert.Equal(t, 0, r.Devices[0].MeterCount)
+	})
+
+	t.Run("returns_stats", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		r, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
+		require.NoError(t, err)
+		assert.Equal(t, 0, r.Stats.DeviceCount)
+		assert.True(t, r.Stats.LivePowerW.IsZero())
+		assert.Equal(t, "", r.Stats.ConnectionStatus)
+	})
 }
 
 func TestUpdate(t *testing.T) {
@@ -314,6 +371,38 @@ func TestUpdate(t *testing.T) {
 		})
 		require.Error(t, err)
 		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("returns_updated_item", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Original",
+			Level:  5,
+		})
+		require.NoError(t, err)
+
+		name := "Updated Name"
+		r, err := Update(ctx, &UpdateParams{
+			SiteID: siteID,
+			Level:  5,
+			Name:   &name,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Equal(t, siteID, r.Item.SiteID)
+		assert.Equal(t, 5, r.Item.Level)
+		assert.Equal(t, "Updated Name", r.Item.Name)
+		assert.Equal(t, 0, r.Item.Stats.DeviceCount)
+		assert.True(t, r.Item.Stats.LivePowerW.IsZero())
+		assert.False(t, r.Item.CreatedAt.IsZero())
+		assert.False(t, r.Item.UpdatedAt.IsZero())
 	})
 }
 
@@ -385,6 +474,241 @@ func TestDelete(t *testing.T) {
 	})
 }
 
+func TestAssignDevice(t *testing.T) {
+	if os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("TEST_DB_URL not set, skipping integration test")
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
+		require.NoError(t, err)
+		require.Len(t, got.Devices, 1)
+		assert.Equal(t, deviceID, got.Devices[0].ID)
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
+		require.NoError(t, err)
+		require.Len(t, got.Devices, 1)
+	})
+
+	t.Run("floor_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err := AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    99,
+			DeviceID: deviceID,
+		})
+		require.Error(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("device_not_found", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, ErrDeviceNotFound, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		_, err := AssignDevice(otherCtx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+
+	t.Run("validation_error_missing_fields", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, _ := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := AssignDevice(ctx, &AssignDeviceParams{})
+		require.Error(t, err)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID: "some-site",
+		})
+		require.Error(t, err)
+	})
+}
+
+func TestUnassignDevice(t *testing.T) {
+	if os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("TEST_DB_URL not set, skipping integration test")
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err = AssignDevice(ctx, &AssignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		_, err = UnassignDevice(ctx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+
+		got, err := Get(ctx, &GetParams{SiteID: siteID, Level: 1})
+		require.NoError(t, err)
+		assert.Empty(t, got.Devices)
+	})
+
+	t.Run("noop_not_assigned", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		userID, siteID := seedTestData(t, tc)
+		ctx := auth.WithAccountID(tc.Ctx(), userID)
+
+		_, err := Create(ctx, &CreateParams{
+			SiteID: siteID,
+			Name:   "Level 1",
+			Level:  1,
+		})
+		require.NoError(t, err)
+
+		deviceID := seedDevice(t, tc, siteID)
+
+		_, err = UnassignDevice(ctx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: deviceID,
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("forbidden_not_site_member", func(t *testing.T) {
+		t.Parallel()
+		tc := tu.Setup()
+		defer tc.Teardown()
+
+		_, siteID := seedTestData(t, tc)
+		otherUserID := seedUser(t, tc)
+		otherCtx := auth.WithAccountID(tc.Ctx(), otherUserID)
+
+		_, err := UnassignDevice(otherCtx, &UnassignDeviceParams{
+			SiteID:   siteID,
+			Level:    1,
+			DeviceID: xid.New().String(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, iam.ErrForbidden, err)
+	})
+}
+
 // seedTestData creates a user, site, and site membership for testing.
 func seedTestData(t *testing.T, tc *tu.Context) (userID, siteID string) {
 	t.Helper()
@@ -423,4 +747,24 @@ func seedUser(t *testing.T, tc *tu.Context) string {
 	require.NoError(t, err)
 
 	return userID
+}
+
+// seedDevice creates a device in the given site and returns its ID.
+func seedDevice(t *testing.T, tc *tu.Context, siteID string) string {
+	t.Helper()
+	ctx := tc.Ctx()
+
+	deviceID := xid.New().String()
+	_, err := pgctx.Exec(ctx, `
+		insert into devices (id, site_id, name, type)
+		values ($1, $2, $3, $4)
+	`,
+		deviceID,
+		siteID,
+		"Test Device",
+		"meter",
+	)
+	require.NoError(t, err)
+
+	return deviceID
 }

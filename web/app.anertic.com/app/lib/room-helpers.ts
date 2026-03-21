@@ -1,27 +1,5 @@
 import type { RoomItem, RoomType, FloorItem } from '~/lib/room'
 
-export interface FloorSummary {
-  totalPowerW: number
-  totalDevices: number
-  roomCount: number
-}
-
-export function getFloorSummaries(
-  rooms: RoomItem[],
-): Record<number, FloorSummary> {
-  const map: Record<number, FloorSummary> = {}
-  for (const room of rooms) {
-    const level = room.level ?? 0
-    if (!map[level]) {
-      map[level] = { totalPowerW: 0, totalDevices: 0, roomCount: 0 }
-    }
-    map[level].totalPowerW += room.livePowerW ?? 0
-    map[level].totalDevices += room.deviceCount
-    map[level].roomCount += 1
-  }
-  return map
-}
-
 export function formatPower(watts: number | null): string {
   if (watts === null) return '—'
   if (watts >= 1000) return `${(watts / 1000).toFixed(1)} kW`

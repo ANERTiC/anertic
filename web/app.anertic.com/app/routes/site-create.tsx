@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
   RiFlashlightLine,
   RiMapPinLine,
@@ -77,14 +77,14 @@ export default function SiteCreate() {
         {/* Floating energy nodes — decorative */}
         <div
           className={cn(
-            "absolute inset-0 flex items-center justify-center transition-all duration-1000",
+            "absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-1000 motion-reduce:transition-none",
             mounted ? "opacity-100" : "opacity-0 translate-y-4",
           )}
         >
           <div className="relative h-80 w-80">
             {/* Center node */}
             <div className="absolute left-1/2 top-1/2 flex size-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-border/30 bg-white shadow-xl shadow-black/[0.04]">
-              <RiBuilding2Line className="size-8 text-foreground/70" />
+              <RiBuilding2Line aria-hidden="true" className="size-8 text-foreground/70" />
             </div>
 
             {/* Orbiting nodes */}
@@ -97,7 +97,7 @@ export default function SiteCreate() {
               <div
                 key={i}
                 className={cn(
-                  "absolute left-1/2 top-1/2 flex size-12 items-center justify-center rounded-xl border border-border/20 shadow-lg shadow-black/[0.03] transition-all duration-700",
+                  "absolute left-1/2 top-1/2 flex size-12 items-center justify-center rounded-xl border border-border/20 shadow-lg shadow-black/[0.03] transition-[opacity,transform] duration-700 motion-reduce:transition-none",
                   node.bg,
                   mounted ? "opacity-100 scale-100" : "opacity-0 scale-75",
                 )}
@@ -106,14 +106,15 @@ export default function SiteCreate() {
                   transitionDelay: node.delay,
                 }}
               >
-                <node.icon className={cn("size-5", node.color)} />
+                <node.icon aria-hidden="true" className={cn("size-5", node.color)} />
               </div>
             ))}
 
             {/* Connecting lines (SVG) */}
             <svg
+              aria-hidden="true"
               className={cn(
-                "absolute inset-0 size-full transition-opacity duration-1000 delay-500",
+                "absolute inset-0 size-full transition-opacity duration-1000 delay-500 motion-reduce:transition-none",
                 mounted ? "opacity-100" : "opacity-0",
               )}
               viewBox="0 0 320 320"
@@ -140,13 +141,13 @@ export default function SiteCreate() {
         {/* Bottom branding */}
         <div
           className={cn(
-            "absolute bottom-8 left-8 right-8 transition-all duration-700 delay-700",
+            "absolute bottom-8 left-8 right-8 transition-[opacity,transform] duration-700 delay-700 motion-reduce:transition-none",
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
           )}
         >
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <RiFlashlightLine className="size-4" />
+              <RiFlashlightLine aria-hidden="true" className="size-4" />
             </div>
             <span className="text-sm font-semibold tracking-tight">ANERTiC</span>
           </div>
@@ -160,15 +161,16 @@ export default function SiteCreate() {
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b px-6">
-          <button
-            onClick={() => navigate("/")}
+          <Link
+            to="/"
             className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Back to dashboard"
           >
-            <RiArrowLeftLine className="size-4" />
+            <RiArrowLeftLine aria-hidden="true" className="size-4" />
             <span className="hidden sm:inline">Back</span>
-          </button>
+          </Link>
           <div className="flex items-center gap-2 lg:hidden">
-            <RiFlashlightLine className="size-4 text-primary" />
+            <RiFlashlightLine aria-hidden="true" className="size-4 text-primary" />
             <span className="text-sm font-semibold">ANERTiC</span>
           </div>
           <div className="w-16" />
@@ -178,12 +180,12 @@ export default function SiteCreate() {
         <div className="flex flex-1 items-center justify-center px-4 py-12">
           <div
             className={cn(
-              "w-full max-w-md space-y-8 transition-all duration-500",
+              "w-full max-w-md flex flex-col gap-8 transition-[opacity,transform] duration-500 motion-reduce:transition-none",
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
             )}
           >
             {/* Heading */}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">
                 Create your first site
               </h1>
@@ -193,8 +195,8 @@ export default function SiteCreate() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleCreate} className="space-y-5">
-              <div className="space-y-1.5">
+            <form onSubmit={handleCreate} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="name" className="text-sm font-medium">
                   Site name
                 </Label>
@@ -204,18 +206,17 @@ export default function SiteCreate() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  autoFocus
                   className="h-11"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="address" className="text-sm font-medium">
                   Address
                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
                 </Label>
                 <div className="relative">
-                  <RiMapPinLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50" />
+                  <RiMapPinLine aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50" />
                   <Input
                     id="address"
                     placeholder="123 Sukhumvit Rd, Bangkok"
@@ -226,17 +227,17 @@ export default function SiteCreate() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="timezone" className="text-sm font-medium">
                   Timezone
                 </Label>
                 <div className="relative">
-                  <RiTimeLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50" />
+                  <RiTimeLine aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50" />
                   <select
                     id="timezone"
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="flex h-11 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex h-11 w-full appearance-none rounded-md border border-input bg-background text-foreground pl-9 pr-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {timezones.map((tz) => (
                       <option key={tz} value={tz}>
@@ -255,11 +256,11 @@ export default function SiteCreate() {
                   disabled={!name.trim() || creating}
                 >
                   {creating ? (
-                    "Creating..."
+                    "Creating\u2026"
                   ) : (
                     <>
-                      Create site
-                      <RiArrowRightLine className="size-4" />
+                      Create Site
+                      <RiArrowRightLine aria-hidden="true" data-icon="inline-end" />
                     </>
                   )}
                 </Button>

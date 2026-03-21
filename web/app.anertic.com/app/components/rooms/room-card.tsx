@@ -87,10 +87,10 @@ function ExpandedDeviceList({
         </div>
       ) : (
         <div className="divide-y">
-          {data?.devices.map((device) => (
+          {(data?.devices ?? []).map((device) => (
             <DeviceRow key={device.id} device={device} />
           ))}
-          {!data?.devices.length && (
+          {!data?.devices?.length && (
             <p className="py-4 text-center text-xs text-muted-foreground">
               No devices assigned
             </p>

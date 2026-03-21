@@ -31,7 +31,7 @@ import { type RoomItem } from '~/lib/room'
 
 export default function Rooms() {
   const siteId = useSiteId()
-  const [activeLevel, setActiveLevel] = useState<number | null>(null)
+  const [activeLevel, setActiveLevel] = useState<number>(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -60,16 +60,16 @@ export default function Rooms() {
     error: roomsError,
     mutate: mutateRooms,
   } = useRoomList(siteId, {
-    level: activeLevel ?? undefined,
+    level: activeLevel,
     search: debouncedSearch || undefined,
   })
 
   // All rooms for site-wide summary strip
   const { rooms: allRooms } = useRoomList(siteId)
 
-  // Set initial active floor once floors load
+  // Set initial active floor: prefer level 0, else first floor
   useEffect(() => {
-    if (floors.length > 0 && activeLevel === null) {
+    if (floors.length > 0 && activeLevel === 0 && !floors.some((f) => f.level === 0)) {
       setActiveLevel(floors[0].level)
     }
   }, [floors, activeLevel])

@@ -99,6 +99,17 @@
   animation: energy-flow 0.8s linear infinite;
 }
 
+/* Power bar segment grow animation */
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.floor-bar-segment {
+  transform-origin: left;
+  animation: bar-grow 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

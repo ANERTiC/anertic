@@ -45,6 +45,7 @@ type Item struct {
 	SiteID           string    `json:"siteId"`
 	Name             string    `json:"name"`
 	Type             string    `json:"type"`
+	Level            int       `json:"level"`
 	DeviceCount      int       `json:"deviceCount"`
 	LivePowerW       *float64  `json:"livePowerW"`
 	ConnectionStatus string    `json:"connectionStatus"`
@@ -72,6 +73,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"r.site_id",
 			"r.name",
 			"r.type",
+			"r.level",
 			"r.created_at",
 			"r.updated_at",
 			pgstmt.Raw("coalesce(agg.device_count, 0)"),
@@ -127,6 +129,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.SiteID,
 			&it.Name,
 			&it.Type,
+			&it.Level,
 			&it.CreatedAt,
 			&it.UpdatedAt,
 			&it.DeviceCount,

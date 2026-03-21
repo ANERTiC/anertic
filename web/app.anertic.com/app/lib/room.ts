@@ -9,6 +9,8 @@ import {
   RiArchiveLine,
   RiLeafLine,
   RiGridLine,
+  RiPlugLine,
+  RiCommunityLine,
 } from '@remixicon/react'
 
 import type { ConnectionStatus } from '~/lib/device'
@@ -18,6 +20,8 @@ export type { ConnectionStatus } from '~/lib/device'
 // --- Types ---
 
 export type RoomType =
+  | 'distribution'
+  | 'common_area'
   | 'living'
   | 'bedroom'
   | 'kitchen'
@@ -34,6 +38,7 @@ export interface RoomItem {
   siteId: string
   name: string
   type: RoomType
+  level: number
   deviceCount: number
   livePowerW: number | null
   connectionStatus: ConnectionStatus
@@ -69,6 +74,18 @@ export const ROOM_TYPE_CONFIG: Record<
   RoomType,
   { label: string; icon: typeof RiSofaLine; color: string; bg: string }
 > = {
+  distribution: {
+    label: 'Distribution',
+    icon: RiPlugLine,
+    color: 'text-rose-600',
+    bg: 'bg-rose-500/10',
+  },
+  common_area: {
+    label: 'Common Area',
+    icon: RiCommunityLine,
+    color: 'text-sky-600',
+    bg: 'bg-sky-500/10',
+  },
   living: {
     label: 'Living Room',
     icon: RiSofaLine,
@@ -129,6 +146,21 @@ export const ROOM_TYPE_CONFIG: Record<
     color: 'text-gray-600',
     bg: 'bg-gray-500/10',
   },
+}
+
+export const ROOM_TYPE_BAR_COLORS: Record<RoomType, string> = {
+  distribution: 'bg-rose-500',
+  common_area: 'bg-sky-500',
+  living: 'bg-indigo-500',
+  bedroom: 'bg-violet-500',
+  kitchen: 'bg-orange-500',
+  bathroom: 'bg-cyan-500',
+  office: 'bg-blue-500',
+  garage: 'bg-zinc-400',
+  laundry: 'bg-teal-500',
+  storage: 'bg-amber-500',
+  outdoor: 'bg-emerald-500',
+  other: 'bg-gray-400',
 }
 
 export const ROOM_STATUS_CONFIG: Record<

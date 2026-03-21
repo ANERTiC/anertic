@@ -7,6 +7,7 @@ import {
   RiArrowRightSLine,
   RiLink,
   RiRefreshLine,
+  RiDoorOpenLine,
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
@@ -276,9 +277,17 @@ function DeviceRow({ device, href }: { device: DeviceListItem; href: string }) {
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disabled</Badge>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground truncate">
-          {device.tag || `${device.brand} ${device.model}`}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <p className="text-xs text-muted-foreground truncate">
+            {device.tag || `${device.brand} ${device.model}`}
+          </p>
+          {device.roomName && (
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <RiDoorOpenLine aria-hidden="true" className="size-3" />
+              {device.level != null ? `F${device.level} · ` : ""}{device.roomName}
+            </span>
+          )}
+        </div>
       </div>
       <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
         {device.meterCount} {device.meterCount === 1 ? "meter" : "meters"}

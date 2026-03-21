@@ -30,6 +30,9 @@ export interface DeviceListItem extends Device {
   lastSeenAt: string | null
   meterCount: number
   dataPointsToday: number
+  roomId: string | null
+  roomName: string | null
+  level: number | null
 }
 
 // --- Config Maps ---

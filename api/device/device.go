@@ -50,6 +50,9 @@ type Item struct {
 	MeterCount       int        `json:"meterCount"`
 	ConnectionStatus string     `json:"connectionStatus"`
 	LastSeenAt       *time.Time `json:"lastSeenAt"`
+	RoomID           *string    `json:"roomId"`
+	RoomName         *string    `json:"roomName"`
+	Level            *int       `json:"level"`
 }
 
 type ListResult struct {
@@ -80,6 +83,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			pgstmt.Raw("coalesce(m.meter_count, 0)"),
 			pgstmt.Raw("coalesce(m.online_count, 0)"),
 			"m.last_seen_at",
+			"r.id",
+			"r.name",
+			"fd.level",
 		)
 		b.From("devices d")
 		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
@@ -94,6 +100,17 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			})
 		}, "m").On(func(c pgstmt.Cond) {
 			c.Raw("true")
+		})
+		b.LeftJoin("room_devices rd").On(func(c pgstmt.Cond) {
+			c.EqRaw("rd.device_id", "d.id")
+		})
+		b.LeftJoin("rooms r").On(func(c pgstmt.Cond) {
+			c.EqRaw("r.id", "rd.room_id")
+			c.IsNull("r.deleted_at")
+		})
+		b.LeftJoin("floor_devices fd").On(func(c pgstmt.Cond) {
+			c.EqRaw("fd.device_id", "d.id")
+			c.EqRaw("fd.site_id", "d.site_id")
 		})
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
@@ -130,6 +147,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.MeterCount,
 			&onlineCount,
 			pgsql.Null(&it.LastSeenAt),
+			pgsql.Null(&it.RoomID),
+			pgsql.Null(&it.RoomName),
+			pgsql.Null(&it.Level),
 		)
 		if err != nil {
 			return err

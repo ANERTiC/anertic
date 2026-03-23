@@ -1,4 +1,10 @@
-import { data, Outlet, redirect, useNavigate, useOutletContext } from 'react-router'
+import {
+  data,
+  Outlet,
+  redirect,
+  useNavigate,
+  useOutletContext,
+} from 'react-router'
 import { RiArrowLeftSLine } from '@remixicon/react'
 import { Separator } from '~/components/ui/separator'
 import {

@@ -3,6 +3,7 @@ FROM golang:1.26-alpine AS build
 ENV GOOS=linux
 ENV GOARCH=amd64
 ENV CGO_ENABLED=0
+RUN apk add --no-cache git
 RUN mkdir -p /workspace
 WORKDIR /workspace
 ADD go.mod go.sum ./

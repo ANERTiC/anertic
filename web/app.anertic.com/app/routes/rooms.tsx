@@ -696,16 +696,6 @@ export default function Rooms() {
                   ? 'Try a different search term'
                   : 'Add a room to start organizing devices'}
               </p>
-              {!debouncedSearch && (
-                <Button
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setAddRoomOpen(true)}
-                >
-                  <RiAddLine className="mr-1.5 size-4" />
-                  Add Room
-                </Button>
-              )}
             </div>
           ) : (
             <div key={activeLevel} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -724,15 +714,6 @@ export default function Rooms() {
                   />
                 </div>
               ))}
-              {/* Add Room card */}
-              <button
-                onClick={() => setAddRoomOpen(true)}
-                className="animate-in fade-in slide-in-from-bottom-3 flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-muted-foreground transition-colors fill-mode-both duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-                style={{ animationDelay: `${rooms.length * 50}ms` }}
-              >
-                <RiAddLine className="size-6" />
-                <span className="text-sm font-medium">Add Room</span>
-              </button>
             </div>
           )}
         </main>

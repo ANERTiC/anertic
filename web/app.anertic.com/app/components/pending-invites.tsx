@@ -1,10 +1,16 @@
-import { useState } from "react"
-import { RiMailLine, RiCheckLine, RiCloseLine, RiTimeLine, RiBuilding2Line } from "@remixicon/react"
-import useSWR from "swr"
-import { toast } from "sonner"
+import { useState } from 'react'
+import {
+  RiMailLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiTimeLine,
+  RiBuilding2Line,
+} from '@remixicon/react'
+import useSWR from 'swr'
+import { toast } from 'sonner'
 
-import { fetcher } from "~/lib/api"
-import { cn } from "~/lib/utils"
+import { fetcher } from '~/lib/api'
+import { cn } from '~/lib/utils'
 
 interface MyInvite {
   id: string
@@ -21,14 +27,14 @@ interface MyInvitesResult {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  "*": "Owner",
-  editor: "Editor",
-  viewer: "Viewer",
+  '*': 'Owner',
+  editor: 'Editor',
+  viewer: 'Viewer',
 }
 
 function formatTimeLeft(expiresAt: string) {
   const diff = new Date(expiresAt).getTime() - Date.now()
-  if (diff <= 0) return "Expired"
+  if (diff <= 0) return 'Expired'
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   if (days > 0) return `${days}d ${hours}h left`
@@ -37,8 +43,8 @@ function formatTimeLeft(expiresAt: string) {
 
 export function PendingInvites() {
   const { data, isLoading, mutate } = useSWR<MyInvitesResult>(
-    ["site.myInvites", {}],
-    fetcher,
+    ['site.myInvites', {}],
+    fetcher
   )
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -49,11 +55,11 @@ export function PendingInvites() {
   async function handleAccept(id: string) {
     setLoadingId(id)
     try {
-      await fetcher(["site.acceptInvite", { id }])
-      toast.success("Invitation accepted")
+      await fetcher(['site.acceptInvite', { id }])
+      toast.success('Invitation accepted')
       mutate()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to accept")
+      toast.error(err instanceof Error ? err.message : 'Failed to accept')
     } finally {
       setLoadingId(null)
     }
@@ -62,11 +68,11 @@ export function PendingInvites() {
   async function handleDecline(id: string) {
     setLoadingId(id)
     try {
-      await fetcher(["site.declineInvite", { id }])
-      toast.success("Invitation declined")
+      await fetcher(['site.declineInvite', { id }])
+      toast.success('Invitation declined')
       mutate()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to decline")
+      toast.error(err instanceof Error ? err.message : 'Failed to decline')
     } finally {
       setLoadingId(null)
     }
@@ -94,8 +100,8 @@ export function PendingInvites() {
               <div
                 key={invite.id}
                 className={cn(
-                  "flex items-center gap-4 px-5 py-3.5 transition-opacity",
-                  busy && "pointer-events-none opacity-50",
+                  'flex items-center gap-4 px-5 py-3.5 transition-opacity',
+                  busy && 'pointer-events-none opacity-50'
                 )}
               >
                 {/* Site initial */}
@@ -110,7 +116,10 @@ export function PendingInvites() {
                   </p>
                   <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                     <span>
-                      from <span className="font-medium text-foreground/60">{invite.invitedBy}</span>
+                      from{' '}
+                      <span className="font-medium text-foreground/60">
+                        {invite.invitedBy}
+                      </span>
                     </span>
                     <span className="text-border">·</span>
                     <span>{ROLE_LABELS[invite.role] || invite.role}</span>

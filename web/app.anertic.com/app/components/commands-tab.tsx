@@ -204,9 +204,10 @@ function QuickActionsSection({ chargerId }: { chargerId: string }) {
   async function handleGetLocalListVersion() {
     setListVersionLoading(true)
     try {
-      const result = await fetcher<{ listVersion: number }>(
-        ['charger.getLocalListVersion', { id: chargerId }]
-      )
+      const result = await fetcher<{ listVersion: number }>([
+        'charger.getLocalListVersion',
+        { id: chargerId },
+      ])
       toast.success(`Local list version: ${result.listVersion}`)
     } catch (err) {
       toast.error(
@@ -326,11 +327,14 @@ function ConnectorRow({
   async function handleChangeAvailability() {
     setAvailabilityLoading(true)
     try {
-      await fetcher(['charger.changeAvailability', {
-        id: chargerId,
-        connectorId: connector.id,
-        type: availability,
-      }])
+      await fetcher([
+        'charger.changeAvailability',
+        {
+          id: chargerId,
+          connectorId: connector.id,
+          type: availability,
+        },
+      ])
       toast.success(`Connector #${connector.id} set to ${availability}`)
     } catch (err) {
       toast.error(
@@ -344,10 +348,13 @@ function ConnectorRow({
   async function handleUnlock() {
     setUnlockLoading(true)
     try {
-      await fetcher(['charger.unlockConnector', {
-        id: chargerId,
-        connectorId: connector.id,
-      }])
+      await fetcher([
+        'charger.unlockConnector',
+        {
+          id: chargerId,
+          connectorId: connector.id,
+        },
+      ])
       toast.success(`Connector #${connector.id} unlocked`)
     } catch (err) {
       toast.error(
@@ -439,11 +446,14 @@ function ConfigurationSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await fetcher(['charger.changeConfiguration', {
-        id: chargerId,
-        key: key.trim(),
-        value: value.trim(),
-      }])
+      await fetcher([
+        'charger.changeConfiguration',
+        {
+          id: chargerId,
+          key: key.trim(),
+          value: value.trim(),
+        },
+      ])
       toast.success(`Configuration "${key}" set to "${value}"`)
       setKey('')
       setValue('')
@@ -519,13 +529,16 @@ function FirmwareSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await fetcher(['charger.updateFirmware', {
-        id: chargerId,
-        location: location.trim(),
-        retrieveDate: retrieveDate || undefined,
-        retries: parseInt(retries) || 3,
-        retryInterval: parseInt(retryInterval) || 60,
-      }])
+      await fetcher([
+        'charger.updateFirmware',
+        {
+          id: chargerId,
+          location: location.trim(),
+          retrieveDate: retrieveDate || undefined,
+          retries: parseInt(retries) || 3,
+          retryInterval: parseInt(retryInterval) || 60,
+        },
+      ])
       toast.success('Firmware update requested')
       setLocation('')
       setRetrieveDate('')
@@ -651,14 +664,17 @@ function DiagnosticsSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      const result = await fetcher<{ fileName: string }>(['charger.getDiagnostics', {
-        id: chargerId,
-        location: location.trim(),
-        startTime: startTime || undefined,
-        stopTime: stopTime || undefined,
-        retries: parseInt(retries) || 3,
-        retryInterval: parseInt(retryInterval) || 60,
-      }])
+      const result = await fetcher<{ fileName: string }>([
+        'charger.getDiagnostics',
+        {
+          id: chargerId,
+          location: location.trim(),
+          startTime: startTime || undefined,
+          stopTime: stopTime || undefined,
+          retries: parseInt(retries) || 3,
+          retryInterval: parseInt(retryInterval) || 60,
+        },
+      ])
       toast.success(
         result?.fileName
           ? `Diagnostics upload started: ${result.fileName}`
@@ -799,15 +815,18 @@ function LocalListSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await fetcher(['charger.sendLocalList', {
-        id: chargerId,
-        listVersion: parseInt(listVersion) || 1,
-        updateType,
-        localAuthorizationList: validEntries.map((e) => ({
-          idTag: e.idTag.trim(),
-          idTagInfo: { status: e.status },
-        })),
-      }])
+      await fetcher([
+        'charger.sendLocalList',
+        {
+          id: chargerId,
+          listVersion: parseInt(listVersion) || 1,
+          updateType,
+          localAuthorizationList: validEntries.map((e) => ({
+            idTag: e.idTag.trim(),
+            idTagInfo: { status: e.status },
+          })),
+        },
+      ])
       toast.success('Local list sent successfully')
     } catch (err) {
       toast.error(
@@ -1015,14 +1034,15 @@ function GetCompositeSchedule({
     setLoading(true)
     setResult(null)
     try {
-      const res = await fetcher<Record<string, unknown>>(
-        ['charger.getCompositeSchedule', {
+      const res = await fetcher<Record<string, unknown>>([
+        'charger.getCompositeSchedule',
+        {
           id: chargerId,
           connectorId: parseInt(connectorId),
           duration: parseInt(duration) || 3600,
           chargingRateUnit: chargingRateUnit || undefined,
-        }]
-      )
+        },
+      ])
       setResult(JSON.stringify(res, null, 2))
       toast.success('Composite schedule retrieved')
     } catch (err) {
@@ -1119,11 +1139,14 @@ function SetChargingProfile({
     }
     setLoading(true)
     try {
-      await fetcher(['charger.setChargingProfile', {
-        id: chargerId,
-        connectorId: parseInt(connectorId),
-        csChargingProfiles: parsed,
-      }])
+      await fetcher([
+        'charger.setChargingProfile',
+        {
+          id: chargerId,
+          connectorId: parseInt(connectorId),
+          csChargingProfiles: parsed,
+        },
+      ])
       toast.success('Charging profile set successfully')
       setProfileJson('')
     } catch (err) {
@@ -1188,15 +1211,18 @@ function ClearChargingProfile({
   async function handleClearProfile() {
     setLoading(true)
     try {
-      await fetcher(['charger.clearChargingProfile', {
-        id: chargerId,
-        chargingProfileId: chargingProfileId
-          ? parseInt(chargingProfileId)
-          : undefined,
-        connectorId: parseInt(connectorId) || undefined,
-        chargingProfilePurpose: purpose || undefined,
-        stackLevel: stackLevel ? parseInt(stackLevel) : undefined,
-      }])
+      await fetcher([
+        'charger.clearChargingProfile',
+        {
+          id: chargerId,
+          chargingProfileId: chargingProfileId
+            ? parseInt(chargingProfileId)
+            : undefined,
+          connectorId: parseInt(connectorId) || undefined,
+          chargingProfilePurpose: purpose || undefined,
+          stackLevel: stackLevel ? parseInt(stackLevel) : undefined,
+        },
+      ])
       toast.success('Charging profile cleared')
     } catch (err) {
       toast.error(

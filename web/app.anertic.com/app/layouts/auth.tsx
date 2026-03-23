@@ -1,11 +1,11 @@
-import { Outlet, redirect } from "react-router"
-import type { Route } from "./+types/auth"
-import { getSessionFromRequest } from "~/sessions.server"
+import { Outlet, redirect } from 'react-router'
+import type { Route } from './+types/auth'
+import { getSessionFromRequest } from '~/sessions.server'
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSessionFromRequest(request)
-  if (session.get("accessToken")) {
-    throw redirect("/")
+  if (session.get('accessToken')) {
+    throw redirect('/')
   }
   return null
 }

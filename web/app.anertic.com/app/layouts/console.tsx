@@ -1,8 +1,8 @@
-import { Outlet, redirect } from "react-router"
-import { TooltipProvider } from "~/components/ui/tooltip"
-import type { Route } from "./+types/console"
-import { getSessionFromRequest } from "~/sessions.server"
-import { api } from "~/lib/api.server"
+import { Outlet, redirect } from 'react-router'
+import { TooltipProvider } from '~/components/ui/tooltip'
+import type { Route } from './+types/console'
+import { getSessionFromRequest } from '~/sessions.server'
+import { api } from '~/lib/api.server'
 
 export interface User {
   id: string
@@ -17,11 +17,11 @@ export interface ConsoleContext {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSessionFromRequest(request)
-  if (!session.get("accessToken")) {
-    throw redirect("/login")
+  if (!session.get('accessToken')) {
+    throw redirect('/login')
   }
 
-  const { result: user } = await api<User>(request, "auth.me")
+  const { result: user } = await api<User>(request, 'auth.me')
   return { user }
 }
 

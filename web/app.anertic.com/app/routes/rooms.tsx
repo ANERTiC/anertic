@@ -52,11 +52,7 @@ import {
   getFloorRoomSummary,
   connectionStatusDot,
 } from '~/lib/room-helpers'
-import {
-  ROOM_TYPE_BAR_COLORS,
-  type RoomItem,
-  type FloorItem,
-} from '~/lib/room'
+import { ROOM_TYPE_BAR_COLORS, type RoomItem, type FloorItem } from '~/lib/room'
 import { fetcher } from '~/lib/api'
 
 export async function clientAction({ request }: { request: Request }) {
@@ -77,7 +73,7 @@ export default function Rooms() {
   const siteId = useSiteId()
   const { data: siteData } = useSWR<{ name: string }>(
     ['site.get', { id: siteId }],
-    fetcher,
+    fetcher
   )
   const siteName = siteData?.name ?? 'Building'
   const [searchParams, setSearchParams] = useSearchParams()
@@ -89,7 +85,7 @@ export default function Rooms() {
         return prev
       })
     },
-    [setSearchParams],
+    [setSearchParams]
   )
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -100,8 +96,11 @@ export default function Rooms() {
   const [editRoom, setEditRoom] = useState<RoomItem | null>(null)
   const [deleteRoom, setDeleteRoom] = useState<RoomItem | null>(null)
   const [assignRoom, setAssignRoom] = useState<RoomItem | null>(null)
-  const [deleteFloorTarget, setDeleteFloorTarget] = useState<FloorItem | null>(null)
-  const [assignFloorDeviceTarget, setAssignFloorDeviceTarget] = useState<FloorItem | null>(null)
+  const [deleteFloorTarget, setDeleteFloorTarget] = useState<FloorItem | null>(
+    null
+  )
+  const [assignFloorDeviceTarget, setAssignFloorDeviceTarget] =
+    useState<FloorItem | null>(null)
 
   // Floor devices panel
   const [showFloorDevices, setShowFloorDevices] = useState(false)
@@ -126,9 +125,7 @@ export default function Rooms() {
       toast.success('Floor renamed')
       mutateFloors()
     } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : 'Failed to rename floor',
-      )
+      toast.error(err instanceof Error ? err.message : 'Failed to rename floor')
     }
   }
 
@@ -187,11 +184,9 @@ export default function Rooms() {
   const floorStatus = useMemo(() => {
     if (rooms.length === 0 && !roomsLoading)
       return { text: 'No rooms', color: 'text-muted-foreground' }
-    const offline = rooms.filter(
-      (r) => r.connectionStatus === 'offline',
-    ).length
+    const offline = rooms.filter((r) => r.connectionStatus === 'offline').length
     const degraded = rooms.filter(
-      (r) => r.connectionStatus === 'degraded',
+      (r) => r.connectionStatus === 'degraded'
     ).length
     if (offline > 0)
       return {
@@ -211,7 +206,7 @@ export default function Rooms() {
   // Sort floors descending (top floor first, basement last)
   const sortedFloors = useMemo(
     () => [...floors].sort((a, b) => b.level - a.level),
-    [floors],
+    [floors]
   )
 
   return (
@@ -247,20 +242,19 @@ export default function Rooms() {
                     'flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-all',
                     isActive
                       ? 'border-primary/40 bg-primary/5 shadow-sm'
-                      : 'border-border bg-card hover:bg-muted/50',
+                      : 'border-border bg-card hover:bg-muted/50'
                   )}
                 >
                   <span
                     className={cn(
                       'text-sm font-semibold',
-                      isActive && 'text-primary',
+                      isActive && 'text-primary'
                     )}
                   >
                     {floor.name}
                   </span>
-                  <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {formatPower(floorPower)} ·{' '}
-                    {floor.stats.deviceCount} dev
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {formatPower(floorPower)} · {floor.stats.deviceCount} dev
                   </span>
                 </button>
               )
@@ -285,7 +279,7 @@ export default function Rooms() {
             <div className="border-b px-4 py-3">
               <div className="flex items-center gap-2">
                 <RiBuilding2Line className="size-4 text-muted-foreground" />
-                <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="truncate text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                   {siteName}
                 </span>
               </div>
@@ -300,8 +294,8 @@ export default function Rooms() {
                     {formatPower(siteSummary.totalPowerW)}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {siteSummary.roomCount} rooms ·{' '}
-                    {siteSummary.totalDevices} devices
+                    {siteSummary.roomCount} rooms · {siteSummary.totalDevices}{' '}
+                    devices
                   </p>
                 </>
               )}
@@ -316,89 +310,87 @@ export default function Rooms() {
                 )}
 
                 <div className="relative space-y-1">
-                {floorsLoading ? (
-                  <>
-                    <Skeleton className="h-16 w-full rounded-lg" />
-                    <Skeleton className="h-16 w-full rounded-lg" />
-                    <Skeleton className="h-16 w-full rounded-lg" />
-                  </>
-                ) : sortedFloors.length > 0 ? (
-                  sortedFloors.map((floor) => {
-                    const floorPower = Number(floor.stats.livePowerW)
-                    const isActive = floor.level === activeLevel
-                    const powerRatio =
-                      siteSummary.totalPowerW > 0
-                        ? (floorPower / siteSummary.totalPowerW) * 100
-                        : 0
+                  {floorsLoading ? (
+                    <>
+                      <Skeleton className="h-16 w-full rounded-lg" />
+                      <Skeleton className="h-16 w-full rounded-lg" />
+                      <Skeleton className="h-16 w-full rounded-lg" />
+                    </>
+                  ) : sortedFloors.length > 0 ? (
+                    sortedFloors.map((floor) => {
+                      const floorPower = Number(floor.stats.livePowerW)
+                      const isActive = floor.level === activeLevel
+                      const powerRatio =
+                        siteSummary.totalPowerW > 0
+                          ? (floorPower / siteSummary.totalPowerW) * 100
+                          : 0
 
-                    return (
-                      <button
-                        key={floor.level}
-                        onClick={() => setActiveLevel(floor.level)}
-                        className={cn(
-                          'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-200 ease-out',
-                          isActive
-                            ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20 scale-[1.02]'
-                            : 'scale-100 hover:bg-muted/50',
-                        )}
-                      >
-                        {/* Riser dot */}
-                        <div
+                      return (
+                        <button
+                          key={floor.level}
+                          onClick={() => setActiveLevel(floor.level)}
                           className={cn(
-                            'mt-1.5 shrink-0 rounded-full border-2 transition-all duration-200',
+                            'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-200 ease-out',
                             isActive
-                              ? 'size-2.5 border-primary bg-primary shadow-[0_0_6px_rgba(99,102,241,0.4)]'
-                              : 'size-2 border-muted-foreground/30 bg-background',
+                              ? 'scale-[1.02] bg-primary/5 shadow-sm ring-1 ring-primary/20'
+                              : 'scale-100 hover:bg-muted/50'
                           )}
-                        />
+                        >
+                          {/* Riser dot */}
+                          <div
+                            className={cn(
+                              'mt-1.5 shrink-0 rounded-full border-2 transition-all duration-200',
+                              isActive
+                                ? 'size-2.5 border-primary bg-primary shadow-[0_0_6px_rgba(99,102,241,0.4)]'
+                                : 'size-2 border-muted-foreground/30 bg-background'
+                            )}
+                          />
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline justify-between gap-1">
-                            <span
-                              className={cn(
-                                'truncate text-sm font-semibold transition-colors duration-200',
-                                isActive
-                                  ? 'text-primary'
-                                  : 'text-foreground',
-                              )}
-                            >
-                              {floor.name}
-                            </span>
-                            <span className="shrink-0 text-[10px] text-muted-foreground">
-                              L{floor.level}
-                            </span>
-                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <span
+                                className={cn(
+                                  'truncate text-sm font-semibold transition-colors duration-200',
+                                  isActive ? 'text-primary' : 'text-foreground'
+                                )}
+                              >
+                                {floor.name}
+                              </span>
+                              <span className="shrink-0 text-[10px] text-muted-foreground">
+                                L{floor.level}
+                              </span>
+                            </div>
 
-                          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="font-medium tabular-nums">
-                              {formatPower(floorPower)}
-                            </span>
-                            <span>{floor.stats.deviceCount} dev</span>
-                          </div>
+                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <span className="font-medium tabular-nums">
+                                {formatPower(floorPower)}
+                              </span>
+                              <span>{floor.stats.deviceCount} dev</span>
+                            </div>
 
-                          {/* Power proportion bar */}
-                          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-500',
-                                isActive
-                                  ? 'bg-primary'
-                                  : 'bg-muted-foreground/25',
-                              )}
-                              style={{
-                                width: `${Math.max(powerRatio, 2)}%`,
-                              }}
-                            />
+                            {/* Power proportion bar */}
+                            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full transition-all duration-500',
+                                  isActive
+                                    ? 'bg-primary'
+                                    : 'bg-muted-foreground/25'
+                                )}
+                                style={{
+                                  width: `${Math.max(powerRatio, 2)}%`,
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    )
-                  })
-                ) : (
-                  <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                    No floors yet
-                  </p>
-                )}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                      No floors yet
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -449,209 +441,220 @@ export default function Rooms() {
                 </div>
               </div>
             </div>
-          ) : activeFloor && (
-            <div className="rounded-xl border bg-card">
-              <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      L{activeFloor.level}
-                    </Badge>
-                    {editingFloorName ? (
-                      <input
-                        value={floorNameDraft}
-                        onChange={(e) => setFloorNameDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveFloorName()
-                          if (e.key === 'Escape') setEditingFloorName(false)
-                        }}
-                        onBlur={saveFloorName}
-                        autoFocus
-                        className="box-border h-6 w-40 rounded-md border border-input bg-background px-2 text-base font-semibold outline-none focus:ring-1 focus:ring-primary/40"
-                      />
-                    ) : (
-                      <button
-                        onClick={startEditingFloorName}
-                        className="group/edit flex h-6 items-center gap-1.5 rounded-md px-1 transition-colors hover:bg-muted/50"
-                      >
-                        <h2 className="text-base font-semibold leading-6">
-                          {activeFloor.name}
-                        </h2>
-                        <RiPencilLine className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
-                      </button>
-                    )}
-                  </div>
-                  <p
-                    className={cn(
-                      'mt-0.5 flex items-center gap-1.5 text-xs',
-                      floorStatus.color,
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'inline-block size-1.5 rounded-full',
-                        floorStatus.color === 'text-emerald-600'
-                          ? 'bg-emerald-500'
-                          : floorStatus.color === 'text-amber-500'
-                            ? 'bg-amber-500'
-                            : floorStatus.color === 'text-red-500'
-                              ? 'bg-red-500'
-                              : 'bg-muted-foreground/50',
+          ) : (
+            activeFloor && (
+              <div className="rounded-xl border bg-card">
+                <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        L{activeFloor.level}
+                      </Badge>
+                      {editingFloorName ? (
+                        <input
+                          value={floorNameDraft}
+                          onChange={(e) => setFloorNameDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveFloorName()
+                            if (e.key === 'Escape') setEditingFloorName(false)
+                          }}
+                          onBlur={saveFloorName}
+                          autoFocus
+                          className="box-border h-6 w-40 rounded-md border border-input bg-background px-2 text-base font-semibold outline-none focus:ring-1 focus:ring-primary/40"
+                        />
+                      ) : (
+                        <button
+                          onClick={startEditingFloorName}
+                          className="group/edit flex h-6 items-center gap-1.5 rounded-md px-1 transition-colors hover:bg-muted/50"
+                        >
+                          <h2 className="text-base leading-6 font-semibold">
+                            {activeFloor.name}
+                          </h2>
+                          <RiPencilLine className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
+                        </button>
                       )}
-                    />
-                    {floorStatus.text}
-                  </p>
-                </div>
+                    </div>
+                    <p
+                      className={cn(
+                        'mt-0.5 flex items-center gap-1.5 text-xs',
+                        floorStatus.color
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'inline-block size-1.5 rounded-full',
+                          floorStatus.color === 'text-emerald-600'
+                            ? 'bg-emerald-500'
+                            : floorStatus.color === 'text-amber-500'
+                              ? 'bg-amber-500'
+                              : floorStatus.color === 'text-red-500'
+                                ? 'bg-red-500'
+                                : 'bg-muted-foreground/50'
+                        )}
+                      />
+                      {floorStatus.text}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-5">
-                    <div className="text-center sm:text-right">
-                      <div className="flex items-center gap-1.5">
-                        <RiFlashlightLine className="size-3.5 text-violet-500" />
-                        <p className="text-lg font-bold tabular-nums leading-none">
-                          {formatPower(floorSummary.totalPowerW)}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-5">
+                      <div className="text-center sm:text-right">
+                        <div className="flex items-center gap-1.5">
+                          <RiFlashlightLine className="size-3.5 text-violet-500" />
+                          <p className="text-lg leading-none font-bold tabular-nums">
+                            {formatPower(floorSummary.totalPowerW)}
+                          </p>
+                        </div>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Active Power
                         </p>
                       </div>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        Active Power
-                      </p>
+                      <div className="h-8 w-px bg-border" />
+                      <div className="text-center sm:text-right">
+                        <p className="text-base leading-none font-semibold tabular-nums">
+                          {floorSummary.roomCount}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Rooms
+                        </p>
+                      </div>
+                      <div className="text-center sm:text-right">
+                        <p className="text-base leading-none font-semibold tabular-nums">
+                          {floorSummary.totalDevices}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Devices
+                        </p>
+                      </div>
                     </div>
-                    <div className="h-8 w-px bg-border" />
-                    <div className="text-center sm:text-right">
-                      <p className="text-base font-semibold tabular-nums leading-none">
-                        {floorSummary.roomCount}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        Rooms
-                      </p>
-                    </div>
-                    <div className="text-center sm:text-right">
-                      <p className="text-base font-semibold tabular-nums leading-none">
-                        {floorSummary.totalDevices}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        Devices
-                      </p>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="size-8 p-0">
-                        <RiMoreLine className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => setAssignFloorDeviceTarget(activeFloor)}>
-                        <RiPlugLine className="mr-2 size-4" />
-                        Assign Device
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setAddRoomOpen(true)}>
-                        <RiAddLine className="mr-2 size-4" />
-                        Add Room
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => setDeleteFloorTarget(activeFloor)}
-                      >
-                        <RiDeleteBinLine className="mr-2 size-4" />
-                        Delete Floor
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              {/* Power Distribution Bar */}
-              {rooms.length > 0 && floorSummary.totalPowerW > 0 && (
-                <div className="border-t px-4 py-3">
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Power Distribution
-                  </p>
-                  <div className="flex h-2 w-full gap-px overflow-hidden rounded-full bg-muted/50">
-                    {rooms
-                      .filter((r) => (r.livePowerW ?? 0) > 0)
-                      .sort(
-                        (a, b) =>
-                          (b.livePowerW ?? 0) - (a.livePowerW ?? 0),
-                      )
-                      .map((room, i) => (
-                        <div
-                          key={room.id}
-                          className={cn(
-                            'floor-bar-segment h-full rounded-sm',
-                            ROOM_TYPE_BAR_COLORS[room.type],
-                          )}
-                          style={{
-                            width: `${((room.livePowerW ?? 0) / floorSummary.totalPowerW) * 100}%`,
-                            minWidth: '4px',
-                            animationDelay: `${i * 80}ms`,
-                          }}
-                          title={`${room.name}: ${formatPower(room.livePowerW)}`}
-                        />
-                      ))}
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                    {rooms
-                      .filter((r) => (r.livePowerW ?? 0) > 0)
-                      .sort(
-                        (a, b) =>
-                          (b.livePowerW ?? 0) - (a.livePowerW ?? 0),
-                      )
-                      .map((room) => (
-                        <div
-                          key={room.id}
-                          className="flex items-center gap-1 text-[10px] text-muted-foreground"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="size-8 p-0"
                         >
-                          <span
-                            className={cn(
-                              'size-1.5 rounded-full',
-                              ROOM_TYPE_BAR_COLORS[room.type],
-                            )}
-                          />
-                          <span className="truncate">{room.name}</span>
-                          <span className="font-medium tabular-nums text-foreground/70">
-                            {formatPower(room.livePowerW)}
-                          </span>
-                        </div>
-                      ))}
+                          <RiMoreLine className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() =>
+                            setAssignFloorDeviceTarget(activeFloor)
+                          }
+                        >
+                          <RiPlugLine className="mr-2 size-4" />
+                          Assign Device
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAddRoomOpen(true)}>
+                          <RiAddLine className="mr-2 size-4" />
+                          Add Room
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => setDeleteFloorTarget(activeFloor)}
+                        >
+                          <RiDeleteBinLine className="mr-2 size-4" />
+                          Delete Floor
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
-              )}
 
-              {/* Floor Devices Toggle */}
-              {activeFloor && activeFloor.stats.deviceCount > 0 && (
-                <button
-                  onClick={() => setShowFloorDevices((v) => !v)}
-                  className="flex w-full items-center justify-center gap-1.5 border-t py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
-                >
-                  <RiCpuLine className="size-3.5" />
-                  {showFloorDevices ? (
-                    <>
-                      <span>Hide floor devices</span>
-                      <RiArrowUpSLine className="size-3.5" />
-                    </>
-                  ) : (
-                    <>
-                      <span>
-                        {activeFloor.stats.deviceCount} floor device
-                        {activeFloor.stats.deviceCount !== 1 ? 's' : ''}
-                      </span>
-                      <RiArrowDownSLine className="size-3.5" />
-                    </>
-                  )}
-                </button>
-              )}
+                {/* Power Distribution Bar */}
+                {rooms.length > 0 && floorSummary.totalPowerW > 0 && (
+                  <div className="border-t px-4 py-3">
+                    <p className="mb-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+                      Power Distribution
+                    </p>
+                    <div className="flex h-2 w-full gap-px overflow-hidden rounded-full bg-muted/50">
+                      {rooms
+                        .filter((r) => (r.livePowerW ?? 0) > 0)
+                        .sort(
+                          (a, b) => (b.livePowerW ?? 0) - (a.livePowerW ?? 0)
+                        )
+                        .map((room, i) => (
+                          <div
+                            key={room.id}
+                            className={cn(
+                              'floor-bar-segment h-full rounded-sm',
+                              ROOM_TYPE_BAR_COLORS[room.type]
+                            )}
+                            style={{
+                              width: `${((room.livePowerW ?? 0) / floorSummary.totalPowerW) * 100}%`,
+                              minWidth: '4px',
+                              animationDelay: `${i * 80}ms`,
+                            }}
+                            title={`${room.name}: ${formatPower(room.livePowerW)}`}
+                          />
+                        ))}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                      {rooms
+                        .filter((r) => (r.livePowerW ?? 0) > 0)
+                        .sort(
+                          (a, b) => (b.livePowerW ?? 0) - (a.livePowerW ?? 0)
+                        )
+                        .map((room) => (
+                          <div
+                            key={room.id}
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground"
+                          >
+                            <span
+                              className={cn(
+                                'size-1.5 rounded-full',
+                                ROOM_TYPE_BAR_COLORS[room.type]
+                              )}
+                            />
+                            <span className="truncate">{room.name}</span>
+                            <span className="font-medium text-foreground/70 tabular-nums">
+                              {formatPower(room.livePowerW)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
-              {/* Floor Devices Panel — lazy loaded */}
-              {showFloorDevices && activeFloor && (
-                <FloorDevicesPanel siteId={siteId} level={activeFloor.level} />
-              )}
-            </div>
+                {/* Floor Devices Toggle */}
+                {activeFloor && activeFloor.stats.deviceCount > 0 && (
+                  <button
+                    onClick={() => setShowFloorDevices((v) => !v)}
+                    className="flex w-full items-center justify-center gap-1.5 border-t py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+                  >
+                    <RiCpuLine className="size-3.5" />
+                    {showFloorDevices ? (
+                      <>
+                        <span>Hide floor devices</span>
+                        <RiArrowUpSLine className="size-3.5" />
+                      </>
+                    ) : (
+                      <>
+                        <span>
+                          {activeFloor.stats.deviceCount} floor device
+                          {activeFloor.stats.deviceCount !== 1 ? 's' : ''}
+                        </span>
+                        <RiArrowDownSLine className="size-3.5" />
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Floor Devices Panel — lazy loaded */}
+                {showFloorDevices && activeFloor && (
+                  <FloorDevicesPanel
+                    siteId={siteId}
+                    level={activeFloor.level}
+                  />
+                )}
+              </div>
+            )
           )}
 
           {/* Search */}
-          <div className="animate-in fade-in slide-in-from-bottom-1 relative duration-200 delay-100">
+          <div className="relative animate-in delay-100 duration-200 fade-in slide-in-from-bottom-1">
             <RiSearchLine className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search rooms..."
@@ -698,11 +701,14 @@ export default function Rooms() {
               </p>
             </div>
           ) : (
-            <div key={activeLevel} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              key={activeLevel}
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            >
               {rooms.map((room, i) => (
                 <div
                   key={room.id}
-                  className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300"
+                  className="animate-in duration-300 fill-mode-both fade-in slide-in-from-bottom-3"
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
                   <RoomCard
@@ -775,7 +781,7 @@ export default function Rooms() {
         floor={deleteFloorTarget}
         onSuccess={() => {
           const remaining = floors.filter(
-            (f) => f.level !== deleteFloorTarget?.level,
+            (f) => f.level !== deleteFloorTarget?.level
           )
           setDeleteFloorTarget(null)
           mutate()
@@ -803,7 +809,13 @@ export default function Rooms() {
 
 // --- Floor-level device panel (lazy-loaded via useFloorDetail) ---
 
-function FloorDevicesPanel({ siteId, level }: { siteId: string; level: number }) {
+function FloorDevicesPanel({
+  siteId,
+  level,
+}: {
+  siteId: string
+  level: number
+}) {
   const { data, isLoading } = useFloorDetail(siteId, level)
 
   return (
@@ -827,7 +839,7 @@ function FloorDevicesPanel({ siteId, level }: { siteId: string; level: number })
                 <span
                   className={cn(
                     'absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-2 border-background',
-                    connectionStatusDot(device.connectionStatus),
+                    connectionStatusDot(device.connectionStatus)
                   )}
                 />
               </div>

@@ -409,14 +409,23 @@ export function AddFloorDialog({
 
   // Build sorted preview list: existing floors + the new one (if level is valid)
   const previewFloors = useMemo(() => {
-    const existing = floors.map((f) => ({ level: f.level, name: f.name, isNew: false }))
+    const existing = floors.map((f) => ({
+      level: f.level,
+      name: f.name,
+      isNew: false,
+    }))
     if (resolvedLevel !== null && !existingLevels.has(resolvedLevel)) {
-      existing.push({ level: resolvedLevel, name: name.trim() || '(new floor)', isNew: true })
+      existing.push({
+        level: resolvedLevel,
+        name: name.trim() || '(new floor)',
+        isNew: true,
+      })
     }
     return existing.sort((a, b) => b.level - a.level) // highest first (top of building)
   }, [floors, resolvedLevel, existingLevels, name])
 
-  const levelConflict = resolvedLevel !== null && existingLevels.has(resolvedLevel)
+  const levelConflict =
+    resolvedLevel !== null && existingLevels.has(resolvedLevel)
 
   useEffect(() => {
     if (!open) {
@@ -491,7 +500,9 @@ export function AddFloorDialog({
                         : 'border-transparent bg-muted/50 text-muted-foreground hover:bg-muted'
                     )}
                   >
-                    <span className="text-[12px] font-semibold leading-none">{p.label}</span>
+                    <span className="text-[12px] leading-none font-semibold">
+                      {p.label}
+                    </span>
                     <span className="text-[10px] opacity-70">{p.sublabel}</span>
                   </button>
                 )
@@ -528,7 +539,8 @@ export function AddFloorDialog({
 
             {levelConflict && (
               <p className="text-[11px] text-destructive">
-                Level {resolvedLevel} is already taken. Choose a different level.
+                Level {resolvedLevel} is already taken. Choose a different
+                level.
               </p>
             )}
           </div>
@@ -575,7 +587,7 @@ export function AddFloorDialog({
                     >
                       <span
                         className={cn(
-                          'w-8 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-mono font-medium',
+                          'w-8 shrink-0 rounded px-1 py-0.5 text-center font-mono text-[10px] font-medium',
                           f.isNew
                             ? 'bg-violet-500/15 text-violet-700'
                             : 'bg-muted text-muted-foreground'
@@ -585,7 +597,7 @@ export function AddFloorDialog({
                       </span>
                       <span className="min-w-0 flex-1 truncate">{f.name}</span>
                       {f.isNew && (
-                        <span className="shrink-0 rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-600">
+                        <span className="shrink-0 rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-violet-600 uppercase">
                           new
                         </span>
                       )}
@@ -814,11 +826,7 @@ export function DeleteFloorDialog({
             <input type="hidden" name="intent" value="delete-floor" />
             <input type="hidden" name="siteId" value={siteId} />
             <input type="hidden" name="level" value={floor?.level ?? 0} />
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={isDeleting}
-            >
+            <Button type="submit" variant="destructive" disabled={isDeleting}>
               <RiCloseLine className="mr-1.5 size-4" />
               {isDeleting ? 'Deleting...' : 'Delete Floor'}
             </Button>
@@ -847,7 +855,7 @@ export function AssignFloorDeviceDialog({
   const { devices, isLoading } = useAvailableDevices(siteId, search)
   const { data: floorDetail, mutate: mutateFloor } = useFloorDetail(
     siteId,
-    open && floor ? floor.level : null,
+    open && floor ? floor.level : null
   )
 
   const assignedIds = new Set((floorDetail?.devices ?? []).map((d) => d.id))
@@ -865,7 +873,7 @@ export function AssignFloorDeviceDialog({
       onSuccess()
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to assign device',
+        err instanceof Error ? err.message : 'Failed to assign device'
       )
     }
   }
@@ -879,7 +887,7 @@ export function AssignFloorDeviceDialog({
       onSuccess()
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to unassign device',
+        err instanceof Error ? err.message : 'Failed to unassign device'
       )
     }
   }
@@ -888,9 +896,7 @@ export function AssignFloorDeviceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            Assign Device to {floor?.name ?? 'Floor'}
-          </DialogTitle>
+          <DialogTitle>Assign Device to {floor?.name ?? 'Floor'}</DialogTitle>
           <DialogDescription>
             Select devices to assign directly to this floor.
           </DialogDescription>
@@ -931,7 +937,7 @@ export function AssignFloorDeviceDialog({
                       <span
                         className={cn(
                           'absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-2 border-background',
-                          connectionStatusDot(device.connectionStatus),
+                          connectionStatusDot(device.connectionStatus)
                         )}
                       />
                     </div>
@@ -946,9 +952,7 @@ export function AssignFloorDeviceDialog({
                         variant="outline"
                         size="sm"
                         className="shrink-0 text-xs"
-                        onClick={() =>
-                          handleUnassign(device.id, device.name)
-                        }
+                        onClick={() => handleUnassign(device.id, device.name)}
                       >
                         Unassign
                       </Button>
@@ -957,9 +961,7 @@ export function AssignFloorDeviceDialog({
                         variant="ghost"
                         size="sm"
                         className="shrink-0 text-xs"
-                        onClick={() =>
-                          handleAssign(device.id, device.name)
-                        }
+                        onClick={() => handleAssign(device.id, device.name)}
                       >
                         <RiAddLine className="mr-1 size-3.5" />
                         Assign

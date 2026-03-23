@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { RiAddLine, RiArrowRightLine, RiBuilding2Line, RiMapPinLine, RiSearchLine } from '@remixicon/react'
+import {
+  RiAddLine,
+  RiArrowRightLine,
+  RiBuilding2Line,
+  RiMapPinLine,
+  RiSearchLine,
+} from '@remixicon/react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 
@@ -38,14 +44,54 @@ interface CreateResult {
 }
 
 const SITE_ACCENTS = [
-  { bg: "bg-amber-500/10", text: "text-amber-600", ring: "ring-amber-500/20", dot: "bg-amber-500" },
-  { bg: "bg-emerald-500/10", text: "text-emerald-600", ring: "ring-emerald-500/20", dot: "bg-emerald-500" },
-  { bg: "bg-cyan-500/10", text: "text-cyan-600", ring: "ring-cyan-500/20", dot: "bg-cyan-500" },
-  { bg: "bg-violet-500/10", text: "text-violet-600", ring: "ring-violet-500/20", dot: "bg-violet-500" },
-  { bg: "bg-rose-500/10", text: "text-rose-600", ring: "ring-rose-500/20", dot: "bg-rose-500" },
-  { bg: "bg-blue-500/10", text: "text-blue-600", ring: "ring-blue-500/20", dot: "bg-blue-500" },
-  { bg: "bg-teal-500/10", text: "text-teal-600", ring: "ring-teal-500/20", dot: "bg-teal-500" },
-  { bg: "bg-orange-500/10", text: "text-orange-600", ring: "ring-orange-500/20", dot: "bg-orange-500" },
+  {
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600',
+    ring: 'ring-amber-500/20',
+    dot: 'bg-amber-500',
+  },
+  {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-600',
+    ring: 'ring-emerald-500/20',
+    dot: 'bg-emerald-500',
+  },
+  {
+    bg: 'bg-cyan-500/10',
+    text: 'text-cyan-600',
+    ring: 'ring-cyan-500/20',
+    dot: 'bg-cyan-500',
+  },
+  {
+    bg: 'bg-violet-500/10',
+    text: 'text-violet-600',
+    ring: 'ring-violet-500/20',
+    dot: 'bg-violet-500',
+  },
+  {
+    bg: 'bg-rose-500/10',
+    text: 'text-rose-600',
+    ring: 'ring-rose-500/20',
+    dot: 'bg-rose-500',
+  },
+  {
+    bg: 'bg-blue-500/10',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/20',
+    dot: 'bg-blue-500',
+  },
+  {
+    bg: 'bg-teal-500/10',
+    text: 'text-teal-600',
+    ring: 'ring-teal-500/20',
+    dot: 'bg-teal-500',
+  },
+  {
+    bg: 'bg-orange-500/10',
+    text: 'text-orange-600',
+    ring: 'ring-orange-500/20',
+    dot: 'bg-orange-500',
+  },
 ]
 
 function getSiteAccent(index: number) {
@@ -94,15 +140,18 @@ export default function Sites() {
     e.preventDefault()
     setCreating(true)
     try {
-      const result = await fetcher<CreateResult>(['site.create', {
-        name,
-        address,
-        timezone,
-      }])
+      const result = await fetcher<CreateResult>([
+        'site.create',
+        {
+          name,
+          address,
+          timezone,
+        },
+      ])
       toast.success('Site created successfully')
       setOpen(false)
       resetForm()
-      setCookie("anertic_current_site", result.id)
+      setCookie('anertic_current_site', result.id)
       navigate(`/chargers?site=${result.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create site')
@@ -120,7 +169,7 @@ export default function Sites() {
             Manage your energy monitoring sites
           </p>
         </div>
-        <Button onClick={() => navigate("/sites/create")}>
+        <Button onClick={() => navigate('/sites/create')}>
           <RiAddLine className="mr-2 h-4 w-4" />
           New Site
         </Button>
@@ -190,14 +239,17 @@ export default function Sites() {
           defaultValue={search}
           onChange={(e) => {
             const v = e.target.value
-            setSearchParams(prev => {
-              if (v) {
-                prev.set('q', v)
-              } else {
-                prev.delete('q')
-              }
-              return prev
-            }, { replace: true })
+            setSearchParams(
+              (prev) => {
+                if (v) {
+                  prev.set('q', v)
+                } else {
+                  prev.delete('q')
+                }
+                return prev
+              },
+              { replace: true }
+            )
           }}
         />
       </div>
@@ -210,7 +262,7 @@ export default function Sites() {
         </div>
       ) : sites.length === 0 ? (
         <button
-          onClick={() => navigate("/sites/create")}
+          onClick={() => navigate('/sites/create')}
           className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-all hover:border-primary/30 hover:bg-primary/5"
         >
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">
@@ -238,21 +290,21 @@ export default function Sites() {
               <button
                 key={site.id}
                 onClick={() => {
-                  setCookie("anertic_current_site", site.id)
+                  setCookie('anertic_current_site', site.id)
                   navigate(`/overview?site=${site.id}`)
                 }}
                 className={cn(
-                  "group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-all",
-                  "hover:border-border hover:shadow-md hover:-translate-y-0.5",
+                  'group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-all',
+                  'hover:-translate-y-0.5 hover:border-border hover:shadow-md'
                 )}
               >
                 <div className="flex w-full items-start justify-between">
                   <div
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1",
+                      'flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1',
                       accent.bg,
                       accent.text,
-                      accent.ring,
+                      accent.ring
                     )}
                   >
                     {site.name.charAt(0).toUpperCase()}
@@ -265,8 +317,8 @@ export default function Sites() {
                 </p>
                 <div
                   className={cn(
-                    "absolute bottom-0 left-5 right-5 h-0.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-                    accent.dot,
+                    'absolute right-5 bottom-0 left-5 h-0.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100',
+                    accent.dot
                   )}
                 />
               </button>

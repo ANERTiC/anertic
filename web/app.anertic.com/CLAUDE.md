@@ -60,27 +60,30 @@ app/
 ## Key Patterns
 
 **Client data fetching** (`lib/api.ts`): Use SWR with `fetcher`:
+
 ```ts
-import useSWR from "swr"
-import { fetcher } from "~/lib/api"
+import useSWR from 'swr'
+import { fetcher } from '~/lib/api'
 
 const { data, isLoading, mutate } = useSWR<ResultType>(
-  ["method.name", { param }],
-  fetcher,
+  ['method.name', { param }],
+  fetcher
 )
 ```
 
 **Client mutations**: Use `fetcher` directly:
+
 ```ts
-await fetcher(["method.name", { param }])
+await fetcher(['method.name', { param }])
 ```
 
 **Server data loading** (`lib/api.server.ts`): Use in loaders/actions:
+
 ```ts
-import { api } from "~/lib/api.server"
+import { api } from '~/lib/api.server'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { result } = await api<Type>(request, "method.name", { param })
+  const { result } = await api<Type>(request, 'method.name', { param })
   return { data: result }
 }
 ```
@@ -99,11 +102,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 ## Environment Variables (Runtime)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `API_URL` | `http://localhost:8080` | Backend API base URL |
-| `APP_URL` | `http://localhost:5173` | Frontend URL (for OAuth redirect) |
-| `SESSION_SECRET` | `dev-secret` | Signs session cookies (required in production) |
+| Variable         | Default                 | Description                                    |
+| ---------------- | ----------------------- | ---------------------------------------------- |
+| `API_URL`        | `http://localhost:8080` | Backend API base URL                           |
+| `APP_URL`        | `http://localhost:5173` | Frontend URL (for OAuth redirect)              |
+| `SESSION_SECRET` | `dev-secret`            | Signs session cookies (required in production) |
 
 ## Deployment
 

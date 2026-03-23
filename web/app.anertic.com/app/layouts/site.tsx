@@ -1,14 +1,14 @@
-import { Outlet, redirect, useNavigate, useOutletContext } from "react-router"
-import { RiArrowLeftSLine } from "@remixicon/react"
-import { Separator } from "~/components/ui/separator"
+import { Outlet, redirect, useNavigate, useOutletContext } from 'react-router'
+import { RiArrowLeftSLine } from '@remixicon/react'
+import { Separator } from '~/components/ui/separator'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "~/components/ui/sidebar"
-import { AppSidebar } from "~/components/app-sidebar"
-import type { Route } from "./+types/site"
-import type { ConsoleContext, User } from "~/layouts/console"
+} from '~/components/ui/sidebar'
+import { AppSidebar } from '~/components/app-sidebar'
+import type { Route } from './+types/site'
+import type { ConsoleContext, User } from '~/layouts/console'
 
 interface SiteContext {
   siteId: string
@@ -21,18 +21,18 @@ export function useSiteId(): string {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
-  let siteId = url.searchParams.get("site")
+  let siteId = url.searchParams.get('site')
 
   if (!siteId) {
-    const cookieHeader = request.headers.get("Cookie") || ""
+    const cookieHeader = request.headers.get('Cookie') || ''
     const match = cookieHeader.match(/anertic_current_site=([^;]+)/)
     const cookieSiteId = match ? decodeURIComponent(match[1]) : null
 
     if (cookieSiteId) {
-      url.searchParams.set("site", cookieSiteId)
+      url.searchParams.set('site', cookieSiteId)
       throw redirect(url.pathname + url.search)
     }
-    throw redirect("/sites")
+    throw redirect('/sites')
   }
 
   return { siteId }

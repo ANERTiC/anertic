@@ -20,13 +20,13 @@ pnpm dev
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm typecheck` | Run type checking |
-| `pnpm format` | Format code with Prettier |
+| Command          | Description               |
+| ---------------- | ------------------------- |
+| `pnpm dev`       | Start development server  |
+| `pnpm build`     | Build for production      |
+| `pnpm start`     | Start production server   |
+| `pnpm typecheck` | Run type checking         |
+| `pnpm format`    | Format code with Prettier |
 
 ## Adding Components
 
@@ -37,5 +37,5 @@ npx shadcn@latest add button
 Import using the `~/` path alias:
 
 ```tsx
-import { Button } from "~/components/ui/button"
+import { Button } from '~/components/ui/button'
 ```

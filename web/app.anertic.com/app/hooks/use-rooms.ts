@@ -1,6 +1,12 @@
 import useSWR from 'swr'
 import { fetcher } from '~/lib/api'
-import type { RoomItem, RoomGetResult, FloorItem, FloorGetResult, RoomType } from '~/lib/room'
+import type {
+  RoomItem,
+  RoomGetResult,
+  FloorItem,
+  FloorGetResult,
+  RoomType,
+} from '~/lib/room'
 import type { DeviceListItem } from '~/lib/device'
 
 // ---- useRoomList ----
@@ -14,8 +20,16 @@ interface RoomListOpts {
 export function useRoomList(siteId: string, opts: RoomListOpts = {}) {
   const { type, search, level } = opts
   const { data, isLoading, error, mutate } = useSWR<{ items: RoomItem[] }>(
-    ['room.list', { siteId, type: type || undefined, search: search?.trim() || undefined, level: level ?? undefined }],
-    fetcher,
+    [
+      'room.list',
+      {
+        siteId,
+        type: type || undefined,
+        search: search?.trim() || undefined,
+        level: level ?? undefined,
+      },
+    ],
+    fetcher
   )
   return { rooms: data?.items ?? [], isLoading, error, mutate }
 }
@@ -25,7 +39,7 @@ export function useRoomList(siteId: string, opts: RoomListOpts = {}) {
 export function useRoomDetail(roomId: string | null) {
   const { data, isLoading, error, mutate } = useSWR<RoomGetResult>(
     roomId ? ['room.get', { id: roomId }] : null,
-    fetcher,
+    fetcher
   )
   return { data: data ?? null, isLoading, error, mutate }
 }
@@ -35,7 +49,7 @@ export function useRoomDetail(roomId: string | null) {
 export function useFloorList(siteId: string) {
   const { data, isLoading, error, mutate } = useSWR<{ items: FloorItem[] }>(
     ['floor.list', { siteId }],
-    fetcher,
+    fetcher
   )
   return { floors: data?.items ?? [], isLoading, error, mutate }
 }
@@ -45,7 +59,7 @@ export function useFloorList(siteId: string) {
 export function useAvailableDevices(siteId: string, search?: string) {
   const { data, isLoading } = useSWR<{ items: DeviceListItem[] }>(
     ['device.list', { siteId, search: search?.trim() || undefined }],
-    fetcher,
+    fetcher
   )
   return { devices: data?.items ?? [], isLoading }
 }
@@ -55,7 +69,7 @@ export function useAvailableDevices(siteId: string, search?: string) {
 export function useFloorDetail(siteId: string, level: number | null) {
   const { data, isLoading, error, mutate } = useSWR<FloorGetResult>(
     level !== null ? ['floor.get', { siteId, level }] : null,
-    fetcher,
+    fetcher
   )
   return { data: data ?? null, isLoading, error, mutate }
 }

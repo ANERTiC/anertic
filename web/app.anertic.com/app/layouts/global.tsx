@@ -1,11 +1,8 @@
-import { Outlet, useFetcher, useNavigate, useOutletContext } from "react-router"
-import {
-  RiFlashlightLine,
-  RiLogoutBoxLine,
-} from "@remixicon/react"
+import { Outlet, useFetcher, useNavigate, useOutletContext } from 'react-router'
+import { RiFlashlightLine, RiLogoutBoxLine } from '@remixicon/react'
 
-import type { ConsoleContext } from "~/layouts/console"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import type { ConsoleContext } from '~/layouts/console'
+import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
+} from '~/components/ui/dropdown-menu'
 
 export default function GlobalLayout() {
   const navigate = useNavigate()
@@ -21,14 +18,14 @@ export default function GlobalLayout() {
   const logoutFetcher = useFetcher()
 
   function handleSignOut() {
-    logoutFetcher.submit(null, { method: "POST", action: "/logout" })
+    logoutFetcher.submit(null, { method: 'POST', action: '/logout' })
   }
 
   return (
     <div className="flex min-h-svh flex-col">
       <header className="flex h-14 shrink-0 items-center justify-between border-b px-6">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2"
         >
           <RiFlashlightLine className="size-5 text-primary" />
@@ -40,7 +37,7 @@ export default function GlobalLayout() {
               <Avatar className="size-8">
                 <AvatarImage src={user?.picture} />
                 <AvatarFallback className="text-xs">
-                  {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
             </button>
@@ -51,12 +48,16 @@ export default function GlobalLayout() {
                 <Avatar className="size-8">
                   <AvatarImage src={user?.picture} />
                   <AvatarFallback className="text-xs">
-                    {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-medium">{user?.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+                  <span className="truncate text-sm font-medium">
+                    {user?.name}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {user?.email}
+                  </span>
                 </div>
               </div>
             </DropdownMenuLabel>

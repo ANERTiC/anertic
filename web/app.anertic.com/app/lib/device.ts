@@ -4,13 +4,13 @@ import {
   RiPlugLine,
   RiFlashlightLine,
   RiDashboard3Line,
-} from "@remixicon/react"
+} from '@remixicon/react'
 
 // --- Types ---
 
-export type DeviceType = "inverter" | "solar_panel" | "appliance" | "meter"
-export type ConnectionStatus = "online" | "offline" | "degraded"
-export type MeterChannel = "pv" | "grid" | "battery" | "ev" | "load"
+export type DeviceType = 'inverter' | 'solar_panel' | 'appliance' | 'meter'
+export type ConnectionStatus = 'online' | 'offline' | 'degraded'
+export type MeterChannel = 'pv' | 'grid' | 'battery' | 'ev' | 'load'
 
 export interface Device {
   id: string
@@ -41,30 +41,57 @@ export const DEVICE_TYPE_CONFIG: Record<
   DeviceType,
   { label: string; icon: typeof RiCpuLine; color: string; bg: string }
 > = {
-  inverter: { label: "Inverter", icon: RiFlashlightLine, color: "text-violet-600", bg: "bg-violet-500/10" },
-  solar_panel: { label: "Solar Panel", icon: RiSunLine, color: "text-amber-600", bg: "bg-amber-500/10" },
-  meter: { label: "Energy Meter", icon: RiDashboard3Line, color: "text-cyan-600", bg: "bg-cyan-500/10" },
-  appliance: { label: "Appliance", icon: RiPlugLine, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+  inverter: {
+    label: 'Inverter',
+    icon: RiFlashlightLine,
+    color: 'text-violet-600',
+    bg: 'bg-violet-500/10',
+  },
+  solar_panel: {
+    label: 'Solar Panel',
+    icon: RiSunLine,
+    color: 'text-amber-600',
+    bg: 'bg-amber-500/10',
+  },
+  meter: {
+    label: 'Energy Meter',
+    icon: RiDashboard3Line,
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-500/10',
+  },
+  appliance: {
+    label: 'Appliance',
+    icon: RiPlugLine,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-500/10',
+  },
 }
 
-export const STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string; dot: string }> = {
-  online: { label: "Online", color: "text-emerald-700", dot: "bg-emerald-500" },
-  offline: { label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  degraded: { label: "Degraded", color: "text-amber-700", dot: "bg-amber-500" },
+export const STATUS_CONFIG: Record<
+  ConnectionStatus,
+  { label: string; color: string; dot: string }
+> = {
+  online: { label: 'Online', color: 'text-emerald-700', dot: 'bg-emerald-500' },
+  offline: {
+    label: 'Offline',
+    color: 'text-muted-foreground',
+    dot: 'bg-muted-foreground/50',
+  },
+  degraded: { label: 'Degraded', color: 'text-amber-700', dot: 'bg-amber-500' },
 }
 
 // Suggested channels per device type
 export const DEVICE_CHANNEL_HINTS: Record<DeviceType, MeterChannel[]> = {
-  inverter: ["pv", "grid", "battery", "load"],
-  solar_panel: ["pv"],
-  appliance: ["load", "ev"],
-  meter: ["load", "grid"],
+  inverter: ['pv', 'grid', 'battery', 'load'],
+  solar_panel: ['pv'],
+  appliance: ['load', 'ev'],
+  meter: ['load', 'grid'],
 }
 
 // --- Helpers ---
 
 export function formatLastSeen(lastSeenAt: string | null): string {
-  if (!lastSeenAt) return "Never"
+  if (!lastSeenAt) return 'Never'
   const diff = Date.now() - new Date(lastSeenAt).getTime()
   const seconds = Math.floor(diff / 1000)
   if (seconds < 60) return `${seconds}s ago`

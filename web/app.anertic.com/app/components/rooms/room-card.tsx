@@ -143,7 +143,7 @@ export function RoomCard({
         'group py-0 transition-all duration-200 hover:shadow-md',
         isExpanded && 'ring-1 ring-violet-500/30',
         room.connectionStatus === 'degraded' && 'border-amber-500/30',
-        room.connectionStatus === 'offline' && 'border-red-500/30',
+        room.connectionStatus === 'offline' && 'border-red-500/30'
       )}
     >
       <CardContent className="p-0">
@@ -153,7 +153,7 @@ export function RoomCard({
             <div
               className={cn(
                 'flex size-10 items-center justify-center rounded-lg',
-                config.bg,
+                config.bg
               )}
             >
               <Icon className={cn('size-5', config.color)} />
@@ -169,7 +169,7 @@ export function RoomCard({
                   <span
                     className={cn(
                       'inline-block size-1.5 rounded-full',
-                      statusCfg.dot,
+                      statusCfg.dot
                     )}
                   />
                   {statusCfg.label}
@@ -221,7 +221,7 @@ export function RoomCard({
               </p>
             </div>
             {powerPercent !== null && (
-              <span className="pb-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+              <span className="pb-0.5 text-xs font-medium text-muted-foreground tabular-nums">
                 {powerPercent}% of floor
               </span>
             )}
@@ -232,7 +232,7 @@ export function RoomCard({
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-500',
-                  ROOM_TYPE_BAR_COLORS[room.type],
+                  ROOM_TYPE_BAR_COLORS[room.type]
                 )}
                 style={{ width: `${Math.max(powerPercent, 2)}%` }}
               />

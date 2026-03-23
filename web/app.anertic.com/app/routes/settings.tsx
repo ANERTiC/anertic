@@ -116,7 +116,6 @@ const ROLE_CONFIG: Record<
   },
 }
 
-
 // --- Toggle Switch ---
 
 function Toggle({
@@ -192,7 +191,10 @@ export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
   const deleteFetcher = useFetcher()
   const siteId = useSiteId()
-  const { user: currentUser } = useOutletContext<{ siteId: string; user: User }>()
+  const { user: currentUser } = useOutletContext<{
+    siteId: string
+    user: User
+  }>()
   const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<SiteSettings>({
     name: '',
@@ -241,28 +243,23 @@ export default function Settings() {
     data: siteData,
     isLoading: isLoadingSite,
     mutate: mutateSite,
-  } = useSWR<any>(
-    siteId ? ['site.get', { id: siteId }] : null,
-    fetcher,
-  )
+  } = useSWR<any>(siteId ? ['site.get', { id: siteId }] : null, fetcher)
 
   // Fetch members
-  const { data: membersData, mutate: mutateMembers } = useSWR<{ items: SiteMember[] }>(
-    siteId ? ['site.listMembers', { siteId }] : null,
-    fetcher,
-  )
+  const { data: membersData, mutate: mutateMembers } = useSWR<{
+    items: SiteMember[]
+  }>(siteId ? ['site.listMembers', { siteId }] : null, fetcher)
 
   // Fetch invites
-  const { data: invitesData, mutate: mutateInvites } = useSWR<{ items: PendingInvite[] }>(
-    siteId ? ['site.listInvites', { siteId }] : null,
-    fetcher,
-  )
+  const { data: invitesData, mutate: mutateInvites } = useSWR<{
+    items: PendingInvite[]
+  }>(siteId ? ['site.listInvites', { siteId }] : null, fetcher)
 
   // Fetch API key status
-  const { data: apiKeyData, mutate: mutateApiKey } = useSWR<{ hasKey: boolean; createdAt: string | null }>(
-    siteId ? ['site.getApiKey', { siteId }] : null,
-    fetcher,
-  )
+  const { data: apiKeyData, mutate: mutateApiKey } = useSWR<{
+    hasKey: boolean
+    createdAt: string | null
+  }>(siteId ? ['site.getApiKey', { siteId }] : null, fetcher)
 
   // Sync site data to settings state
   useEffect(() => {
@@ -329,13 +326,16 @@ export default function Settings() {
   async function handleSaveGeneral() {
     setSavingGeneral(true)
     try {
-      await fetcher(['site.update', {
-        id: siteId,
-        name: settings.name,
-        address: settings.address,
-        timezone: settings.timezone,
-        currency: settings.currency,
-      }])
+      await fetcher([
+        'site.update',
+        {
+          id: siteId,
+          name: settings.name,
+          address: settings.address,
+          timezone: settings.timezone,
+          currency: settings.currency,
+        },
+      ])
       toast.success('Site settings saved')
       setEditingGeneral(false)
       mutateSite()
@@ -350,15 +350,18 @@ export default function Settings() {
   async function handleSaveTariffs() {
     setSavingTariffs(true)
     try {
-      await fetcher(['site.updateTariff', {
-        id: siteId,
-        gridImportRate: settings.gridImportRate,
-        gridExportRate: settings.gridExportRate,
-        peakStartHour: settings.peakStartHour,
-        peakEndHour: settings.peakEndHour,
-        peakRate: settings.peakRate,
-        offPeakRate: settings.offPeakRate,
-      }])
+      await fetcher([
+        'site.updateTariff',
+        {
+          id: siteId,
+          gridImportRate: settings.gridImportRate,
+          gridExportRate: settings.gridExportRate,
+          peakStartHour: settings.peakStartHour,
+          peakEndHour: settings.peakEndHour,
+          peakRate: settings.peakRate,
+          offPeakRate: settings.offPeakRate,
+        },
+      ])
       toast.success('Tariff settings saved')
       mutateSite()
       globalMutate(['site.list', ''])
@@ -371,7 +374,10 @@ export default function Settings() {
 
   function handleInvite() {
     if (!inviteEmail.trim()) return
-    fetcher(['site.inviteMember', { siteId, email: inviteEmail.trim(), role: inviteRole }])
+    fetcher([
+      'site.inviteMember',
+      { siteId, email: inviteEmail.trim(), role: inviteRole },
+    ])
       .then(() => {
         toast.success('Invitation sent')
         setInviteEmail('')
@@ -380,7 +386,9 @@ export default function Settings() {
         mutateInvites()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to send invitation')
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to send invitation'
+        )
       })
   }
 
@@ -391,7 +399,9 @@ export default function Settings() {
         mutateInvites()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to revoke invitation')
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to revoke invitation'
+        )
       })
   }
 
@@ -402,7 +412,9 @@ export default function Settings() {
         mutateMembers()
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to update role')
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update role'
+        )
       })
     setRoleDropdownOpen(null)
   }
@@ -432,9 +444,12 @@ export default function Settings() {
   async function handleRegenerateApiKey() {
     setRegenerating(true)
     try {
-      const result = await fetcher<{ apiKey: string }>(['site.regenerateApiKey', {
-        siteId,
-      }])
+      const result = await fetcher<{ apiKey: string }>([
+        'site.regenerateApiKey',
+        {
+          siteId,
+        },
+      ])
       setGeneratedApiKey(result.apiKey)
       setShowApiKey(true)
       mutateApiKey()
@@ -647,106 +662,109 @@ export default function Settings() {
                 </div>
               </div>
             ) : (
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Time-of-Use Rates
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">
-                    TOU
-                  </Badge>
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                      Time-of-Use Rates
+                    </h4>
+                    <Badge variant="outline" className="text-[10px]">
+                      TOU
+                    </Badge>
+                  </div>
+                  <Toggle
+                    checked={settings.touEnabled}
+                    onChange={(v) => update('touEnabled', v)}
+                  />
                 </div>
-                <Toggle
-                  checked={settings.touEnabled}
-                  onChange={(v) => update('touEnabled', v)}
-                />
-              </div>
 
-              {settings.touEnabled ? (
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border bg-amber-500/5 p-4">
-                    <div className="flex items-center gap-2">
-                      <RiSunLine className="size-4 text-amber-500" />
-                      <span className="text-xs font-medium">Peak</span>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Hours</span>
-                        <span className="font-medium tabular-nums">
-                          {String(settings.peakStartHour).padStart(2, '0')}:00 –{' '}
-                          {String(settings.peakEndHour).padStart(2, '0')}:00
-                        </span>
+                {settings.touEnabled ? (
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-lg border bg-amber-500/5 p-4">
+                      <div className="flex items-center gap-2">
+                        <RiSunLine className="size-4 text-amber-500" />
+                        <span className="text-xs font-medium">Peak</span>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">
-                          Rate ({settings.currency}/kWh)
-                        </Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={settings.peakRate}
-                          onChange={(e) =>
-                            update('peakRate', parseFloat(e.target.value) || 0)
-                          }
-                          className="h-8 text-sm"
-                        />
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Hours</span>
+                          <span className="font-medium tabular-nums">
+                            {String(settings.peakStartHour).padStart(2, '0')}:00
+                            – {String(settings.peakEndHour).padStart(2, '0')}:00
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Rate ({settings.currency}/kWh)
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={settings.peakRate}
+                            onChange={(e) =>
+                              update(
+                                'peakRate',
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-blue-500/5 p-4">
+                      <div className="flex items-center gap-2">
+                        <RiMoonLine className="size-4 text-blue-500" />
+                        <span className="text-xs font-medium">Off-Peak</span>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Hours</span>
+                          <span className="font-medium tabular-nums">
+                            {String(settings.peakEndHour).padStart(2, '0')}:00 –{' '}
+                            {String(settings.peakStartHour).padStart(2, '0')}:00
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Rate ({settings.currency}/kWh)
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={settings.offPeakRate}
+                            onChange={(e) =>
+                              update(
+                                'offPeakRate',
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-lg border bg-blue-500/5 p-4">
-                    <div className="flex items-center gap-2">
-                      <RiMoonLine className="size-4 text-blue-500" />
-                      <span className="text-xs font-medium">Off-Peak</span>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Hours</span>
-                        <span className="font-medium tabular-nums">
-                          {String(settings.peakEndHour).padStart(2, '0')}:00 –{' '}
-                          {String(settings.peakStartHour).padStart(2, '0')}:00
-                        </span>
+                ) : (
+                  <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <RiTimeLine className="size-4 text-muted-foreground/60" />
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">
-                          Rate ({settings.currency}/kWh)
-                        </Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={settings.offPeakRate}
-                          onChange={(e) =>
-                            update(
-                              'offPeakRate',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="h-8 text-sm"
-                        />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          No TOU meter configured
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground/60">
+                          Enable this if your site has a Time-of-Use meter with
+                          different peak and off-peak electricity rates. This
+                          helps calculate more accurate energy costs.
+                        </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <RiTimeLine className="size-4 text-muted-foreground/60" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        No TOU meter configured
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground/60">
-                        Enable this if your site has a Time-of-Use meter with
-                        different peak and off-peak electricity rates. This
-                        helps calculate more accurate energy costs.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             )}
 
             {isLoadingSite ? (
@@ -1108,69 +1126,71 @@ export default function Settings() {
 
                     {/* Actions menu */}
                     <div className="relative" data-dropdown>
-                        <button
-                          onClick={() => {
-                            setRoleDropdownOpen(null)
-                            setConfirmRemove(null)
-                            setMemberMenuOpen(
-                              memberMenuOpen === member.userId
-                                ? null
-                                : member.userId
-                            )
-                          }}
-                          className="rounded p-1 text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-muted-foreground"
-                        >
-                          <RiMore2Line className="size-4" />
-                        </button>
-                        {memberMenuOpen === member.userId && (
-                          <div className="absolute top-8 right-0 z-20 w-44 rounded-lg border bg-background p-1 shadow-lg">
-                            {confirmRemove === member.userId ? (
-                              <div className="space-y-1 p-2">
-                                <p className="text-xs font-medium text-red-600">
-                                  Remove this member?
-                                </p>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 flex-1 text-xs"
-                                    onClick={() => {
-                                      setConfirmRemove(null)
-                                      setMemberMenuOpen(null)
-                                    }}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="h-7 flex-1 text-xs"
-                                    onClick={() =>
-                                      handleRemoveMember(member.userId)
-                                    }
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
+                      <button
+                        onClick={() => {
+                          setRoleDropdownOpen(null)
+                          setConfirmRemove(null)
+                          setMemberMenuOpen(
+                            memberMenuOpen === member.userId
+                              ? null
+                              : member.userId
+                          )
+                        }}
+                        className="rounded p-1 text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-muted-foreground"
+                      >
+                        <RiMore2Line className="size-4" />
+                      </button>
+                      {memberMenuOpen === member.userId && (
+                        <div className="absolute top-8 right-0 z-20 w-44 rounded-lg border bg-background p-1 shadow-lg">
+                          {confirmRemove === member.userId ? (
+                            <div className="space-y-1 p-2">
+                              <p className="text-xs font-medium text-red-600">
+                                Remove this member?
+                              </p>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 flex-1 text-xs"
+                                  onClick={() => {
+                                    setConfirmRemove(null)
+                                    setMemberMenuOpen(null)
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="h-7 flex-1 text-xs"
+                                  onClick={() =>
+                                    handleRemoveMember(member.userId)
+                                  }
+                                >
+                                  Remove
+                                </Button>
                               </div>
-                            ) : (
-                              <button
-                                onClick={() => canRemove && setConfirmRemove(member.userId)}
-                                disabled={!canRemove}
-                                className={cn(
-                                  'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
-                                  canRemove
-                                    ? 'text-red-600 hover:bg-red-500/10'
-                                    : 'cursor-not-allowed text-muted-foreground/40'
-                                )}
-                              >
-                                <RiUserUnfollowLine className="size-3.5" />
-                                Remove member
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                canRemove && setConfirmRemove(member.userId)
+                              }
+                              disabled={!canRemove}
+                              className={cn(
+                                'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+                                canRemove
+                                  ? 'text-red-600 hover:bg-red-500/10'
+                                  : 'cursor-not-allowed text-muted-foreground/40'
+                              )}
+                            >
+                              <RiUserUnfollowLine className="size-3.5" />
+                              Remove member
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -1258,10 +1278,7 @@ export default function Settings() {
                     disabled={regenerating}
                   >
                     <RiRefreshLine
-                      className={cn(
-                        'size-3.5',
-                        regenerating && 'animate-spin'
-                      )}
+                      className={cn('size-3.5', regenerating && 'animate-spin')}
                     />
                     {regenerating ? 'Regenerating...' : 'Regenerate'}
                   </Button>
@@ -1281,10 +1298,7 @@ export default function Settings() {
                     disabled={regenerating}
                   >
                     <RiKeyLine
-                      className={cn(
-                        'size-3.5',
-                        regenerating && 'animate-spin'
-                      )}
+                      className={cn('size-3.5', regenerating && 'animate-spin')}
                     />
                     {regenerating ? 'Generating...' : 'Generate Key'}
                   </Button>
@@ -1346,60 +1360,60 @@ export default function Settings() {
           DANGER ZONE
           ────────────────────────────── */}
       {members.some((m) => m.userId === currentUser?.id && m.role === '*') && (
-      <Card className="border-red-200/50 py-0">
-        <CardContent className="p-6">
-          <SectionHeader
-            icon={RiShieldLine}
-            title="Danger Zone"
-            description="Irreversible actions that affect your site"
-          />
+        <Card className="border-red-200/50 py-0">
+          <CardContent className="p-6">
+            <SectionHeader
+              icon={RiShieldLine}
+              title="Danger Zone"
+              description="Irreversible actions that affect your site"
+            />
 
-          <div className="mt-6 flex items-center justify-between rounded-lg border border-red-200/50 bg-red-500/5 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Delete this site</p>
-              <p className="text-xs text-muted-foreground">
-                Permanently remove this site, all devices, and historical data.
-                This cannot be undone.
-              </p>
-            </div>
-            {showDeleteConfirm ? (
-              <div className="flex items-center gap-2">
+            <div className="mt-6 flex items-center justify-between rounded-lg border border-red-200/50 bg-red-500/5 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Delete this site</p>
+                <p className="text-xs text-muted-foreground">
+                  Permanently remove this site, all devices, and historical
+                  data. This cannot be undone.
+                </p>
+              </div>
+              {showDeleteConfirm ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <deleteFetcher.Form method="post">
+                    <input type="hidden" name="intent" value="delete" />
+                    <input type="hidden" name="siteId" value={siteId} />
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={deletingSite}
+                    >
+                      <RiDeleteBinLine className="size-3.5" />
+                      {deletingSite ? 'Deleting…' : 'Confirm Delete'}
+                    </Button>
+                  </deleteFetcher.Form>
+                </div>
+              ) : (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setShowDeleteConfirm(true)}
                 >
-                  Cancel
+                  <RiAlertLine className="size-3.5" />
+                  Delete Site
                 </Button>
-                <deleteFetcher.Form method="post">
-                  <input type="hidden" name="intent" value="delete" />
-                  <input type="hidden" name="siteId" value={siteId} />
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={deletingSite}
-                  >
-                    <RiDeleteBinLine className="size-3.5" />
-                    {deletingSite ? 'Deleting…' : 'Confirm Delete'}
-                  </Button>
-                </deleteFetcher.Form>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <RiAlertLine className="size-3.5" />
-                Delete Site
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

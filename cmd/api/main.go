@@ -17,6 +17,7 @@ import (
 	"github.com/moonrhythm/session"
 	"github.com/moonrhythm/session/store"
 	"github.com/redis/go-redis/v9"
+	"github.com/xkamail/godoclive/pkg/godoclive"
 
 	"github.com/anertic/anertic/api"
 	"github.com/anertic/anertic/api/auth/provider"
@@ -93,6 +94,17 @@ func run() error {
 	api.Mount(mux, am)
 
 	mux.Handle("/", am.NotFoundHandler())
+	endpoints, err := godoclive.Analyze(".", "./...")
+	if err != nil {
+		return err
+	}
+	slog.Info("docs", "endpoints", len(endpoints))
+
+	mux.Handle("/docs", godoclive.Handler(endpoints,
+		godoclive.WithTitle("My API"),
+		godoclive.WithBaseURL("https://app.anertic.com/api"),
+		godoclive.WithTheme("light"),
+	))
 
 	srv.Handler = mux
 	srv.Use(cors.New())

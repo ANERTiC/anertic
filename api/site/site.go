@@ -102,6 +102,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
+	// Name sss
 	Name     string `json:"name"`
 	Address  string `json:"address"`
 	Timezone string `json:"timezone"`
@@ -119,6 +120,7 @@ type CreateResult struct {
 	ID string `json:"id"`
 }
 
+// Create a site
 func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 	if err := p.Valid(); err != nil {
 		return nil, err

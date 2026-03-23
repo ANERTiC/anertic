@@ -1,0 +1,5286 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API Documentation",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "get",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "put": {
+        "operationId": "put",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "head": {
+        "operationId": "head",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      },
+      "options": {
+        "operationId": "options",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/auth.me": {
+      "post": {
+        "operationId": "postAuth.me",
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/auth.refreshToken": {
+      "post": {
+        "operationId": "postAuth.refreshToken",
+        "summary": "Refresh Token",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "operationId": "getAuthCallback",
+        "summary": "Provider Callback",
+        "description": "ProviderCallback handles the OAuth callback from any provider.",
+        "tags": [
+          "providers"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/{provider}": {
+      "get": {
+        "operationId": "getAuthProvider",
+        "summary": "Provider Redirect",
+        "description": "ProviderRedirect redirects to the OAuth provider's consent page.",
+        "tags": [
+          "providers"
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "name": "redirect_url",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/charger.cancelReservation": {
+      "post": {
+        "operationId": "postCharger.cancelReservation",
+        "summary": "Cancel Reservation",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReservationParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelReservationResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.changeAvailability": {
+      "post": {
+        "operationId": "postCharger.changeAvailability",
+        "summary": "Change Availability",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAvailabilityParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeAvailabilityResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.changeConfiguration": {
+      "post": {
+        "operationId": "postCharger.changeConfiguration",
+        "summary": "Change Configuration",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeConfigurationParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeConfigurationResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.clearCache": {
+      "post": {
+        "operationId": "postCharger.clearCache",
+        "summary": "Clear Cache",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearCacheParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearCacheResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.clearChargingProfile": {
+      "post": {
+        "operationId": "postCharger.clearChargingProfile",
+        "summary": "Clear Charging Profile",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearChargingProfileParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearChargingProfileResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.create": {
+      "post": {
+        "operationId": "postCharger.create",
+        "summary": "Create",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParamsCharger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.delete": {
+      "post": {
+        "operationId": "postCharger.delete",
+        "summary": "Delete",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParamsCharger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.get": {
+      "post": {
+        "operationId": "postCharger.get",
+        "summary": "Get",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsCharger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.getCompositeSchedule": {
+      "post": {
+        "operationId": "postCharger.getCompositeSchedule",
+        "summary": "Get Composite Schedule",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetCompositeScheduleParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCompositeScheduleResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.getDiagnostics": {
+      "post": {
+        "operationId": "postCharger.getDiagnostics",
+        "summary": "Get Diagnostics",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetDiagnosticsParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDiagnosticsResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.getLocalListVersion": {
+      "post": {
+        "operationId": "postCharger.getLocalListVersion",
+        "summary": "Get Local List Version",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetLocalListVersionParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetLocalListVersionResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.list": {
+      "post": {
+        "operationId": "postCharger.list",
+        "summary": "List",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsCharger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.listReservations": {
+      "post": {
+        "operationId": "postCharger.listReservations",
+        "summary": "List Reservations",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListReservationsParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListReservationsResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.reserveNow": {
+      "post": {
+        "operationId": "postCharger.reserveNow",
+        "summary": "Reserve Now",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveNowParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReserveNowResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.sendLocalList": {
+      "post": {
+        "operationId": "postCharger.sendLocalList",
+        "summary": "Send Local List",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendLocalListParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendLocalListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.setChargingProfile": {
+      "post": {
+        "operationId": "postCharger.setChargingProfile",
+        "summary": "Set Charging Profile",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetChargingProfileParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetChargingProfileResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.triggerMessage": {
+      "post": {
+        "operationId": "postCharger.triggerMessage",
+        "summary": "Trigger Message",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriggerMessageParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerMessageResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.unlockConnector": {
+      "post": {
+        "operationId": "postCharger.unlockConnector",
+        "summary": "Unlock Connector",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockConnectorParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockConnectorResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.update": {
+      "post": {
+        "operationId": "postCharger.update",
+        "summary": "Update",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParamsCharger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charger.updateFirmware": {
+      "post": {
+        "operationId": "postCharger.updateFirmware",
+        "summary": "Update Firmware",
+        "tags": [
+          "charger"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFirmwareParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFirmwareResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connector.list": {
+      "post": {
+        "operationId": "postConnector.list",
+        "summary": "List",
+        "tags": [
+          "connector"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsConnector"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device.create": {
+      "post": {
+        "operationId": "postDevice.create",
+        "summary": "Create",
+        "tags": [
+          "device"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParamsDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device.delete": {
+      "post": {
+        "operationId": "postDevice.delete",
+        "summary": "Delete",
+        "tags": [
+          "device"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParamsDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device.get": {
+      "post": {
+        "operationId": "postDevice.get",
+        "summary": "Get",
+        "tags": [
+          "device"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device.list": {
+      "post": {
+        "operationId": "postDevice.list",
+        "summary": "List",
+        "tags": [
+          "device"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device.update": {
+      "post": {
+        "operationId": "postDevice.update",
+        "summary": "Update",
+        "tags": [
+          "device"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParamsDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.assignDevice": {
+      "post": {
+        "operationId": "postFloor.assignDevice",
+        "summary": "Assign Device",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDeviceParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.create": {
+      "post": {
+        "operationId": "postFloor.create",
+        "summary": "Create",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParamsFloor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.delete": {
+      "post": {
+        "operationId": "postFloor.delete",
+        "summary": "Delete",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParamsFloor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.get": {
+      "post": {
+        "operationId": "postFloor.get",
+        "summary": "Get",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsFloor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.list": {
+      "post": {
+        "operationId": "postFloor.list",
+        "summary": "List",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsFloor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.unassignDevice": {
+      "post": {
+        "operationId": "postFloor.unassignDevice",
+        "summary": "Unassign Device",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnassignDeviceParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floor.update": {
+      "post": {
+        "operationId": "postFloor.update",
+        "summary": "Update",
+        "tags": [
+          "floor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParamsFloor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "getHealthz",
+        "summary": "Anonymous",
+        "tags": [
+          "anonymous"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ingest/{serial_number}": {
+      "post": {
+        "operationId": "postIngestSerial_number",
+        "summary": "Handler",
+        "description": "Handler handles POST /ingest/{serial_number}",
+        "tags": [
+          "handlers"
+        ],
+        "parameters": [
+          {
+            "name": "serial_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reading"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.anomalies": {
+      "post": {
+        "operationId": "postInsight.anomalies",
+        "summary": "Anomalies",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnomaliesParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomaliesResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.get": {
+      "post": {
+        "operationId": "postInsight.get",
+        "summary": "Get",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsInsight"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.list": {
+      "post": {
+        "operationId": "postInsight.list",
+        "summary": "List",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsInsight"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.savingsHistory": {
+      "post": {
+        "operationId": "postInsight.savingsHistory",
+        "summary": "Savings History",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavingsHistoryParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavingsHistoryResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.summary": {
+      "post": {
+        "operationId": "postInsight.summary",
+        "summary": "Summary",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.updateStatus": {
+      "post": {
+        "operationId": "postInsight.updateStatus",
+        "summary": "Update Status",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insight.weeklyPattern": {
+      "post": {
+        "operationId": "postInsight.weeklyPattern",
+        "summary": "Weekly Pattern",
+        "tags": [
+          "insight"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyPatternParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyPatternResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meter.create": {
+      "post": {
+        "operationId": "postMeter.create",
+        "summary": "Create",
+        "tags": [
+          "meter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParamsMeter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meter.delete": {
+      "post": {
+        "operationId": "postMeter.delete",
+        "summary": "Delete",
+        "tags": [
+          "meter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParamsMeter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meter.get": {
+      "post": {
+        "operationId": "postMeter.get",
+        "summary": "Get",
+        "tags": [
+          "meter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsMeter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meter.list": {
+      "post": {
+        "operationId": "postMeter.list",
+        "summary": "List",
+        "tags": [
+          "meter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsMeter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meter.update": {
+      "post": {
+        "operationId": "postMeter.update",
+        "summary": "Update",
+        "tags": [
+          "meter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParamsMeter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reading.latest": {
+      "post": {
+        "operationId": "postReading.latest",
+        "summary": "Latest",
+        "tags": [
+          "reading"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LatestParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reading.query": {
+      "post": {
+        "operationId": "postReading.query",
+        "summary": "Query",
+        "tags": [
+          "reading"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.assignDevice": {
+      "post": {
+        "operationId": "postRoom.assignDevice",
+        "summary": "Assign Device",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDeviceParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.create": {
+      "post": {
+        "operationId": "postRoom.create",
+        "summary": "Create",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.delete": {
+      "post": {
+        "operationId": "postRoom.delete",
+        "summary": "Delete",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.get": {
+      "post": {
+        "operationId": "postRoom.get",
+        "summary": "Get",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.list": {
+      "post": {
+        "operationId": "postRoom.list",
+        "summary": "List",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.unassignDevice": {
+      "post": {
+        "operationId": "postRoom.unassignDevice",
+        "summary": "Unassign Device",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnassignDeviceParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/room.update": {
+      "post": {
+        "operationId": "postRoom.update",
+        "summary": "Update",
+        "tags": [
+          "room"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParamsRoom"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.acceptInvite": {
+      "post": {
+        "operationId": "postSite.acceptInvite",
+        "summary": "Accept Invite",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.addMember": {
+      "post": {
+        "operationId": "postSite.addMember",
+        "summary": "Add Member",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddMemberResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.create": {
+      "post": {
+        "operationId": "postSite.create",
+        "summary": "Create",
+        "description": "Create a site",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "site/invalid-timezone: invalid timezone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.declineInvite": {
+      "post": {
+        "operationId": "postSite.declineInvite",
+        "summary": "Decline Invite",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclineInviteParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.delete": {
+      "post": {
+        "operationId": "postSite.delete",
+        "summary": "Delete",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.get": {
+      "post": {
+        "operationId": "postSite.get",
+        "summary": "Get",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.getApiKey": {
+      "post": {
+        "operationId": "postSite.getApiKey",
+        "summary": "Get Api Key",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetApiKeyParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetApiKeyResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.inviteMember": {
+      "post": {
+        "operationId": "postSite.inviteMember",
+        "summary": "Invite Member",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteMemberResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.list": {
+      "post": {
+        "operationId": "postSite.list",
+        "summary": "List",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.listInvites": {
+      "post": {
+        "operationId": "postSite.listInvites",
+        "summary": "List Invites",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListInvitesParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitesResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.listMembers": {
+      "post": {
+        "operationId": "postSite.listMembers",
+        "summary": "List Members",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListMembersParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMembersResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.listRole": {
+      "post": {
+        "operationId": "postSite.listRole",
+        "summary": "List Roles",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRolesResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.myInvites": {
+      "post": {
+        "operationId": "postSite.myInvites",
+        "summary": "My Invites",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyInvitesResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.regenerateApiKey": {
+      "post": {
+        "operationId": "postSite.regenerateApiKey",
+        "summary": "Regenerate Api Key",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateApiKeyParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateApiKeyResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.removeMember": {
+      "post": {
+        "operationId": "postSite.removeMember",
+        "summary": "Remove Member",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveMemberParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.revokeInvite": {
+      "post": {
+        "operationId": "postSite.revokeInvite",
+        "summary": "Revoke Invite",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeInviteParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.update": {
+      "post": {
+        "operationId": "postSite.update",
+        "summary": "Update",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.updateMemberRole": {
+      "post": {
+        "operationId": "postSite.updateMemberRole",
+        "summary": "Update Member Role",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRoleParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site.updateTariff": {
+      "post": {
+        "operationId": "postSite.updateTariff",
+        "summary": "Update Tariff",
+        "tags": [
+          "site"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/struct{}Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{chargePointID}": {
+      "get": {
+        "operationId": "getChargePointID",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcceptInviteParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "AddMemberParams": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AddMemberResult": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AddMemberResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/AddMemberResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "AnomaliesParams": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AnomaliesResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnomalyItem"
+            },
+            "example": [
+              {
+                "actual": 0,
+                "createdAt": null,
+                "description": "A brief description",
+                "deviation": 0,
+                "expected": 0,
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "metric": "string",
+                "severity": "string"
+              }
+            ]
+          }
+        }
+      },
+      "AnomaliesResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/AnomaliesResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "AnomalyItem": {
+        "type": "object",
+        "properties": {
+          "actual": {
+            "type": "number",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "example": "A brief description"
+          },
+          "deviation": {
+            "type": "number",
+            "example": 0
+          },
+          "expected": {
+            "type": "number",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "metric": {
+            "type": "string",
+            "example": "string"
+          },
+          "severity": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AssignDeviceParams": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AssignDeviceParamsRoom": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "roomId": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "AuthorizationData": {
+        "type": "object",
+        "properties": {
+          "idTag": {
+            "type": "string",
+            "example": "string"
+          },
+          "idTagInfo": {
+            "$ref": "#/components/schemas/IdTagInfo",
+            "nullable": true
+          }
+        }
+      },
+      "CancelReservationParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "reservationId": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "CancelReservationResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ChangeAvailabilityParams": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ChangeAvailabilityResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ChangeConfigurationParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "key": {
+            "type": "string",
+            "example": "string"
+          },
+          "value": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ChangeConfigurationResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ChargingProfile": {
+        "type": "object",
+        "properties": {
+          "chargingProfileId": {
+            "type": "integer",
+            "example": 0
+          },
+          "chargingProfileKind": {
+            "type": "string",
+            "example": "string"
+          },
+          "chargingProfilePurpose": {
+            "type": "string",
+            "example": "string"
+          },
+          "chargingSchedule": {
+            "$ref": "#/components/schemas/ChargingSchedule",
+            "nullable": true
+          },
+          "recurrencyKind": {
+            "type": "string",
+            "example": "string"
+          },
+          "stackLevel": {
+            "type": "integer",
+            "example": 0
+          },
+          "transactionId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "validFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "validTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          }
+        }
+      },
+      "ChargingSchedule": {
+        "type": "object",
+        "properties": {
+          "chargingRateUnit": {
+            "type": "string",
+            "example": "string"
+          },
+          "chargingSchedulePeriod": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChargingSchedulePeriod"
+            },
+            "example": [
+              {
+                "limit": 20,
+                "numberPhases": 0,
+                "startPeriod": 0
+              }
+            ]
+          },
+          "duration": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "minChargingRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "startSchedule": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ChargingSchedulePeriod": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "string",
+            "example": 20
+          },
+          "numberPhases": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "startPeriod": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "ClearCacheParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "ClearCacheResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ClearChargingProfileParams": {
+        "type": "object",
+        "properties": {
+          "chargingProfileId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "chargingProfilePurpose": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "connectorId": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "stackLevel": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          }
+        }
+      },
+      "ClearChargingProfileResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "ClearChargingProfileResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ClearChargingProfileResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "CreateParams": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateParamsCharger": {
+        "type": "object",
+        "properties": {
+          "chargePointId": {
+            "type": "string",
+            "example": "string"
+          },
+          "connectorCount": {
+            "type": "string"
+          },
+          "maxPowerKw": {
+            "type": "string"
+          },
+          "ocppVersion": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateParamsDevice": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "example": "string"
+          },
+          "model": {
+            "type": "string",
+            "example": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "tag": {
+            "type": "string",
+            "example": "string"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateParamsFloor": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateParamsMeter": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "example": "string"
+          },
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "phase": {
+            "type": "integer",
+            "example": 0
+          },
+          "protocol": {
+            "type": "string",
+            "example": "string"
+          },
+          "serialNumber": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateParamsRoom": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "CreateResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "CreateResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/CreateResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "DeclineInviteParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "DeleteParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "DeleteParamsCharger": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "DeleteParamsDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "DeleteParamsFloor": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "DeleteParamsMeter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "DeleteParamsRoom": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "site/invalid-timezone"
+          },
+          "message": {
+            "type": "string",
+            "example": "invalid timezone"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          },
+          "ok": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "GetApiKeyParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "GetApiKeyResult": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasKey": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "GetApiKeyResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/GetApiKeyResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "GetCompositeScheduleParams": {
+        "type": "object",
+        "properties": {
+          "chargingRateUnit": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "duration": {
+            "type": "integer",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetCompositeScheduleResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "GetCompositeScheduleResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/GetCompositeScheduleResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "GetDiagnosticsParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "location": {
+            "type": "string",
+            "example": "string"
+          },
+          "retries": {
+            "type": "integer",
+            "example": 0
+          },
+          "retryInterval": {
+            "type": "integer",
+            "example": 0
+          },
+          "startTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "stopTime": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "GetDiagnosticsResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetDiagnosticsResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/GetDiagnosticsResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "GetLocalListVersionParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetLocalListVersionResult": {
+        "type": "object",
+        "properties": {
+          "listVersion": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "GetLocalListVersionResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/GetLocalListVersionResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "GetParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetParamsCharger": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetParamsDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetParamsFloor": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "GetParamsInsight": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetParamsMeter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetParamsRoom": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "GetResult": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "example": "string"
+          },
+          "gridExportRate": {
+            "type": "string"
+          },
+          "gridImportRate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "metadata": {
+            "type": "object",
+            "example": {}
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "offPeakRate": {
+            "type": "string"
+          },
+          "peakEndHour": {
+            "type": "integer",
+            "example": 0
+          },
+          "peakRate": {
+            "type": "string"
+          },
+          "peakStartHour": {
+            "type": "integer",
+            "example": 0
+          },
+          "timezone": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "GetResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/GetResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "IdTagInfo": {
+        "type": "object",
+        "properties": {
+          "expiryDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "parentIdTag": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "Invite": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "invitedBy": {
+            "type": "string",
+            "example": "string"
+          },
+          "role": {
+            "type": "string",
+            "example": "user"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "InviteMemberParams": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "user"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "InviteMemberResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "InviteMemberResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/InviteMemberResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "metadata": {
+            "type": "object",
+            "example": {}
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "LatestParams": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "LatestResult": {
+        "type": "object",
+        "properties": {
+          "reading": {
+            "$ref": "#/components/schemas/ReadingReading",
+            "nullable": true
+          }
+        }
+      },
+      "LatestResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/LatestResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ListInvitesParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListInvitesResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invite"
+            },
+            "example": [
+              {
+                "createdAt": null,
+                "email": "user@example.com",
+                "expiresAt": null,
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "invitedBy": "string",
+                "role": "user",
+                "status": "active"
+              }
+            ]
+          }
+        }
+      },
+      "ListInvitesResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ListInvitesResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ListMembersParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListMembersResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            },
+            "example": [
+              {
+                "createdAt": null,
+                "email": "user@example.com",
+                "name": "John Doe",
+                "picture": "string",
+                "role": "user",
+                "userId": "string"
+              }
+            ]
+          }
+        }
+      },
+      "ListMembersResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ListMembersResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ListParams": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsCharger": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsConnector": {
+        "type": "object",
+        "properties": {
+          "chargerId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsDevice": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsFloor": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsInsight": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsMeter": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListParamsRoom": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "search": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "type": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ListReservationsParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "ListReservationsResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationItem"
+            },
+            "example": [
+              {
+                "connectorId": 0,
+                "createdAt": null,
+                "expiryDate": null,
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "idTag": "string",
+                "parentIdTag": "string",
+                "reservationId": 0,
+                "status": "active",
+                "updatedAt": null
+              }
+            ]
+          }
+        }
+      },
+      "ListReservationsResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ListReservationsResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "example": [
+              {
+                "address": "string",
+                "createdAt": null,
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "metadata": {},
+                "name": "John Doe",
+                "timezone": "string"
+              }
+            ]
+          }
+        }
+      },
+      "ListResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ListResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "ListRolesResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            },
+            "example": [
+              {
+                "description": "A brief description",
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "name": "John Doe"
+              }
+            ]
+          }
+        }
+      },
+      "ListRolesResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ListRolesResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "picture": {
+            "type": "string",
+            "example": "string"
+          },
+          "role": {
+            "type": "string",
+            "example": "user"
+          },
+          "userId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "MyInvite": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "invitedBy": {
+            "type": "string",
+            "example": "string"
+          },
+          "role": {
+            "type": "string",
+            "example": "user"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteName": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "MyInvitesResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyInvite"
+            },
+            "example": [
+              {
+                "createdAt": null,
+                "expiresAt": null,
+                "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                "invitedBy": "string",
+                "role": "user",
+                "siteId": "string",
+                "siteName": "string"
+              }
+            ]
+          }
+        }
+      },
+      "MyInvitesResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/MyInvitesResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "QueryParams": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "string"
+          },
+          "interval": {
+            "type": "string",
+            "example": "string"
+          },
+          "meterId": {
+            "type": "string",
+            "example": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "QueryResult": {
+        "type": "object",
+        "properties": {
+          "readings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadingReading"
+            },
+            "example": [
+              {
+                "currentA": null,
+                "energyKwh": null,
+                "powerW": null,
+                "time": null,
+                "voltageV": null
+              }
+            ]
+          }
+        }
+      },
+      "QueryResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/QueryResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "Reading": {
+        "type": "object",
+        "properties": {
+          "apparent_energy_kvah": {
+            "type": "string"
+          },
+          "apparent_power_va": {
+            "type": "string"
+          },
+          "current_a": {
+            "type": "string"
+          },
+          "energy_kwh": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "example": []
+          },
+          "pf": {
+            "type": "string"
+          },
+          "power_w": {
+            "type": "string"
+          },
+          "reactive_energy_kvarh": {
+            "type": "string"
+          },
+          "reactive_power_var": {
+            "type": "string"
+          },
+          "temperature_c": {
+            "type": "string"
+          },
+          "thd_i": {
+            "type": "string"
+          },
+          "thd_v": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "string"
+          },
+          "voltage_v": {
+            "type": "string"
+          }
+        }
+      },
+      "ReadingReading": {
+        "type": "object",
+        "properties": {
+          "currentA": {
+            "type": "string"
+          },
+          "energyKwh": {
+            "type": "string"
+          },
+          "powerW": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "voltageV": {
+            "type": "string"
+          }
+        }
+      },
+      "RefreshTokenParams": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "RegenerateApiKeyParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "RegenerateApiKeyResult": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "RegenerateApiKeyResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/RegenerateApiKeyResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "RemoveMemberParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "userId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "ReservationItem": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiryDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "idTag": {
+            "type": "string",
+            "example": "string"
+          },
+          "parentIdTag": {
+            "type": "string",
+            "example": "string"
+          },
+          "reservationId": {
+            "type": "integer",
+            "example": 0
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "ReserveNowParams": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "expiryDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "idTag": {
+            "type": "string",
+            "example": "string"
+          },
+          "parentIdTag": {
+            "type": "string",
+            "example": "string"
+          },
+          "reservationId": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "ReserveNowResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "ReserveNowResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/ReserveNowResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "RevokeInviteParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "example": "A brief description"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          }
+        }
+      },
+      "SavingsHistoryItem": {
+        "type": "object",
+        "properties": {
+          "actual": {
+            "type": "number",
+            "example": 0
+          },
+          "date": {
+            "type": "string",
+            "example": "string"
+          },
+          "grid": {
+            "type": "number",
+            "example": 0
+          },
+          "optimal": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "SavingsHistoryParams": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "example": 0
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "SavingsHistoryResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavingsHistoryItem"
+            },
+            "example": [
+              {
+                "actual": 0,
+                "date": "string",
+                "grid": 0,
+                "optimal": 0
+              }
+            ]
+          }
+        }
+      },
+      "SavingsHistoryResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/SavingsHistoryResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "SendLocalListParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "listVersion": {
+            "type": "integer",
+            "example": 0
+          },
+          "localAuthorizationList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorizationData"
+            },
+            "example": [
+              {
+                "idTag": "string",
+                "idTagInfo": null
+              }
+            ]
+          },
+          "updateType": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "SendLocalListResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "SendLocalListResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/SendLocalListResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "SetChargingProfileParams": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "csChargingProfiles": {
+            "$ref": "#/components/schemas/ChargingProfile",
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "SetChargingProfileResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "SetChargingProfileResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/SetChargingProfileResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "connectionStatus": {
+            "type": "string",
+            "example": "string"
+          },
+          "deviceCount": {
+            "type": "integer",
+            "example": 0
+          },
+          "livePowerW": {
+            "type": "string"
+          }
+        }
+      },
+      "SummaryParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "SummaryResult": {
+        "type": "object",
+        "properties": {
+          "aiConfidence": {
+            "type": "integer",
+            "example": 0
+          },
+          "co2AvoidedKg": {
+            "type": "number",
+            "example": 0
+          },
+          "dailySummary": {
+            "type": "string",
+            "example": "string"
+          },
+          "insightCount": {
+            "type": "integer",
+            "example": 0
+          },
+          "newCount": {
+            "type": "integer",
+            "example": 0
+          },
+          "savingsTarget": {
+            "type": "number",
+            "example": 0
+          },
+          "selfSufficiencyAvg": {
+            "type": "number",
+            "example": 0
+          },
+          "totalSavingsThisMonth": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "SummaryResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/SummaryResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "TokenResult": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string",
+            "example": "string"
+          },
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "TokenResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/TokenResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "TriggerMessageParams": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "requestedMessage": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "TriggerMessageResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UnassignDeviceParams": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "UnassignDeviceParamsRoom": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "string"
+          },
+          "roomId": {
+            "type": "string",
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "UnlockConnectorParams": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "integer",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "UnlockConnectorResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UpdateFirmwareParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "location": {
+            "type": "string",
+            "example": "string"
+          },
+          "retries": {
+            "type": "integer",
+            "example": 0
+          },
+          "retrieveDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "retryInterval": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "UpdateFirmwareResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          }
+        }
+      },
+      "UpdateFirmwareResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/UpdateFirmwareResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UpdateMemberRoleParams": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "example": "user"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "userId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "UpdateParams": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John Doe"
+          },
+          "timezone": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          }
+        }
+      },
+      "UpdateParamsCharger": {
+        "type": "object",
+        "properties": {
+          "connectorCount": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "maxPowerKw": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateParamsDevice": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "tag": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          }
+        }
+      },
+      "UpdateParamsFloor": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "UpdateParamsMeter": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John Doe"
+          },
+          "phase": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "serialNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "UpdateParamsRoom": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "string"
+          }
+        }
+      },
+      "UpdateResult": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "example": 0
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Stats"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/UpdateResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UpdateStatusParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          }
+        }
+      },
+      "UpdateStatusResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UpdateTariffParams": {
+        "type": "object",
+        "properties": {
+          "gridExportRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "gridImportRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          },
+          "offPeakRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "peakEndHour": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          },
+          "peakRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "peakStartHour": {
+            "type": "integer",
+            "nullable": true,
+            "example": 0
+          }
+        }
+      },
+      "WeeklyPatternItem": {
+        "type": "object",
+        "properties": {
+          "fri": {
+            "type": "number",
+            "example": 0
+          },
+          "hour": {
+            "type": "integer",
+            "example": 0
+          },
+          "mon": {
+            "type": "number",
+            "example": 0
+          },
+          "sat": {
+            "type": "number",
+            "example": 0
+          },
+          "sun": {
+            "type": "number",
+            "example": 0
+          },
+          "thu": {
+            "type": "number",
+            "example": 0
+          },
+          "tue": {
+            "type": "number",
+            "example": 0
+          },
+          "wed": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "WeeklyPatternParams": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "example": "string"
+          }
+        }
+      },
+      "WeeklyPatternResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyPatternItem"
+            },
+            "example": [
+              {
+                "fri": 0,
+                "hour": 0,
+                "mon": 0,
+                "sat": 0,
+                "sun": 0,
+                "thu": 0,
+                "tue": 0,
+                "wed": 0
+              }
+            ]
+          }
+        }
+      },
+      "WeeklyPatternResultResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "$ref": "#/components/schemas/WeeklyPatternResult"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "struct{}Response": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "result": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "anonymous"
+    },
+    {
+      "name": "auth"
+    },
+    {
+      "name": "charger"
+    },
+    {
+      "name": "connector"
+    },
+    {
+      "name": "device"
+    },
+    {
+      "name": "floor"
+    },
+    {
+      "name": "handlers"
+    },
+    {
+      "name": "insight"
+    },
+    {
+      "name": "meter"
+    },
+    {
+      "name": "providers"
+    },
+    {
+      "name": "reading"
+    },
+    {
+      "name": "room"
+    },
+    {
+      "name": "site"
+    }
+  ]
+}

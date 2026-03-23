@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useFetcher, redirect } from 'react-router'
+import { useFetcher, redirect, useOutletContext } from 'react-router'
 import type { Route } from './+types/settings'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
@@ -40,8 +40,8 @@ import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { cn } from '~/lib/utils'
-import { api } from '~/lib/api'
-import { getUser } from '~/lib/auth'
+import { fetcher } from '~/lib/api'
+import type { User } from '~/layouts/console'
 import { Skeleton } from '~/components/ui/skeleton'
 
 // --- Types ---
@@ -179,7 +179,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   if (intent === 'delete') {
     const siteId = formData.get('siteId') as string
-    await api('site.delete', { id: siteId })
+    await fetcher(['site.delete', { id: siteId }])
     return redirect('/')
   }
 
@@ -192,7 +192,7 @@ export default function Settings() {
   const { mutate: globalMutate } = useSWRConfig()
   const deleteFetcher = useFetcher()
   const siteId = useSiteId()
-  const currentUser = getUser()
+  const { user: currentUser } = useOutletContext<{ siteId: string; user: User }>()
   const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<SiteSettings>({
     name: '',
@@ -241,29 +241,27 @@ export default function Settings() {
     data: siteData,
     isLoading: isLoadingSite,
     mutate: mutateSite,
-  } = useSWR(siteId ? ['site.get', siteId] : null, () =>
-    api<any>('site.get', { id: siteId })
+  } = useSWR<any>(
+    siteId ? ['site.get', { id: siteId }] : null,
+    fetcher,
   )
 
   // Fetch members
-  const { data: membersData, mutate: mutateMembers } = useSWR(
-    siteId ? ['site.listMembers', siteId] : null,
-    () => api<{ items: SiteMember[] }>('site.listMembers', { siteId })
+  const { data: membersData, mutate: mutateMembers } = useSWR<{ items: SiteMember[] }>(
+    siteId ? ['site.listMembers', { siteId }] : null,
+    fetcher,
   )
 
   // Fetch invites
-  const { data: invitesData, mutate: mutateInvites } = useSWR(
-    siteId ? ['site.listInvites', siteId] : null,
-    () => api<{ items: PendingInvite[] }>('site.listInvites', { siteId })
+  const { data: invitesData, mutate: mutateInvites } = useSWR<{ items: PendingInvite[] }>(
+    siteId ? ['site.listInvites', { siteId }] : null,
+    fetcher,
   )
 
   // Fetch API key status
-  const { data: apiKeyData, mutate: mutateApiKey } = useSWR(
-    siteId ? ['site.getApiKey', siteId] : null,
-    () =>
-      api<{ hasKey: boolean; createdAt: string | null }>('site.getApiKey', {
-        siteId,
-      })
+  const { data: apiKeyData, mutate: mutateApiKey } = useSWR<{ hasKey: boolean; createdAt: string | null }>(
+    siteId ? ['site.getApiKey', { siteId }] : null,
+    fetcher,
   )
 
   // Sync site data to settings state
@@ -331,13 +329,13 @@ export default function Settings() {
   async function handleSaveGeneral() {
     setSavingGeneral(true)
     try {
-      await api('site.update', {
+      await fetcher(['site.update', {
         id: siteId,
         name: settings.name,
         address: settings.address,
         timezone: settings.timezone,
         currency: settings.currency,
-      })
+      }])
       toast.success('Site settings saved')
       setEditingGeneral(false)
       mutateSite()
@@ -352,7 +350,7 @@ export default function Settings() {
   async function handleSaveTariffs() {
     setSavingTariffs(true)
     try {
-      await api('site.updateTariff', {
+      await fetcher(['site.updateTariff', {
         id: siteId,
         gridImportRate: settings.gridImportRate,
         gridExportRate: settings.gridExportRate,
@@ -360,7 +358,7 @@ export default function Settings() {
         peakEndHour: settings.peakEndHour,
         peakRate: settings.peakRate,
         offPeakRate: settings.offPeakRate,
-      })
+      }])
       toast.success('Tariff settings saved')
       mutateSite()
       globalMutate(['site.list', ''])
@@ -373,7 +371,7 @@ export default function Settings() {
 
   function handleInvite() {
     if (!inviteEmail.trim()) return
-    api('site.inviteMember', { siteId, email: inviteEmail.trim(), role: inviteRole })
+    fetcher(['site.inviteMember', { siteId, email: inviteEmail.trim(), role: inviteRole }])
       .then(() => {
         toast.success('Invitation sent')
         setInviteEmail('')
@@ -387,7 +385,7 @@ export default function Settings() {
   }
 
   function handleRevokeInvite(id: string) {
-    api('site.revokeInvite', { id })
+    fetcher(['site.revokeInvite', { id }])
       .then(() => {
         toast.success('Invitation revoked')
         mutateInvites()
@@ -398,7 +396,7 @@ export default function Settings() {
   }
 
   function handleChangeMemberRole(userId: string, role: MemberRole) {
-    api('site.updateMemberRole', { siteId, userId, role })
+    fetcher(['site.updateMemberRole', { siteId, userId, role }])
       .then(() => {
         toast.success('Role updated')
         mutateMembers()
@@ -410,7 +408,7 @@ export default function Settings() {
   }
 
   function handleRemoveMember(userId: string) {
-    api('site.removeMember', { siteId, userId })
+    fetcher(['site.removeMember', { siteId, userId }])
       .then(() => {
         toast.success('Member removed')
         mutateMembers()
@@ -434,9 +432,9 @@ export default function Settings() {
   async function handleRegenerateApiKey() {
     setRegenerating(true)
     try {
-      const result = await api<{ apiKey: string }>('site.regenerateApiKey', {
+      const result = await fetcher<{ apiKey: string }>(['site.regenerateApiKey', {
         siteId,
-      })
+      }])
       setGeneratedApiKey(result.apiKey)
       setShowApiKey(true)
       mutateApiKey()

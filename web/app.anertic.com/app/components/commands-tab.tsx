@@ -16,7 +16,7 @@ import {
   RiLockUnlockLine,
 } from '@remixicon/react'
 import { toast } from 'sonner'
-import { api } from '~/lib/api'
+import { fetcher } from '~/lib/api'
 import {
   Accordion,
   AccordionItem,
@@ -189,7 +189,7 @@ function QuickActionsSection({ chargerId }: { chargerId: string }) {
   async function handleClearCache() {
     setClearCacheLoading(true)
     try {
-      await api('charger.clearCache', { id: chargerId })
+      await fetcher(['charger.clearCache', { id: chargerId }])
       toast.success('Cache cleared successfully')
     } catch (err) {
       toast.error(
@@ -204,9 +204,8 @@ function QuickActionsSection({ chargerId }: { chargerId: string }) {
   async function handleGetLocalListVersion() {
     setListVersionLoading(true)
     try {
-      const result = await api<{ listVersion: number }>(
-        'charger.getLocalListVersion',
-        { id: chargerId }
+      const result = await fetcher<{ listVersion: number }>(
+        ['charger.getLocalListVersion', { id: chargerId }]
       )
       toast.success(`Local list version: ${result.listVersion}`)
     } catch (err) {
@@ -327,11 +326,11 @@ function ConnectorRow({
   async function handleChangeAvailability() {
     setAvailabilityLoading(true)
     try {
-      await api('charger.changeAvailability', {
+      await fetcher(['charger.changeAvailability', {
         id: chargerId,
         connectorId: connector.id,
         type: availability,
-      })
+      }])
       toast.success(`Connector #${connector.id} set to ${availability}`)
     } catch (err) {
       toast.error(
@@ -345,10 +344,10 @@ function ConnectorRow({
   async function handleUnlock() {
     setUnlockLoading(true)
     try {
-      await api('charger.unlockConnector', {
+      await fetcher(['charger.unlockConnector', {
         id: chargerId,
         connectorId: connector.id,
-      })
+      }])
       toast.success(`Connector #${connector.id} unlocked`)
     } catch (err) {
       toast.error(
@@ -440,11 +439,11 @@ function ConfigurationSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await api('charger.changeConfiguration', {
+      await fetcher(['charger.changeConfiguration', {
         id: chargerId,
         key: key.trim(),
         value: value.trim(),
-      })
+      }])
       toast.success(`Configuration "${key}" set to "${value}"`)
       setKey('')
       setValue('')
@@ -520,13 +519,13 @@ function FirmwareSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await api('charger.updateFirmware', {
+      await fetcher(['charger.updateFirmware', {
         id: chargerId,
         location: location.trim(),
         retrieveDate: retrieveDate || undefined,
         retries: parseInt(retries) || 3,
         retryInterval: parseInt(retryInterval) || 60,
-      })
+      }])
       toast.success('Firmware update requested')
       setLocation('')
       setRetrieveDate('')
@@ -652,14 +651,14 @@ function DiagnosticsSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      const result = await api<{ fileName: string }>('charger.getDiagnostics', {
+      const result = await fetcher<{ fileName: string }>(['charger.getDiagnostics', {
         id: chargerId,
         location: location.trim(),
         startTime: startTime || undefined,
         stopTime: stopTime || undefined,
         retries: parseInt(retries) || 3,
         retryInterval: parseInt(retryInterval) || 60,
-      })
+      }])
       toast.success(
         result?.fileName
           ? `Diagnostics upload started: ${result.fileName}`
@@ -800,7 +799,7 @@ function LocalListSection({ chargerId }: { chargerId: string }) {
     }
     setLoading(true)
     try {
-      await api('charger.sendLocalList', {
+      await fetcher(['charger.sendLocalList', {
         id: chargerId,
         listVersion: parseInt(listVersion) || 1,
         updateType,
@@ -808,7 +807,7 @@ function LocalListSection({ chargerId }: { chargerId: string }) {
           idTag: e.idTag.trim(),
           idTagInfo: { status: e.status },
         })),
-      })
+      }])
       toast.success('Local list sent successfully')
     } catch (err) {
       toast.error(
@@ -1016,14 +1015,13 @@ function GetCompositeSchedule({
     setLoading(true)
     setResult(null)
     try {
-      const res = await api<Record<string, unknown>>(
-        'charger.getCompositeSchedule',
-        {
+      const res = await fetcher<Record<string, unknown>>(
+        ['charger.getCompositeSchedule', {
           id: chargerId,
           connectorId: parseInt(connectorId),
           duration: parseInt(duration) || 3600,
           chargingRateUnit: chargingRateUnit || undefined,
-        }
+        }]
       )
       setResult(JSON.stringify(res, null, 2))
       toast.success('Composite schedule retrieved')
@@ -1121,11 +1119,11 @@ function SetChargingProfile({
     }
     setLoading(true)
     try {
-      await api('charger.setChargingProfile', {
+      await fetcher(['charger.setChargingProfile', {
         id: chargerId,
         connectorId: parseInt(connectorId),
         csChargingProfiles: parsed,
-      })
+      }])
       toast.success('Charging profile set successfully')
       setProfileJson('')
     } catch (err) {
@@ -1190,7 +1188,7 @@ function ClearChargingProfile({
   async function handleClearProfile() {
     setLoading(true)
     try {
-      await api('charger.clearChargingProfile', {
+      await fetcher(['charger.clearChargingProfile', {
         id: chargerId,
         chargingProfileId: chargingProfileId
           ? parseInt(chargingProfileId)
@@ -1198,7 +1196,7 @@ function ClearChargingProfile({
         connectorId: parseInt(connectorId) || undefined,
         chargingProfilePurpose: purpose || undefined,
         stackLevel: stackLevel ? parseInt(stackLevel) : undefined,
-      })
+      }])
       toast.success('Charging profile cleared')
     } catch (err) {
       toast.error(

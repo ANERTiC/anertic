@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useOutletContext } from "react-router"
 import {
   RiChargingPile2Line,
   RiCpuLine,
@@ -17,8 +17,8 @@ import {
 } from "@remixicon/react"
 import useSWR from "swr"
 
-import { api } from "~/lib/api"
-import { getUser } from "~/lib/auth"
+import { fetcher } from "~/lib/api"
+import type { ConsoleContext } from "~/layouts/console"
 import { setCookie } from "~/lib/cookie"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -88,16 +88,18 @@ function useLivePower() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const user = getUser()
+  const { user } = useOutletContext<ConsoleContext>()
   const power = useLivePower()
 
-  const { data: sitesData, isLoading: sitesLoading } = useSWR(["site.list", ""], () =>
-    api<{ items: Site[] }>("site.list"),
+  const { data: sitesData, isLoading: sitesLoading } = useSWR<{ items: Site[] }>(
+    ["site.list", {}],
+    fetcher,
   )
   const sites = sitesData?.items || []
 
-  const { data: summary, isLoading: summaryLoading } = useSWR("dashboard.summary", () =>
-    api<DashboardSummary>("dashboard.summary"),
+  const { data: summary, isLoading: summaryLoading } = useSWR<DashboardSummary>(
+    ["dashboard.summary", {}],
+    fetcher,
   )
 
   // Redirect to sites page if user has no sites

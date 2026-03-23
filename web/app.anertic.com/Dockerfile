@@ -4,35 +4,20 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 FROM base AS dependencies
 COPY web/app.anertic.com/package.json web/app.anertic.com/pnpm-lock.yaml /app/
 WORKDIR /app
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --prod
 
 FROM base AS build
-ARG VITE_API_URL=https://api.anertic.com
-ARG VITE_APP_URL=https://app.anertic.com
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_APP_URL=$VITE_APP_URL
 COPY web/app.anertic.com/ /app/
 COPY --from=dependencies /app/node_modules /app/node_modules
 WORKDIR /app
 RUN pnpm build
 
-FROM nginx:alpine
-COPY --from=build /app/build/client /usr/share/nginx/html
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 8080;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
+FROM base AS runtime
+COPY --from=build /app/build /app/build
+COPY --from=build /app/package.json /app/
+COPY --from=dependencies /app/node_modules /app/node_modules
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8080
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["pnpm", "start"]

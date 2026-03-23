@@ -22,7 +22,7 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { cn } from "~/lib/utils"
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 
 interface CreateResult {
   id: string
@@ -82,13 +82,13 @@ export default function ChargerNew() {
   async function handleRegister() {
     setCreating(true)
     try {
-      const result = await api<CreateResult>("charger.create", {
+      const result = await fetcher<CreateResult>(["charger.create", {
         siteId,
         chargePointId,
         ocppVersion,
         connectorCount: parseInt(connectorCount) || 1,
         maxPowerKw: parseFloat(maxPowerKw) || 0,
-      })
+      }])
       toast.success("Charger registered successfully")
       navigate(`/chargers/${result.id}?site=${siteId}`)
     } catch (err) {

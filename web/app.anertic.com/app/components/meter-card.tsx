@@ -22,7 +22,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { cn } from "~/lib/utils"
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { formatLastSeen, type MeterChannel } from "~/lib/device"
 
 // --- Types ---
@@ -250,7 +250,7 @@ export function MeterCard({
                 e.stopPropagation()
                 if (!confirm(`Remove meter ${meter.serialNumber}?`)) return
                 try {
-                  await api("meter.delete", { siteId, id: meter.id })
+                  await fetcher(["meter.delete", { siteId, id: meter.id }])
                   toast.success("Meter removed")
                   onMutate?.()
                 } catch (err: any) {
@@ -493,14 +493,14 @@ function ConfigurePanel({ meter, siteId, onSaved }: { meter: Meter; siteId: stri
   async function handleSave() {
     setSaving(true)
     try {
-      await api("meter.update", {
+      await fetcher(["meter.update", {
         siteId,
         id: meter.id,
         name,
         serialNumber,
         phase,
         channel,
-      })
+      }])
       toast.success("Meter updated", {
         description: `${name || serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
       })

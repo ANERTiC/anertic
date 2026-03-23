@@ -8,22 +8,26 @@ import {
 } from "~/components/ui/sidebar"
 import { AppSidebar } from "~/components/app-sidebar"
 import type { Route } from "./+types/site"
-import { getCookie } from "~/lib/cookie"
+import type { ConsoleContext, User } from "~/layouts/console"
 
 interface SiteContext {
   siteId: string
+  user: User
 }
 
 export function useSiteId(): string {
   return useOutletContext<SiteContext>().siteId
 }
 
-export function clientLoader({ request }: Route.ClientLoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   let siteId = url.searchParams.get("site")
 
   if (!siteId) {
-    const cookieSiteId = getCookie("anertic_current_site")
+    const cookieHeader = request.headers.get("Cookie") || ""
+    const match = cookieHeader.match(/anertic_current_site=([^;]+)/)
+    const cookieSiteId = match ? decodeURIComponent(match[1]) : null
+
     if (cookieSiteId) {
       url.searchParams.set("site", cookieSiteId)
       throw redirect(url.pathname + url.search)
@@ -36,11 +40,12 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 export default function SiteLayout({ loaderData }: Route.ComponentProps) {
   const { siteId } = loaderData
+  const { user } = useOutletContext<ConsoleContext>()
   const navigate = useNavigate()
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar user={user} />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
@@ -59,7 +64,7 @@ export default function SiteLayout({ loaderData }: Route.ComponentProps) {
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-6">
-          <Outlet context={{ siteId } satisfies SiteContext} />
+          <Outlet context={{ siteId, user } satisfies SiteContext} />
         </div>
       </SidebarInset>
     </SidebarProvider>

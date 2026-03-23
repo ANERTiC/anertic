@@ -1,9 +1,12 @@
-import { Outlet } from "react-router"
+import { Outlet, redirect } from "react-router"
 import type { Route } from "./+types/auth"
-import { requireGuest } from "~/lib/auth"
+import { getSessionFromRequest } from "~/sessions.server"
 
-export function clientLoader({}: Route.ClientLoaderArgs) {
-  requireGuest()
+export async function loader({ request }: Route.LoaderArgs) {
+  const session = await getSessionFromRequest(request)
+  if (session.get("accessToken")) {
+    throw redirect("/")
+  }
   return null
 }
 

@@ -14,7 +14,7 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { setCookie } from "~/lib/cookie"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -46,11 +46,11 @@ export default function SiteCreate() {
     e.preventDefault()
     setCreating(true)
     try {
-      const result = await api<CreateResult>("site.create", {
+      const result = await fetcher<CreateResult>(["site.create", {
         name,
         address,
         timezone,
-      })
+      }])
       toast.success("Site created successfully")
       setCookie("anertic_current_site", result.id)
       navigate(`/overview?site=${result.id}`)

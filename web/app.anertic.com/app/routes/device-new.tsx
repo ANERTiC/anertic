@@ -12,7 +12,7 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { useSiteId } from "~/layouts/site"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -127,14 +127,14 @@ export default function DeviceNew() {
   async function handleCreate() {
     setCreating(true)
     try {
-      const result = await api<{ id: string }>("device.create", {
+      const result = await fetcher<{ id: string }>(["device.create", {
         siteId,
         name: name.trim(),
         type: selectedType,
         tag: tag.trim(),
         brand: brand.trim(),
         model: model.trim(),
-      })
+      }])
       toast.success(`Device "${name}" created`)
       navigate(`/devices/${result.id}?site=${siteId}`)
     } catch (err) {

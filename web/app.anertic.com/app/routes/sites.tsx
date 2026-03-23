@@ -4,7 +4,7 @@ import { RiAddLine, RiArrowRightLine, RiBuilding2Line, RiMapPinLine, RiSearchLin
 import { toast } from 'sonner'
 import useSWR from 'swr'
 
-import { api } from '~/lib/api'
+import { fetcher } from '~/lib/api'
 import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -65,9 +65,9 @@ export default function Sites() {
   const [address, setAddress] = useState('')
   const [timezone, setTimezone] = useState('Asia/Bangkok')
 
-  const { data, isLoading, mutate } = useSWR(
-    ['site.list', search],
-    () => api<ListResult>('site.list', { search: search }),
+  const { data, isLoading, mutate } = useSWR<ListResult>(
+    ['site.list', { search }],
+    fetcher,
     {
       onError(err) {
         toast.error(err instanceof Error ? err.message : 'Failed to load sites')
@@ -94,11 +94,11 @@ export default function Sites() {
     e.preventDefault()
     setCreating(true)
     try {
-      const result = await api<CreateResult>('site.create', {
+      const result = await fetcher<CreateResult>(['site.create', {
         name,
         address,
         timezone,
-      })
+      }])
       toast.success('Site created successfully')
       setOpen(false)
       resetForm()

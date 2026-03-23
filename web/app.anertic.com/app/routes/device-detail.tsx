@@ -26,7 +26,7 @@ import { Separator } from "~/components/ui/separator"
 import { Dialog, DialogContent } from "~/components/ui/dialog"
 import { Switch } from "~/components/ui/switch"
 import { cn } from "~/lib/utils"
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { useSiteId } from "~/layouts/site"
 import {
   MeterCard,
@@ -79,19 +79,19 @@ export default function DeviceDetail() {
   const [showAddMeter, setShowAddMeter] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
 
-  const { data: device, isLoading: deviceLoading, mutate: mutateDevice } = useSWR(
-    deviceId ? ["device.get", deviceId] : null,
-    () => api<Device>("device.get", { id: deviceId }),
+  const { data: device, isLoading: deviceLoading, mutate: mutateDevice } = useSWR<Device>(
+    deviceId ? ["device.get", { id: deviceId }] : null,
+    fetcher,
   )
 
-  const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR(
-    deviceId && siteId ? ["meter.list", deviceId, siteId] : null,
-    () => api<MeterListResult>("meter.list", { siteId, deviceId }),
+  const { data: metersData, isLoading: metersLoading, mutate: mutateMeters } = useSWR<MeterListResult>(
+    deviceId && siteId ? ["meter.list", { siteId, deviceId }] : null,
+    fetcher,
   )
 
-  const { data: latestReading } = useSWR(
-    deviceId ? ["reading.latest", deviceId] : null,
-    () => api<LatestReadingResult>("reading.latest", { deviceId }),
+  const { data: latestReading } = useSWR<LatestReadingResult>(
+    deviceId ? ["reading.latest", { deviceId }] : null,
+    fetcher,
   )
 
   if (deviceLoading || metersLoading) {
@@ -118,7 +118,7 @@ export default function DeviceDetail() {
       return
     }
     try {
-      await api("device.delete", { siteId, id: deviceId })
+      await fetcher(["device.delete", { siteId, id: deviceId }])
       toast.success("Device deleted")
       navigate("/devices")
     } catch (err: any) {
@@ -372,7 +372,7 @@ function EditDeviceDialog({
   async function handleSave() {
     setSubmitting(true)
     try {
-      await api("device.update", {
+      await fetcher(["device.update", {
         id: device.id,
         siteId,
         name: name.trim() || undefined,
@@ -380,7 +380,7 @@ function EditDeviceDialog({
         brand: brand.trim() || undefined,
         model: model.trim() || undefined,
         isActive,
-      })
+      }])
       toast.success("Device updated")
       onUpdated()
       onOpenChange(false)
@@ -515,14 +515,14 @@ function AddMeterDialog({
     }
     setSubmitting(true)
     try {
-      await api("meter.create", {
+      await fetcher(["meter.create", {
         siteId,
         deviceId,
         serialNumber: serialNumber.trim(),
         protocol,
         phase,
         channel,
-      })
+      }])
       toast.success("Meter added", {
         description: `${serialNumber} · ${CHANNEL_CONFIG[channel].label} · ${PHASE_OPTIONS.find((p) => p.value === phase)?.label}`,
       })

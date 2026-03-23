@@ -23,7 +23,7 @@ require (
 	github.com/samber/slog-quickwit v0.3.3
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
-	github.com/xkamail/godoclive v0.1.1
+	github.com/xkamail/godoclive v0.2.0
 	golang.org/x/oauth2 v0.36.0
 )
 

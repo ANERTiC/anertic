@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -94,17 +95,17 @@ func run() error {
 	api.Mount(mux, am)
 
 	mux.Handle("/", am.NotFoundHandler())
-	endpoints, err := godoclive.Analyze(".", "./...")
-	if err != nil {
-		return err
+	if data, err := os.ReadFile("docs.json"); err == nil {
+		var endpoints []godoclive.EndpointDef
+		if err := json.Unmarshal(data, &endpoints); err == nil && len(endpoints) > 0 {
+			slog.Info("docs", "endpoints", len(endpoints))
+			mux.Handle("/docs", godoclive.Handler(endpoints,
+				godoclive.WithTitle("ANERTiC API"),
+				godoclive.WithBaseURL("https://app.anertic.com/api"),
+				godoclive.WithTheme("light"),
+			))
+		}
 	}
-	slog.Info("docs", "endpoints", len(endpoints))
-
-	mux.Handle("/docs", godoclive.Handler(endpoints,
-		godoclive.WithTitle("My API"),
-		godoclive.WithBaseURL("https://app.anertic.com/api"),
-		godoclive.WithTheme("light"),
-	))
 
 	srv.Handler = mux
 	srv.Use(cors.New())

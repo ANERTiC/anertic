@@ -16,7 +16,6 @@ import {
   RiPlugLine,
 } from '@remixicon/react'
 import { fetcher } from '~/lib/api'
-import { getCookie, setCookie } from '~/lib/cookie'
 import type { User } from '~/layouts/console'
 import {
   Sidebar,
@@ -186,11 +185,10 @@ export function AppSidebar({
 
   const { data, isLoading } = useSWR<{ items: Site[] }>(['site.list'], fetcher)
   const sites = data?.items || []
-  const siteId = searchParams.get('site') || getCookie('anertic_current_site')
+  const siteId = searchParams.get('site')
   const currentSite = sites.find((s) => s.id === siteId) || null
 
   function handleSelectSite(site: Site) {
-    setCookie('anertic_current_site', site.id)
     navigate(`/overview?site=${site.id}`)
   }
 

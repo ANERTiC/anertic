@@ -15,7 +15,6 @@ import {
 import { toast } from 'sonner'
 
 import { fetcher } from '~/lib/api'
-import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -55,7 +54,6 @@ export default function SiteCreate() {
         },
       ])
       toast.success('Site created successfully')
-      setCookie('anertic_current_site', result.id)
       navigate(`/overview?site=${result.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create site')

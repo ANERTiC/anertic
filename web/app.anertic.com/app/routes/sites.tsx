@@ -11,7 +11,6 @@ import { toast } from 'sonner'
 import useSWR from 'swr'
 
 import { fetcher } from '~/lib/api'
-import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -151,7 +150,6 @@ export default function Sites() {
       toast.success('Site created successfully')
       setOpen(false)
       resetForm()
-      setCookie('anertic_current_site', result.id)
       navigate(`/chargers?site=${result.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create site')
@@ -290,7 +288,6 @@ export default function Sites() {
               <button
                 key={site.id}
                 onClick={() => {
-                  setCookie('anertic_current_site', site.id)
                   navigate(`/overview?site=${site.id}`)
                 }}
                 className={cn(

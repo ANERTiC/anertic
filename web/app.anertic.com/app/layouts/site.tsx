@@ -1,4 +1,4 @@
-import { Outlet, redirect, useNavigate, useOutletContext } from 'react-router'
+import { data, Outlet, redirect, useNavigate, useOutletContext } from 'react-router'
 import { RiArrowLeftSLine } from '@remixicon/react'
 import { Separator } from '~/components/ui/separator'
 import {
@@ -9,6 +9,7 @@ import {
 import { AppSidebar } from '~/components/app-sidebar'
 import type { Route } from './+types/site'
 import type { ConsoleContext, User } from '~/layouts/console'
+import { currentSiteCookie } from '~/cookies.server'
 
 interface SiteContext {
   siteId: string
@@ -24,9 +25,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   let siteId = url.searchParams.get('site')
 
   if (!siteId) {
-    const cookieHeader = request.headers.get('Cookie') || ''
-    const match = cookieHeader.match(/anertic_current_site=([^;]+)/)
-    const cookieSiteId = match ? decodeURIComponent(match[1]) : null
+    const cookieSiteId = await currentSiteCookie.parse(
+      request.headers.get('Cookie')
+    )
 
     if (cookieSiteId) {
       url.searchParams.set('site', cookieSiteId)
@@ -35,7 +36,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw redirect('/sites')
   }
 
-  return { siteId }
+  return data(
+    { siteId },
+    {
+      headers: {
+        'Set-Cookie': await currentSiteCookie.serialize(siteId),
+      },
+    }
+  )
 }
 
 export default function SiteLayout({ loaderData }: Route.ComponentProps) {

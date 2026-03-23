@@ -19,7 +19,6 @@ import useSWR from 'swr'
 
 import { fetcher } from '~/lib/api'
 import type { ConsoleContext } from '~/layouts/console'
-import { setCookie } from '~/lib/cookie'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -155,7 +154,6 @@ export default function Dashboard() {
   }, [sitesLoading, sitesData, sites.length, navigate])
 
   function handleSelectSite(site: Site) {
-    setCookie('anertic_current_site', site.id)
     navigate(`/overview?site=${site.id}`)
   }
 

@@ -8,6 +8,8 @@ interface APIResponse<T> {
   error?: { code?: string; message?: string }
 }
 
+const AUTH_ERROR_CODES = ["unauthorized", "auth/unauthorized", "auth/token-expired"]
+
 export class ServerApiError extends Error {
   code: string
 
@@ -50,6 +52,10 @@ async function refreshToken(
   }
 }
 
+function isAuthError(resp: APIResponse<unknown>): boolean {
+  return !resp.ok && AUTH_ERROR_CODES.includes(resp.error?.code || "")
+}
+
 interface ApiResult<T> {
   result: T
   headers?: HeadersInit
@@ -63,9 +69,10 @@ export async function api<T>(
   const session = await getSessionFromRequest(request)
   const accessToken = session.get("accessToken")
 
-  let res = await fetchBackend(method, body, accessToken)
+  const res = await fetchBackend(method, body, accessToken)
+  const responseData: APIResponse<T> = await res.json()
 
-  if (res.status === 401) {
+  if (isAuthError(responseData)) {
     const rt = session.get("refreshToken")
     if (rt) {
       const refreshed = await refreshToken(rt)
@@ -73,15 +80,14 @@ export async function api<T>(
         session.set("accessToken", refreshed.token)
         session.set("refreshToken", refreshed.refreshToken)
 
-        res = await fetchBackend(method, body, refreshed.token)
-
-        const data: APIResponse<T> = await res.json()
-        if (!data.ok) {
-          const err = data.error
+        const retryRes = await fetchBackend(method, body, refreshed.token)
+        const retryData: APIResponse<T> = await retryRes.json()
+        if (!retryData.ok) {
+          const err = retryData.error
           throw new ServerApiError(err?.code || "", err?.message || "Unknown error")
         }
         return {
-          result: data.result,
+          result: retryData.result,
           headers: { "Set-Cookie": await commitSession(session) },
         }
       }
@@ -89,10 +95,9 @@ export async function api<T>(
     throw new ServerApiError("unauthorized", "Session expired")
   }
 
-  const data: APIResponse<T> = await res.json()
-  if (!data.ok) {
-    const err = data.error
+  if (!responseData.ok) {
+    const err = responseData.error
     throw new ServerApiError(err?.code || "", err?.message || "Unknown error")
   }
-  return { result: data.result }
+  return { result: responseData.result }
 }

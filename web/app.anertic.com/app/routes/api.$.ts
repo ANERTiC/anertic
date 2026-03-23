@@ -4,6 +4,12 @@ import type { Route } from "./+types/api.$"
 
 const API_BASE = process.env.API_URL || "http://localhost:8080"
 
+const AUTH_ERROR_CODES = ["unauthorized", "auth/unauthorized", "auth/token-expired"]
+
+function isAuthError(result: { ok: boolean; error?: { code?: string } }): boolean {
+  return !result.ok && AUTH_ERROR_CODES.includes(result.error?.code || "")
+}
+
 async function proxy(request: Request, params: Route.ActionArgs["params"]) {
   const method = params["*"]
   if (!method) {
@@ -14,7 +20,7 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
   const accessToken = session.get("accessToken")
   const body = await request.text()
 
-  let res = await fetch(`${API_BASE}/${method}`, {
+  const res = await fetch(`${API_BASE}/${method}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,7 +29,9 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
     body,
   })
 
-  if (res.status === 401) {
+  const result = await res.json()
+
+  if (isAuthError(result)) {
     const refreshToken = session.get("refreshToken")
     if (refreshToken) {
       const refreshRes = await fetch(`${API_BASE}/auth.refreshToken`, {
@@ -37,7 +45,7 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
         session.set("accessToken", refreshData.result.token)
         session.set("refreshToken", refreshData.result.refreshToken)
 
-        res = await fetch(`${API_BASE}/${method}`, {
+        const retryRes = await fetch(`${API_BASE}/${method}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -46,9 +54,8 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
           body,
         })
 
-        const result = await res.json()
-        return data(result, {
-          status: res.status,
+        const retryResult = await retryRes.json()
+        return data(retryResult, {
           headers: { "Set-Cookie": await commitSession(session) },
         })
       }
@@ -60,8 +67,7 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
     )
   }
 
-  const result = await res.json()
-  return data(result, { status: res.status })
+  return data(result)
 }
 
 export async function action({ request, params }: Route.ActionArgs) {

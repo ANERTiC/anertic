@@ -1,14 +1,7 @@
 import { data } from "react-router"
 import { commitSession, getSessionFromRequest } from "~/sessions.server"
+import { fetchBackend, isAuthError, tryRefreshToken } from "~/lib/api.server"
 import type { Route } from "./+types/api.$"
-
-const API_BASE = process.env.API_URL || "http://localhost:8080"
-
-const AUTH_ERROR_CODES = ["unauthorized", "auth/unauthorized", "auth/token-expired"]
-
-function isAuthError(result: { ok: boolean; error?: { code?: string } }): boolean {
-  return !result.ok && AUTH_ERROR_CODES.includes(result.error?.code || "")
-}
 
 async function proxy(request: Request, params: Route.ActionArgs["params"]) {
   const method = params["*"]
@@ -20,40 +13,18 @@ async function proxy(request: Request, params: Route.ActionArgs["params"]) {
   const accessToken = session.get("accessToken")
   const body = await request.text()
 
-  const res = await fetch(`${API_BASE}/${method}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body,
-  })
-
+  const res = await fetchBackend(method, body, accessToken)
   const result = await res.json()
 
   if (isAuthError(result)) {
     const refreshToken = session.get("refreshToken")
     if (refreshToken) {
-      const refreshRes = await fetch(`${API_BASE}/auth.refreshToken`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      })
-      const refreshData = await refreshRes.json()
+      const refreshed = await tryRefreshToken(refreshToken)
+      if (refreshed) {
+        session.set("accessToken", refreshed.token)
+        session.set("refreshToken", refreshed.refreshToken)
 
-      if (refreshData.ok) {
-        session.set("accessToken", refreshData.result.token)
-        session.set("refreshToken", refreshData.result.refreshToken)
-
-        const retryRes = await fetch(`${API_BASE}/${method}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${refreshData.result.token}`,
-          },
-          body,
-        })
-
+        const retryRes = await fetchBackend(method, body, refreshed.token)
         const retryResult = await retryRes.json()
         return data(retryResult, {
           headers: { "Set-Cookie": await commitSession(session) },

@@ -1,6 +1,6 @@
 import { getSessionFromRequest, commitSession } from "~/sessions.server"
 
-const API_BASE = process.env.API_URL || "http://localhost:8080"
+export const API_BASE = process.env.API_URL || "http://localhost:8080"
 
 interface APIResponse<T> {
   ok: boolean
@@ -19,7 +19,11 @@ export class ServerApiError extends Error {
   }
 }
 
-async function fetchBackend(
+export function isAuthError(resp: { ok: boolean; error?: { code?: string } }): boolean {
+  return !resp.ok && AUTH_ERROR_CODES.includes(resp.error?.code || "")
+}
+
+export async function fetchBackend(
   method: string,
   body: unknown,
   accessToken?: string
@@ -30,11 +34,11 @@ async function fetchBackend(
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    body: JSON.stringify(body ?? {}),
+    body: typeof body === "string" ? body : JSON.stringify(body ?? {}),
   })
 }
 
-async function refreshToken(
+export async function tryRefreshToken(
   currentRefreshToken: string
 ): Promise<{ token: string; refreshToken: string } | null> {
   try {
@@ -50,10 +54,6 @@ async function refreshToken(
   } catch {
     return null
   }
-}
-
-function isAuthError(resp: APIResponse<unknown>): boolean {
-  return !resp.ok && AUTH_ERROR_CODES.includes(resp.error?.code || "")
 }
 
 interface ApiResult<T> {
@@ -75,7 +75,7 @@ export async function api<T>(
   if (isAuthError(responseData)) {
     const rt = session.get("refreshToken")
     if (rt) {
-      const refreshed = await refreshToken(rt)
+      const refreshed = await tryRefreshToken(rt)
       if (refreshed) {
         session.set("accessToken", refreshed.token)
         session.set("refreshToken", refreshed.refreshToken)

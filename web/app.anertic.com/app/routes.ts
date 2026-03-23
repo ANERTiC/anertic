@@ -6,6 +6,12 @@ import {
 } from "@react-router/dev/routes"
 
 export default [
+  // API proxy
+  route("api/*", "routes/api.$.ts"),
+
+  // Logout action
+  route("logout", "routes/logout.ts"),
+
   // Unauthenticated layout
   layout("layouts/auth.tsx", [
     route("login", "routes/login.tsx"),

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { NavLink, useNavigate, useSearchParams } from "react-router"
+import { NavLink, useFetcher, useNavigate, useSearchParams } from "react-router"
 import useSWR from "swr"
 import {
   RiDashboardLine,
@@ -15,9 +15,9 @@ import {
   RiArrowLeftLine,
   RiPlugLine,
 } from "@remixicon/react"
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { getCookie, setCookie } from "~/lib/cookie"
-import { clearAuth, getUser } from "~/lib/auth"
+import type { User } from "~/layouts/console"
 import {
   Sidebar,
   SidebarContent,
@@ -169,13 +169,17 @@ function SiteSwitcher({
   )
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  ...props
+}: { user: User } & React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const user = getUser()
+  const logoutFetcher = useFetcher()
 
-  const { data, isLoading } = useSWR(["site.list", ""], () =>
-    api<{ items: Site[] }>("site.list"),
+  const { data, isLoading } = useSWR<{ items: Site[] }>(
+    ["site.list"],
+    fetcher,
   )
   const sites = data?.items || []
   const siteId = searchParams.get("site") || getCookie("anertic_current_site")
@@ -187,8 +191,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   function handleSignOut() {
-    clearAuth()
-    navigate("/login")
+    logoutFetcher.submit(null, { method: "POST", action: "/logout" })
   }
 
   const { isMobile } = useSidebar()

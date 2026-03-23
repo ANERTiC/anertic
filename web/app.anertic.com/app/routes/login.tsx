@@ -1,10 +1,17 @@
 import { RiGoogleFill, RiFlashlightLine } from '@remixicon/react'
 import { Button } from '~/components/ui/button'
+import type { Route } from './+types/login'
 
-export default function Login() {
+export async function loader({}: Route.LoaderArgs) {
+  const apiUrl = process.env.API_URL || 'http://localhost:8080'
+  const appUrl = process.env.APP_URL || 'http://localhost:5173'
+  return { apiUrl, appUrl }
+}
+
+export default function Login({ loaderData }: Route.ComponentProps) {
+  const { apiUrl, appUrl } = loaderData
+
   function handleGoogleSignIn() {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-    const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
     const redirectUrl = `${appUrl}/login/callback`
     window.location.href = `${apiUrl}/auth/google?redirect_url=${encodeURIComponent(redirectUrl)}`
   }

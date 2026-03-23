@@ -11,7 +11,7 @@ import {
 } from "@remixicon/react"
 
 import { useSiteId } from "~/layouts/site"
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Badge } from "~/components/ui/badge"
@@ -48,27 +48,16 @@ export default function Devices() {
     }, { replace: true })
   }
 
-  const { data: allData } = useSWR(
-    ["device.list", siteId, typeFilter, search],
-    () =>
-      api<{ items: DeviceListItem[] }>("device.list", {
-        siteId,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-        search: search.trim() || undefined,
-      }),
+  const { data: allData } = useSWR<{ items: DeviceListItem[] }>(
+    ["device.list", { siteId, type: typeFilter !== "all" ? typeFilter : undefined, search: search.trim() || undefined }],
+    fetcher,
   )
 
   const allDevices = allData?.items ?? []
 
-  const { data, isLoading, error, mutate } = useSWR(
-    ["device.list", siteId, typeFilter, search, statusFilter],
-    () =>
-      api<{ items: DeviceListItem[] }>("device.list", {
-        siteId,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-        search: search.trim() || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-      }),
+  const { data, isLoading, error, mutate } = useSWR<{ items: DeviceListItem[] }>(
+    ["device.list", { siteId, type: typeFilter !== "all" ? typeFilter : undefined, search: search.trim() || undefined, status: statusFilter !== "all" ? statusFilter : undefined }],
+    fetcher,
   )
 
   const devices = data?.items ?? []

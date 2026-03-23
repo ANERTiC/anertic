@@ -57,7 +57,7 @@ import {
   type RoomItem,
   type FloorItem,
 } from '~/lib/room'
-import { api } from '~/lib/api'
+import { fetcher } from '~/lib/api'
 
 export async function clientAction({ request }: { request: Request }) {
   const formData = await request.formData()
@@ -66,7 +66,7 @@ export async function clientAction({ request }: { request: Request }) {
   if (intent === 'delete-floor') {
     const siteId = formData.get('siteId') as string
     const level = Number(formData.get('level'))
-    await api('floor.delete', { siteId, level })
+    await fetcher(['floor.delete', { siteId, level }])
     return data({ ok: true })
   }
 
@@ -75,9 +75,9 @@ export async function clientAction({ request }: { request: Request }) {
 
 export default function Rooms() {
   const siteId = useSiteId()
-  const { data: siteData } = useSWR(
-    ['site.get', siteId],
-    () => api<{ name: string }>('site.get', { id: siteId }),
+  const { data: siteData } = useSWR<{ name: string }>(
+    ['site.get', { id: siteId }],
+    fetcher,
   )
   const siteName = siteData?.name ?? 'Building'
   const [searchParams, setSearchParams] = useSearchParams()

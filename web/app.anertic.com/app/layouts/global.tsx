@@ -1,10 +1,10 @@
-import { Outlet, useNavigate } from "react-router"
+import { Outlet, useFetcher, useNavigate, useOutletContext } from "react-router"
 import {
   RiFlashlightLine,
   RiLogoutBoxLine,
 } from "@remixicon/react"
 
-import { clearAuth, getUser } from "~/lib/auth"
+import type { ConsoleContext } from "~/layouts/console"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import {
   DropdownMenu,
@@ -17,11 +17,11 @@ import {
 
 export default function GlobalLayout() {
   const navigate = useNavigate()
-  const user = getUser()
+  const { user } = useOutletContext<ConsoleContext>()
+  const logoutFetcher = useFetcher()
 
   function handleSignOut() {
-    clearAuth()
-    navigate("/login")
+    logoutFetcher.submit(null, { method: "POST", action: "/logout" })
   }
 
   return (
@@ -69,7 +69,7 @@ export default function GlobalLayout() {
         </DropdownMenu>
       </header>
       <div className="flex-1">
-        <Outlet />
+        <Outlet context={{ user } satisfies ConsoleContext} />
       </div>
     </div>
   )

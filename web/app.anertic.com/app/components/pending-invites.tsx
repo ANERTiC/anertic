@@ -3,7 +3,7 @@ import { RiMailLine, RiCheckLine, RiCloseLine, RiTimeLine, RiBuilding2Line } fro
 import useSWR from "swr"
 import { toast } from "sonner"
 
-import { api } from "~/lib/api"
+import { fetcher } from "~/lib/api"
 import { cn } from "~/lib/utils"
 
 interface MyInvite {
@@ -36,9 +36,9 @@ function formatTimeLeft(expiresAt: string) {
 }
 
 export function PendingInvites() {
-  const { data, isLoading, mutate } = useSWR(
-    "site.myInvites",
-    () => api<MyInvitesResult>("site.myInvites"),
+  const { data, isLoading, mutate } = useSWR<MyInvitesResult>(
+    ["site.myInvites", {}],
+    fetcher,
   )
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -49,7 +49,7 @@ export function PendingInvites() {
   async function handleAccept(id: string) {
     setLoadingId(id)
     try {
-      await api("site.acceptInvite", { id })
+      await fetcher(["site.acceptInvite", { id }])
       toast.success("Invitation accepted")
       mutate()
     } catch (err) {
@@ -62,7 +62,7 @@ export function PendingInvites() {
   async function handleDecline(id: string) {
     setLoadingId(id)
     try {
-      await api("site.declineInvite", { id })
+      await fetcher(["site.declineInvite", { id }])
       toast.success("Invitation declined")
       mutate()
     } catch (err) {

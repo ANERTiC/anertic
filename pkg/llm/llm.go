@@ -50,6 +50,7 @@ type StreamOpts struct {
 	Messages  []Message
 	Tools     []Tool
 	MaxTokens int
+	Prefill   string
 }
 
 // Provider is the interface for LLM backends.

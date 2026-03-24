@@ -18,11 +18,14 @@ import (
 	"github.com/moonrhythm/httpmux"
 	"github.com/moonrhythm/parapet"
 	"github.com/moonrhythm/parapet/pkg/cors"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/anertic/anertic/cmd/agentic/tools"
+	"github.com/anertic/anertic/cmd/agentic/weather"
 	"github.com/anertic/anertic/pkg/llm"
 	"github.com/anertic/anertic/pkg/llm/anthropic"
 	"github.com/anertic/anertic/pkg/llm/openai"
+	"github.com/anertic/anertic/pkg/rdctx"
 )
 
 func main() {
@@ -44,6 +47,17 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+
+	// Redis
+	redisOpt, err := redis.ParseURL(cfg.StringDefault("REDIS_URL", "redis://localhost:6379"))
+	if err != nil {
+		return err
+	}
+	rdb := redis.NewClient(redisOpt)
+	defer rdb.Close()
+
+	// Weather cache
+	weatherCache := weather.NewCache(rdb)
 
 	// Config
 	apiURL := cfg.StringDefault("API_URL", "http://localhost:8080")
@@ -90,6 +104,7 @@ func run() error {
 		tools.NewGetLatestReading(apiClient),
 		tools.NewListRooms(apiClient),
 		tools.NewListFloors(apiClient),
+		tools.NewCreateFloor(apiClient),
 		tools.NewAssignDeviceToRoom(apiClient),
 		tools.NewUnassignDeviceFromRoom(apiClient),
 		tools.NewAssignDeviceToFloor(apiClient),
@@ -97,14 +112,14 @@ func run() error {
 		tools.NewQueryEnergy(apiClient),
 		tools.NewGetInsights(apiClient),
 		tools.NewGetChargerStatus(apiClient),
-		tools.NewGetWeather(),
+		tools.NewGetWeather(weatherCache),
 	)
 
 	// Agent
 	agent := NewAgent(provider, registry, llmModel, maxTokens)
 
 	// Handlers
-	h := &Handlers{agent: agent, apiClient: apiClient}
+	h := &Handlers{agent: agent, apiClient: apiClient, weatherCache: weatherCache}
 
 	// Auth middleware for conversation CRUD
 	am := arpc.New()
@@ -153,6 +168,7 @@ func run() error {
 	srv.Handler = mux
 	srv.Use(cors.New())
 	srv.UseFunc(pgctx.Middleware(db))
+	srv.UseFunc(rdctx.Middleware(rdb))
 	srv.Addr = cfg.StringDefault("AGENTIC_ADDR", ":8082")
 
 	slog.Info("starting agentic server", "addr", srv.Addr, "provider", llmProvider, "model", llmModel)

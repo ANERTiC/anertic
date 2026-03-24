@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/anertic/anertic/cmd/agentic/tools"
 	"github.com/anertic/anertic/pkg/llm"
@@ -29,38 +30,57 @@ func NewAgent(provider llm.Provider, registry *tools.Registry, model string, max
 
 // SSEEvent is written to the SSE response stream.
 type SSEEvent struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Error   string `json:"error"`
+	Type         string   `json:"type"`
+	Content      string   `json:"content"`
+	Name         string   `json:"name"`
+	Status       string   `json:"status"`
+	Error        string   `json:"error"`
+	QuickReplies []string `json:"quickReplies"`
 }
 
 // RunCallback is called for each SSE event during the agent loop.
 type RunCallback func(event SSEEvent)
 
 // Run executes the agentic loop: call LLM, execute tools, repeat until done.
-func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, history []llm.Message, cb RunCallback) (string, []llm.Message, error) {
+func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, history []llm.Message, cb RunCallback, prefill ...string) (string, []llm.Message, error) {
 	messages := make([]llm.Message, len(history))
 	copy(messages, history)
 
 	var fullText string
 	var newMessages []llm.Message
 
+	var prefillText string
+	if len(prefill) > 0 {
+		prefillText = prefill[0]
+	}
+
 	for i := 0; i < maxToolIterations; i++ {
-		ch, err := a.provider.Stream(ctx, llm.StreamOpts{
+		streamOpts := llm.StreamOpts{
 			Model:     a.model,
 			System:    systemPrompt,
 			Messages:  messages,
 			Tools:     a.registry.LLMTools(),
 			MaxTokens: a.maxTokens,
-		})
+		}
+		// Only use prefill on the first iteration.
+		if i == 0 && prefillText != "" {
+			streamOpts.Prefill = prefillText
+		}
+
+		ch, err := a.provider.Stream(ctx, streamOpts)
 		if err != nil {
 			return "", nil, fmt.Errorf("stream: %w", err)
 		}
 
 		var iterText string
 		var toolCalls []llm.ToolCall
+
+		// Emit prefill text to the client on the first iteration.
+		if i == 0 && prefillText != "" {
+			iterText = prefillText
+			fullText = prefillText
+			cb(SSEEvent{Type: "text", Content: prefillText})
+		}
 
 		for event := range ch {
 			slog.DebugContext(ctx, "stream event", "iteration", i, "type", event.Type, "text_len", len(event.Text), "has_tool_call", event.ToolCall != nil)
@@ -153,4 +173,40 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 
 	cb(SSEEvent{Type: "done"})
 	return fullText, newMessages, nil
+}
+
+// detectQuickReplies checks the assistant's response for confirmation patterns
+// and returns suggested quick reply options.
+func detectQuickReplies(text string) []string {
+	lower := strings.ToLower(text)
+
+	// Check last 200 chars for confirmation patterns
+	tail := lower
+	if len(tail) > 200 {
+		tail = tail[len(tail)-200:]
+	}
+
+	confirmPatterns := []string{
+		"is that correct",
+		"shall i",
+		"should i",
+		"would you like me to",
+		"want me to",
+		"do you want",
+		"ready to proceed",
+		"go ahead",
+		"confirm",
+	}
+	for _, p := range confirmPatterns {
+		if strings.Contains(tail, p) {
+			return []string{"Yes", "No"}
+		}
+	}
+
+	// "would you like to ..." (open-ended follow-up)
+	if strings.Contains(tail, "would you like") || strings.Contains(tail, "anything else") {
+		return []string{"Yes", "No, thanks"}
+	}
+
+	return nil
 }

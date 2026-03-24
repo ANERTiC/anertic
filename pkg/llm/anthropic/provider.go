@@ -35,6 +35,13 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 		maxTokens = 16384
 	}
 
+	// Prefill: append an assistant message so the model continues from it.
+	if opts.Prefill != "" {
+		messages = append(messages, anthropicv1.NewAssistantMessage(
+			anthropicv1.NewTextBlock(opts.Prefill),
+		))
+	}
+
 	params := anthropicv1.MessageNewParams{
 		Model:     anthropicv1.Model(opts.Model),
 		MaxTokens: maxTokens,

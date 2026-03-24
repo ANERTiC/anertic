@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/acoshift/arpc/v2"
@@ -24,8 +25,9 @@ var (
 )
 
 type Handlers struct {
-	agent     *Agent
-	apiClient *APIClient
+	agent        *Agent
+	apiClient    *APIClient
+	weatherCache *weather.Cache
 }
 
 // ChatParams is the request body for POST /chat.
@@ -88,24 +90,22 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pre-fetch weather for site location (best-effort, non-blocking timeout)
+	// Pre-fetch weather for site location (best-effort, cached in Redis)
 	var weatherResult *weather.Result
 	weatherCtx, weatherCancel := context.WithTimeout(ctx, 5*time.Second)
 	if siteResult.Latitude != 0 && siteResult.Longitude != 0 {
-		// Use stored coordinates — skip geocoding
-		w, err := weather.FetchByCoords(weatherCtx, siteResult.Latitude, siteResult.Longitude, siteResult.Address, 1)
+		wr, err := h.weatherCache.FetchByCoords(weatherCtx, siteResult.Latitude, siteResult.Longitude, siteResult.Address, 1)
 		if err != nil {
 			slog.WarnContext(ctx, "pre-fetch weather", "lat", siteResult.Latitude, "lon", siteResult.Longitude, "error", err)
 		} else {
-			weatherResult = w
+			weatherResult = wr
 		}
 	} else if siteResult.Address != "" {
-		// Fallback to geocoding from address
-		w, err := weather.Fetch(weatherCtx, siteResult.Address, 1)
+		wr, err := h.weatherCache.Fetch(weatherCtx, siteResult.Address, 1)
 		if err != nil {
 			slog.WarnContext(ctx, "pre-fetch weather", "address", siteResult.Address, "error", err)
 		} else {
-			weatherResult = w
+			weatherResult = wr
 		}
 	}
 	weatherCancel()
@@ -201,10 +201,16 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 		Weather:   weatherResult,
 	})
 
+	// Build prefill for new conversations with weather context.
+	var prefill string
+	if p.ConversationID == "" && weatherResult != nil {
+		prefill = buildWeatherPrefill(weatherResult, me.Name)
+	}
+
 	// Run agent loop
 	_, newMessages, err := h.agent.Run(ctx, token, systemPrompt, history, func(event SSEEvent) {
 		writeSSE(w, flusher, event)
-	})
+	}, prefill)
 	if err != nil {
 		slog.ErrorContext(ctx, "agent run", "error", err)
 	}
@@ -409,7 +415,8 @@ func (h *Handlers) ConversationList(ctx context.Context, p *ConversationListPara
 		`select id, title, created_at, updated_at
 		 from conversations
 		 where site_id = $1 and user_id = $2
-		 order by updated_at desc`,
+		 order by updated_at desc
+		 limit 5`,
 		p.SiteID, userID,
 	)
 	if err != nil {
@@ -551,6 +558,15 @@ func getUserID(ctx context.Context) string {
 type contextKey string
 
 const ctxKeyUserID contextKey = "userID"
+
+func buildWeatherPrefill(w *weather.Result, userName string) string {
+	name := userName
+	if i := strings.Index(name, " "); i > 0 {
+		name = name[:i]
+	}
+	return fmt.Sprintf("Hi %s! Right now it's **%.1f°C** and %s",
+		name, w.Current.Temperature, strings.ToLower(w.Current.Description))
+}
 
 func truncateRunes(s string, n int) string {
 	runes := []rune(s)

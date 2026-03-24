@@ -19,6 +19,7 @@ interface SSEEvent {
   name?: string
   status?: string
   error?: string
+  quickReplies?: string[]
 }
 
 interface UseChatReturn {
@@ -29,6 +30,7 @@ interface UseChatReturn {
   conversationId: string | null
   setConversationId: (id: string | null) => void
   setMessages: (messages: ChatMessage[]) => void
+  quickReplies: string[]
 }
 
 let messageIdCounter = 0
@@ -40,6 +42,7 @@ export function useChat(siteId: string): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [quickReplies, setQuickReplies] = useState<string[]>([])
   const abortRef = useRef<AbortController | null>(null)
   const conversationIdRef = useRef<string | null>(null)
 
@@ -63,6 +66,7 @@ export function useChat(siteId: string): UseChatReturn {
       }
       setMessages((prev) => [...prev, userMsg])
       setIsStreaming(true)
+      setQuickReplies([])
 
       const controller = new AbortController()
       abortRef.current = controller
@@ -195,6 +199,9 @@ export function useChat(siteId: string): UseChatReturn {
 
               case 'done':
                 setIsStreaming(false)
+                if (event.quickReplies && event.quickReplies.length > 0) {
+                  setQuickReplies(event.quickReplies)
+                }
                 break
             }
           }
@@ -226,5 +233,6 @@ export function useChat(siteId: string): UseChatReturn {
     conversationId,
     setConversationId,
     setMessages,
+    quickReplies,
   }
 }

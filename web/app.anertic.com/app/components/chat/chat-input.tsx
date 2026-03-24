@@ -97,7 +97,7 @@ export function ChatInput({
             onClick={onStop}
             className={cn(
               'flex size-10 shrink-0 items-center justify-center rounded-lg md:size-9',
-              'text-destructive-foreground bg-destructive transition-colors',
+              'bg-destructive text-white transition-colors',
               'hover:bg-destructive/90'
             )}
             aria-label="Stop generating"

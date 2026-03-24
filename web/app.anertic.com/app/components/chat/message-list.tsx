@@ -7,9 +7,11 @@ interface MessageListProps {
   messages: ChatMessage[]
   isStreaming: boolean
   className?: string
+  quickReplies?: string[]
+  onQuickReply?: (text: string) => void
 }
 
-export function MessageList({ messages, isStreaming, className }: MessageListProps) {
+export function MessageList({ messages, isStreaming, className, quickReplies, onQuickReply }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const wasStreamingRef = useRef(false)
   const [justFinishedId, setJustFinishedId] = useState<string | null>(null)
@@ -45,6 +47,19 @@ export function MessageList({ messages, isStreaming, className }: MessageListPro
             justFinished={msg.id === justFinishedId}
           />
         ))}
+        {quickReplies && quickReplies.length > 0 && !isStreaming && (
+          <div className="flex gap-2 pl-9.5 motion-safe:animate-fade-in-up">
+            {quickReplies.map((reply) => (
+              <button
+                key={reply}
+                onClick={() => onQuickReply?.(reply)}
+                className="rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/10"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
     </div>

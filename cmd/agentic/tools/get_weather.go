@@ -8,10 +8,12 @@ import (
 	"github.com/anertic/anertic/cmd/agentic/weather"
 )
 
-type getWeatherTool struct{}
+type getWeatherTool struct {
+	cache *weather.Cache
+}
 
-func NewGetWeather() Tool {
-	return &getWeatherTool{}
+func NewGetWeather(cache *weather.Cache) Tool {
+	return &getWeatherTool{cache: cache}
 }
 
 func (t *getWeatherTool) Name() string { return "get_weather" }
@@ -51,5 +53,5 @@ func (t *getWeatherTool) Execute(ctx context.Context, _ string, input json.RawMe
 		return "", fmt.Errorf("get_weather: location is required")
 	}
 
-	return weather.RawJSON(ctx, p.Location, p.Days)
+	return t.cache.RawJSON(ctx, p.Location, p.Days)
 }

@@ -107,6 +107,7 @@ export default function ChatPage() {
     setConversationId,
     setMessages,
     messages,
+    quickReplies,
   } = chat
 
   // Track whether initial restore is done to prevent empty-state flash
@@ -324,7 +325,7 @@ export default function ChatPage() {
         ) : (
           /* Active conversation — messages + input at bottom */
           <>
-            <MessageList messages={messages} isStreaming={isStreaming} />
+            <MessageList messages={messages} isStreaming={isStreaming} quickReplies={quickReplies} onQuickReply={send} />
             <ChatInput
               onSend={send}
               onStop={stop}

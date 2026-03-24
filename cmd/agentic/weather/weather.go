@@ -195,6 +195,18 @@ func RawJSON(ctx context.Context, location string, days int) (string, error) {
 		return "", err
 	}
 
+	return RawJSONByCoords(ctx, lat, lon, locName, days)
+}
+
+// RawJSONByCoords returns the full Open-Meteo JSON using coordinates directly.
+func RawJSONByCoords(ctx context.Context, lat, lon float64, locationName string, days int) (string, error) {
+	if days <= 0 {
+		days = 1
+	}
+	if days > 7 {
+		days = 7
+	}
+
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	weatherURL := fmt.Sprintf(
@@ -218,7 +230,7 @@ func RawJSON(ctx context.Context, location string, days int) (string, error) {
 	}
 
 	result, _ := json.Marshal(map[string]any{
-		"location": locName,
+		"location": locationName,
 		"weather":  raw,
 	})
 	return string(result), nil

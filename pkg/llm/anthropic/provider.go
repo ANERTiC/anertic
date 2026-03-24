@@ -39,9 +39,6 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 		Model:     anthropicv1.Model(opts.Model),
 		MaxTokens: maxTokens,
 		Messages:  messages,
-		Thinking: anthropicv1.ThinkingConfigParamUnion{
-			OfAdaptive: &anthropicv1.ThinkingConfigAdaptiveParam{},
-		},
 	}
 
 	if opts.System != "" {

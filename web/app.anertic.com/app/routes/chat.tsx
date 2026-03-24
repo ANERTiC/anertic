@@ -158,7 +158,7 @@ export default function ChatPage() {
           >
             <RiMenuLine className="size-4" />
           </button>
-          <span className="text-sm font-medium">AI Assistant</span>
+          <span className="text-sm font-medium">Spark</span>
         </div>
 
         {/* Messages or empty state */}

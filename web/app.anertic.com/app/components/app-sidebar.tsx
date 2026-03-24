@@ -14,7 +14,7 @@ import {
   RiLogoutBoxLine,
   RiArrowLeftLine,
   RiPlugLine,
-  RiChat1Line,
+  RiSparklingLine,
 } from '@remixicon/react'
 import { fetcher } from '~/lib/api'
 import type { User } from '~/layouts/console'
@@ -71,7 +71,6 @@ function getSiteColor(index: number) {
 const siteNavItems = [
   { to: '/overview', icon: RiDashboardLine, label: 'Overview' },
   { to: '/insights', icon: RiLightbulbFlashLine, label: 'Insights' },
-  { to: '/chat', icon: RiChat1Line, label: 'Chat' },
   { to: '/chargers', icon: RiChargingPile2Line, label: 'Chargers' },
   { to: '/rooms', icon: RiDoorOpenLine, label: 'Rooms' },
   { to: '/devices', icon: RiCpuLine, label: 'Devices' },
@@ -213,28 +212,66 @@ export function AppSidebar({
       <SidebarContent>
         {/* Site-scoped nav */}
         {currentSite && (
-          <SidebarGroup>
-            <SidebarGroupLabel>{currentSite.name}</SidebarGroupLabel>
-            <SidebarMenu>
-              {siteNavItems.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>{currentSite.name}</SidebarGroupLabel>
+              <SidebarMenu>
+                {siteNavItems.map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild tooltip={item.label}>
+                      <NavLink
+                        to={`${item.to}?site=${currentSite.id}`}
+                        className={({ isActive }) =>
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : ''
+                        }
+                      >
+                        <item.icon aria-hidden="true" className="size-4" />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>ANERTiC</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Spark">
                     <NavLink
-                      to={`${item.to}?site=${currentSite.id}`}
+                      to={`/chat?site=${currentSite.id}`}
                       className={({ isActive }) =>
-                        isActive
-                          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                          : ''
+                        cn(
+                          'group/ai relative overflow-hidden transition-all',
+                          isActive
+                            ? 'bg-gradient-to-r from-violet-500/15 via-purple-500/10 to-fuchsia-500/15 text-purple-700 dark:text-purple-300'
+                            : 'hover:bg-gradient-to-r hover:from-violet-500/10 hover:to-fuchsia-500/10'
+                        )
                       }
                     >
-                      <item.icon aria-hidden="true" className="size-4" />
-                      <span>{item.label}</span>
+                      <span className="relative flex size-4 items-center justify-center">
+                        <span className="absolute inset-0 rounded-sm bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-20 group-hover/ai:opacity-30" />
+                        <RiSparklingLine
+                          aria-hidden="true"
+                          className="relative size-4 text-purple-600 dark:text-purple-400"
+                        />
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Spark
+                        <span className="relative flex size-1.5">
+                          <span className="absolute inline-flex size-full rounded-full bg-purple-400 opacity-75 motion-safe:animate-ping" />
+                          <span className="relative inline-flex size-1.5 rounded-full bg-purple-500" />
+                        </span>
+                      </span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroup>
+          </>
         )}
 
         {currentSite && (

@@ -293,52 +293,38 @@ func loadHistory(ctx context.Context, conversationID string) ([]llm.Message, err
 		}
 	}
 
-	// Ensure every tool_use has a matching tool_result.
-	// Anthropic requires tool_result blocks immediately after tool_use.
+	// Strip orphaned tool_use/tool_result to prevent Anthropic API errors.
+	// Every tool_use must have a tool_result and vice versa.
 	for i := range msgs {
 		if msgs[i].Role != "assistant" || len(msgs[i].ToolCalls) == 0 {
 			continue
 		}
-		// Check if all tool calls in this message have results
-		allHaveResults := true
-		for _, tc := range msgs[i].ToolCalls {
-			if !toolResultIDs[tc.ID] {
-				allHaveResults = false
-				break
-			}
-		}
-		if allHaveResults {
-			continue
-		}
-		// Strip tool calls without results from the assistant message
 		var kept []llm.ToolCall
 		for _, tc := range msgs[i].ToolCalls {
 			if toolResultIDs[tc.ID] {
 				kept = append(kept, tc)
+			} else {
+				slog.Warn("stripping orphaned tool_use from history", "tool_call_id", tc.ID, "tool_name", tc.Name)
 			}
 		}
 		msgs[i].ToolCalls = kept
 	}
 
-	// Remove orphaned tool_result messages whose tool_call was stripped
+	// Build final list, dropping empty assistant messages and orphaned tool_results.
+	keptToolCallIDs := make(map[string]bool)
+	for _, m := range msgs {
+		for _, tc := range m.ToolCalls {
+			keptToolCallIDs[tc.ID] = true
+		}
+	}
+
 	var cleaned []llm.Message
 	for _, m := range msgs {
 		if m.Role == "assistant" && m.Content == "" && len(m.ToolCalls) == 0 {
 			continue
 		}
-		if m.ToolResult != nil {
-			// Check the tool call still exists
-			found := false
-			for _, cm := range msgs {
-				for _, tc := range cm.ToolCalls {
-					if tc.ID == m.ToolResult.ToolCallID {
-						found = true
-					}
-				}
-			}
-			if !found {
-				continue
-			}
+		if m.ToolResult != nil && !keptToolCallIDs[m.ToolResult.ToolCallID] {
+			continue
 		}
 		cleaned = append(cleaned, m)
 	}

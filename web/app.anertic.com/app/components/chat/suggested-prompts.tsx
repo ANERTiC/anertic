@@ -36,7 +36,7 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
         <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600">
           <span className="text-xl text-white" aria-hidden="true">✦</span>
         </div>
-        <h2 className="text-lg font-semibold [text-wrap:balance]">ANERTiC Assistant</h2>
+        <h2 className="text-lg font-semibold [text-wrap:balance]">Spark Assistant</h2>
         <p className="text-sm text-muted-foreground">
           Ask about your energy, devices, or insights
         </p>

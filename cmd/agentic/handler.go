@@ -88,10 +88,7 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 	conversationID := p.ConversationID
 	if conversationID == "" {
 		conversationID = xid.New().String()
-		title := p.Message
-		if len(title) > 50 {
-			title = title[:50]
-		}
+		title := truncateRunes(p.Message, 100)
 		_, err := pgctx.Exec(ctx,
 			`insert into conversations (id, site_id, user_id, title) values ($1, $2, $3, $4)`,
 			conversationID, p.SiteID, userID, title,
@@ -164,8 +161,6 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 		UserName:  me.Name,
 		UserEmail: me.Email,
 	})
-
-	slog.InfoContext(ctx, "system prompt", "prompt", systemPrompt)
 
 	// Run agent loop
 	_, newMessages, err := h.agent.Run(ctx, token, systemPrompt, history, func(event SSEEvent) {
@@ -467,3 +462,11 @@ func getUserID(ctx context.Context) string {
 type contextKey string
 
 const ctxKeyUserID contextKey = "userID"
+
+func truncateRunes(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n])
+}

@@ -55,6 +55,7 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 		defer stream.Close()
 
 		var acc openaiv1.ChatCompletionAccumulator
+		emittedToolCalls := make(map[string]bool)
 
 		for stream.Next() {
 			chunk := stream.Current()
@@ -77,6 +78,7 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 				if !ok {
 					break
 				}
+				emittedToolCalls[tc.ID] = true
 				ch <- llm.StreamEvent{
 					Type: "tool_call",
 					ToolCall: &llm.ToolCall{
@@ -103,9 +105,29 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 			finishReason = acc.Choices[0].FinishReason
 		}
 
-		// If the model stopped because it wants to call tools, don't send
-		// "done" — the caller will re-invoke with tool results.
+		// If the model stopped because it wants to call tools, emit any
+		// accumulated tool calls that JustFinishedToolCall() missed.
+		// This handles Ollama which sends complete tool calls in a single
+		// chunk rather than streaming incrementally like OpenAI.
 		if finishReason == "tool_calls" {
+			// Emit any tool calls that JustFinishedToolCall() missed.
+			// Ollama sends complete tool calls in a single chunk rather
+			// than streaming incrementally like OpenAI.
+			if len(acc.Choices) > 0 {
+				for _, tc := range acc.Choices[0].Message.ToolCalls {
+					if emittedToolCalls[tc.ID] {
+						continue
+					}
+					ch <- llm.StreamEvent{
+						Type: "tool_call",
+						ToolCall: &llm.ToolCall{
+							ID:    tc.ID,
+							Name:  tc.Function.Name,
+							Input: json.RawMessage(tc.Function.Arguments),
+						},
+					}
+				}
+			}
 			return
 		}
 

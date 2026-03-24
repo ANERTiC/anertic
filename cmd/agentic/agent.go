@@ -63,6 +63,7 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 		var toolCalls []llm.ToolCall
 
 		for event := range ch {
+			slog.DebugContext(ctx, "stream event", "iteration", i, "type", event.Type, "text_len", len(event.Text), "has_tool_call", event.ToolCall != nil)
 			switch event.Type {
 			case "text":
 				iterText += event.Text
@@ -77,6 +78,8 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 				return fullText, newMessages, fmt.Errorf("llm error: %s", event.Error)
 			}
 		}
+
+		slog.DebugContext(ctx, "iteration done", "iteration", i, "text_len", len(iterText), "tool_calls", len(toolCalls), "messages_count", len(messages))
 
 		if len(toolCalls) > 0 {
 			assistantMsg := llm.Message{

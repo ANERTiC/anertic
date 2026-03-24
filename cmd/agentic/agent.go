@@ -114,6 +114,7 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 				isError := execErr != nil
 				content := output
 				if isError {
+					slog.ErrorContext(ctx, "tool execution failed", "name", tc.Name, "error", execErr)
 					content = execErr.Error()
 				}
 

@@ -9,7 +9,8 @@ import { useChat } from '~/components/chat/use-chat'
 import type { ChatMessage } from '~/components/chat/use-chat'
 import { ChatInput } from '~/components/chat/chat-input'
 import { MessageList } from '~/components/chat/message-list'
-import { SuggestedPrompts, prompts } from '~/components/chat/suggested-prompts'
+import { SuggestedPrompts } from '~/components/chat/suggested-prompts'
+import { SPARK_SUGGESTIONS } from '~/lib/spark'
 import { ConversationSidebar } from '~/components/chat/conversation-sidebar'
 
 interface RawMessage {
@@ -185,7 +186,7 @@ export default function ChatPage() {
           onSend={send}
           onStop={stop}
           isStreaming={isStreaming}
-          suggestions={isEmpty ? undefined : prompts}
+          suggestions={SPARK_SUGGESTIONS}
         />
       </div>
     </div>

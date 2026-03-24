@@ -93,6 +93,7 @@ func run() error {
 		tools.NewQueryEnergy(apiClient),
 		tools.NewGetInsights(apiClient),
 		tools.NewGetChargerStatus(apiClient),
+		tools.NewGetWeather(),
 	)
 
 	// Agent

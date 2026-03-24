@@ -141,11 +141,11 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 	for i, m := range history {
 		if len(m.ToolCalls) > 0 {
 			for _, tc := range m.ToolCalls {
-				slog.InfoContext(ctx, "history tool_use", "idx", i, "role", m.Role, "tool_call_id", tc.ID, "tool_name", tc.Name)
+				slog.DebugContext(ctx, "history tool_use", "idx", i, "role", m.Role, "tool_call_id", tc.ID, "tool_name", tc.Name)
 			}
 		}
 		if m.ToolResult != nil {
-			slog.InfoContext(ctx, "history tool_result", "idx", i, "tool_call_id", m.ToolResult.ToolCallID)
+			slog.DebugContext(ctx, "history tool_result", "idx", i, "tool_call_id", m.ToolResult.ToolCallID)
 		}
 	}
 

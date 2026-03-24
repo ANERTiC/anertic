@@ -1,19 +1,14 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { RiArrowUpLine, RiStopFill } from '@remixicon/react'
 import { cn } from '~/lib/utils'
-
-interface Suggestion {
-  icon: string
-  label: string
-  text: string
-}
+import type { SparkSuggestion } from '~/lib/spark'
 
 interface ChatInputProps {
   onSend: (message: string) => void
   onStop: () => void
   isStreaming: boolean
   disabled?: boolean
-  suggestions?: Suggestion[]
+  suggestions?: SparkSuggestion[]
 }
 
 export function ChatInput({
@@ -24,6 +19,12 @@ export function ChatInput({
   suggestions,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const visibleSuggestions = useMemo(() => {
+    if (!suggestions || suggestions.length <= 4) return suggestions
+    const shuffled = [...suggestions].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, 4)
+  }, [suggestions])
 
   const handleSubmit = useCallback(() => {
     const value = textareaRef.current?.value.trim()
@@ -60,6 +61,19 @@ export function ChatInput({
 
   return (
     <div className="safe-area-pb border-t bg-background p-3 md:p-4 motion-safe:animate-fade-in-up [animation-delay:200ms]">
+      {visibleSuggestions && visibleSuggestions.length > 0 && !isStreaming && (
+        <div className="mx-auto mb-2 flex max-w-3xl gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {visibleSuggestions.map((s) => (
+            <button
+              key={s.text}
+              onClick={() => onSend(s.text)}
+              className="inline-flex shrink-0 items-center rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.97]"
+            >
+              {s.text}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
         <textarea
           ref={textareaRef}
@@ -100,20 +114,6 @@ export function ChatInput({
           </button>
         )}
       </div>
-      {suggestions && suggestions.length > 0 && !isStreaming && (
-        <div className="mx-auto mt-2 flex max-w-3xl flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <button
-              key={s.text}
-              onClick={() => onSend(s.text)}
-              className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.97]"
-            >
-              <span aria-hidden="true">{s.icon}</span>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

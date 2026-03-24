@@ -1,29 +1,4 @@
-export const prompts = [
-  {
-    icon: '⚡',
-    label: 'Energy',
-    text: "How\u2019s my energy usage today?",
-    color: 'text-primary',
-  },
-  {
-    icon: '📊',
-    label: 'Insights',
-    text: 'Any anomalies this week?',
-    color: 'text-emerald-600',
-  },
-  {
-    icon: '🔌',
-    label: 'Devices',
-    text: 'Show device status',
-    color: 'text-amber-600',
-  },
-  {
-    icon: '🔋',
-    label: 'Compare',
-    text: 'Compare this month vs last month',
-    color: 'text-blue-600',
-  },
-]
+import { SPARK_SUGGESTIONS } from '~/lib/spark'
 
 interface SuggestedPromptsProps {
   onSelect: (prompt: string) => void
@@ -43,8 +18,8 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
           Ask about your energy, devices, or insights
         </p>
       </div>
-      <div className="grid w-full max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
-        {prompts.map((prompt, i) => (
+      <div className="grid w-full max-w-lg grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4">
+        {SPARK_SUGGESTIONS.map((prompt, i) => (
           <button
             key={prompt.text}
             onClick={() => onSelect(prompt.text)}

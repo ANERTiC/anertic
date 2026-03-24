@@ -54,16 +54,26 @@ func (c *APIClient) Invoke(ctx context.Context, token, method string, body any, 
 	var envelope struct {
 		OK     bool            `json:"ok"`
 		Result json.RawMessage `json:"result"`
-		Error  struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+		Error  json.RawMessage `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+		return fmt.Errorf("decode response (status %d): %w", resp.StatusCode, err)
 	}
 	if !envelope.OK {
-		return fmt.Errorf("api error: %s: %s", envelope.Error.Code, envelope.Error.Message)
+		// arpc error can be {"code":"...","message":"..."} or {"message":"..."} or {}
+		var errObj struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		}
+		json.Unmarshal(envelope.Error, &errObj)
+		if errObj.Message != "" {
+			return fmt.Errorf("%s: %s", errObj.Code, errObj.Message)
+		}
+		if errObj.Code != "" {
+			return fmt.Errorf("%s", errObj.Code)
+		}
+		// Fallback: use raw error JSON
+		return fmt.Errorf("api error: %s", string(envelope.Error))
 	}
 	if out != nil && len(envelope.Result) > 0 {
 		if err := json.Unmarshal(envelope.Result, out); err != nil {

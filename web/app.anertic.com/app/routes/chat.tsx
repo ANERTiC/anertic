@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router'
+import useSWR from 'swr'
 import { RiMenuLine } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -150,6 +151,11 @@ export default function ChatPage() {
 
   const isEmpty = messages.length === 0
 
+  const { data: recentData } = useSWR<{
+    items: { id: string; title: string; updatedAt: string }[]
+  }>(isEmpty ? ['conversation.list', { siteId }] : null, chatFetcher)
+  const recentChats = (recentData?.items || []).slice(0, 3)
+
   return (
     <div className="-m-6 flex h-[calc(100dvh-3rem)]">
       <ConversationSidebar
@@ -176,7 +182,11 @@ export default function ChatPage() {
 
         {/* Messages or empty state */}
         {isEmpty ? (
-          <SuggestedPrompts onSelect={send} />
+          <SuggestedPrompts
+            onSelect={send}
+            recentChats={recentChats}
+            onSelectChat={handleSelectConversation}
+          />
         ) : (
           <MessageList messages={messages} isStreaming={isStreaming} />
         )}

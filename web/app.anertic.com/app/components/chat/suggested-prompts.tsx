@@ -1,10 +1,23 @@
+import { RiChat1Line } from '@remixicon/react'
 import { SPARK_SUGGESTIONS } from '~/lib/spark'
+
+interface RecentChat {
+  id: string
+  title: string
+  updatedAt: string
+}
 
 interface SuggestedPromptsProps {
   onSelect: (prompt: string) => void
+  recentChats?: RecentChat[]
+  onSelectChat?: (id: string) => void
 }
 
-export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
+export function SuggestedPrompts({
+  onSelect,
+  recentChats,
+  onSelectChat,
+}: SuggestedPromptsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4">
       <div className="mb-8 text-center">
@@ -18,7 +31,8 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
           Ask about your energy, devices, or insights
         </p>
       </div>
-      <div className="grid w-full max-w-lg grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4">
+
+      <div className="grid w-full max-w-lg grid-cols-2 gap-2 md:grid-cols-4">
         {SPARK_SUGGESTIONS.map((prompt, i) => (
           <button
             key={prompt.text}
@@ -33,6 +47,31 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
           </button>
         ))}
       </div>
+
+      {recentChats && recentChats.length > 0 && onSelectChat && (
+        <div className="mt-6 w-full max-w-lg motion-safe:animate-fade-in [animation-delay:700ms]">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            Recent conversations
+          </p>
+          <div className="flex flex-col gap-1">
+            {recentChats.map((chat) => (
+              <button
+                key={chat.id}
+                onClick={() => onSelectChat(chat.id)}
+                className="flex min-h-10 items-center gap-2 rounded-lg border bg-card px-3 py-2 text-left text-xs transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <RiChat1Line
+                  className="size-3.5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="flex-1 truncate">
+                  {chat.title || 'New conversation'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

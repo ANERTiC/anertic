@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useFetcher, redirect, useOutletContext } from 'react-router'
 import type { Route } from './+types/settings'
 import useSWR, { useSWRConfig } from 'swr'
@@ -49,6 +49,8 @@ import { Skeleton } from '~/components/ui/skeleton'
 interface SiteSettings {
   name: string
   address: string
+  latitude: number
+  longitude: number
   timezone: string
   currency: string
   // Tariffs
@@ -199,6 +201,8 @@ export default function Settings() {
   const [settings, setSettings] = useState<SiteSettings>({
     name: '',
     address: '',
+    latitude: 0,
+    longitude: 0,
     timezone: '',
     currency: '',
     gridImportRate: 0,
@@ -268,6 +272,8 @@ export default function Settings() {
         ...prev,
         name: siteData.name || prev.name,
         address: siteData.address || prev.address,
+        latitude: siteData.latitude ?? prev.latitude,
+        longitude: siteData.longitude ?? prev.longitude,
         timezone: siteData.timezone || prev.timezone,
         currency: siteData.currency || prev.currency,
         gridImportRate: Number(siteData.gridImportRate) || 0,
@@ -332,6 +338,8 @@ export default function Settings() {
           id: siteId,
           name: settings.name,
           address: settings.address,
+          latitude: settings.latitude,
+          longitude: settings.longitude,
           timezone: settings.timezone,
           currency: settings.currency,
         },

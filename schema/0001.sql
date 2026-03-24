@@ -35,6 +35,8 @@ create table if not exists sites
     id                        varchar(20) primary key not null,
     name                      text                    not null,
     address                   text                    not null default '',
+    latitude                  numeric(9, 6)           not null default 0,
+    longitude                 numeric(9, 6)           not null default 0,
     timezone                  text                    not null default 'Asia/Bangkok',
     currency                  text                    not null default 'THB',
     savings_target_kwh        numeric                 not null default 500,

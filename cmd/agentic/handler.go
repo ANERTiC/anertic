@@ -75,11 +75,13 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// Get site context
 	var siteResult struct {
-		ID       string `json:"id"`
-		Name     string `json:"name"`
-		Address  string `json:"address"`
-		Timezone string `json:"timezone"`
-		Currency string `json:"currency"`
+		ID        string  `json:"id"`
+		Name      string  `json:"name"`
+		Address   string  `json:"address"`
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+		Timezone  string  `json:"timezone"`
+		Currency  string  `json:"currency"`
 	}
 	if err := h.apiClient.Invoke(ctx, token, "site.get", map[string]any{"id": p.SiteID}, &siteResult); err != nil {
 		http.Error(w, "site not found", http.StatusNotFound)
@@ -88,16 +90,25 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// Pre-fetch weather for site location (best-effort, non-blocking timeout)
 	var weatherResult *weather.Result
-	if siteResult.Address != "" {
-		weatherCtx, weatherCancel := context.WithTimeout(ctx, 5*time.Second)
+	weatherCtx, weatherCancel := context.WithTimeout(ctx, 5*time.Second)
+	if siteResult.Latitude != 0 && siteResult.Longitude != 0 {
+		// Use stored coordinates — skip geocoding
+		w, err := weather.FetchByCoords(weatherCtx, siteResult.Latitude, siteResult.Longitude, siteResult.Address, 1)
+		if err != nil {
+			slog.WarnContext(ctx, "pre-fetch weather", "lat", siteResult.Latitude, "lon", siteResult.Longitude, "error", err)
+		} else {
+			weatherResult = w
+		}
+	} else if siteResult.Address != "" {
+		// Fallback to geocoding from address
 		w, err := weather.Fetch(weatherCtx, siteResult.Address, 1)
-		weatherCancel()
 		if err != nil {
 			slog.WarnContext(ctx, "pre-fetch weather", "address", siteResult.Address, "error", err)
 		} else {
 			weatherResult = w
 		}
 	}
+	weatherCancel()
 
 	// Load or create conversation
 	conversationID := p.ConversationID

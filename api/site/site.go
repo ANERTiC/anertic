@@ -35,6 +35,8 @@ type Item struct {
 	ID        string         `json:"id"`
 	Name      string         `json:"name"`
 	Address   string         `json:"address"`
+	Latitude  float64        `json:"latitude"`
+	Longitude float64        `json:"longitude"`
 	Timezone  string         `json:"timezone"`
 	Metadata  map[string]any `json:"metadata"`
 	CreatedAt time.Time      `json:"createdAt"`
@@ -54,6 +56,8 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"s.id",
 			"s.name",
 			"s.address",
+			"s.latitude",
+			"s.longitude",
 			"s.timezone",
 			"s.metadata",
 			"s.created_at",
@@ -82,6 +86,8 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			&it.ID,
 			&it.Name,
 			&it.Address,
+			&it.Latitude,
+			&it.Longitude,
 			&it.Timezone,
 			pgsql.JSON(&it.Metadata),
 			&it.CreatedAt,
@@ -102,10 +108,11 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 // Create
 
 type CreateParams struct {
-	// Name sss
-	Name     string `json:"name"`
-	Address  string `json:"address"`
-	Timezone string `json:"timezone"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Timezone  string  `json:"timezone"`
 }
 
 func (p *CreateParams) Valid() error {
@@ -142,12 +149,16 @@ func Create(ctx context.Context, p *CreateParams) (*CreateResult, error) {
 			id,
 			name,
 			address,
+			latitude,
+			longitude,
 			timezone
-		) values ($1, $2, $3, $4)
+		) values ($1, $2, $3, $4, $5, $6)
 	`,
 		id,
 		p.Name,
 		p.Address,
+		p.Latitude,
+		p.Longitude,
 		tz,
 	)
 	if err != nil {
@@ -214,6 +225,8 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			id,
 			name,
 			address,
+			latitude,
+			longitude,
 			timezone,
 			currency,
 			grid_import_rate,
@@ -231,6 +244,8 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 		&r.ID,
 		&r.Name,
 		&r.Address,
+		&r.Latitude,
+		&r.Longitude,
 		&r.Timezone,
 		&r.Currency,
 		&r.GridImportRate,
@@ -255,11 +270,13 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 // Update
 
 type UpdateParams struct {
-	ID       string  `json:"id"`
-	Name     *string `json:"name"`
-	Address  *string `json:"address"`
-	Timezone *string `json:"timezone"`
-	Currency *string `json:"currency"`
+	ID        string   `json:"id"`
+	Name      *string  `json:"name"`
+	Address   *string  `json:"address"`
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
+	Timezone  *string  `json:"timezone"`
+	Currency  *string  `json:"currency"`
 }
 
 func (p *UpdateParams) Valid() error {
@@ -284,6 +301,12 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 		}
 		if p.Address != nil {
 			b.Set("address").To(*p.Address)
+		}
+		if p.Latitude != nil {
+			b.Set("latitude").To(*p.Latitude)
+		}
+		if p.Longitude != nil {
+			b.Set("longitude").To(*p.Longitude)
 		}
 		if p.Timezone != nil {
 			b.Set("timezone").To(*p.Timezone)

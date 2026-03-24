@@ -58,7 +58,7 @@ func (t *unassignDeviceFromRoomTool) Execute(ctx context.Context, token string, 
 	}
 
 	var result json.RawMessage
-	if err := t.api.Invoke(ctx, token, "room.unassign_device", map[string]any{
+	if err := t.api.Invoke(ctx, token, "room.unassignDevice", map[string]any{
 		"siteId":   p.SiteID,
 		"roomId":   p.RoomID,
 		"deviceId": p.DeviceID,

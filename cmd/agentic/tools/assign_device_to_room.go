@@ -58,7 +58,7 @@ func (t *assignDeviceToRoomTool) Execute(ctx context.Context, token string, inpu
 	}
 
 	var result json.RawMessage
-	if err := t.api.Invoke(ctx, token, "room.assign_device", map[string]any{
+	if err := t.api.Invoke(ctx, token, "room.assignDevice", map[string]any{
 		"siteId":   p.SiteID,
 		"roomId":   p.RoomID,
 		"deviceId": p.DeviceID,

@@ -58,7 +58,7 @@ func (t *unassignDeviceFromFloorTool) Execute(ctx context.Context, token string,
 	}
 
 	var result json.RawMessage
-	if err := t.api.Invoke(ctx, token, "floor.unassign_device", map[string]any{
+	if err := t.api.Invoke(ctx, token, "floor.unassignDevice", map[string]any{
 		"siteId":   p.SiteID,
 		"level":    p.Level,
 		"deviceId": p.DeviceID,

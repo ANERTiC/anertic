@@ -14,6 +14,7 @@ import {
   RiLogoutBoxLine,
   RiArrowLeftLine,
   RiPlugLine,
+  RiChat1Line,
 } from '@remixicon/react'
 import { fetcher } from '~/lib/api'
 import type { User } from '~/layouts/console'
@@ -70,6 +71,7 @@ function getSiteColor(index: number) {
 const siteNavItems = [
   { to: '/overview', icon: RiDashboardLine, label: 'Overview' },
   { to: '/insights', icon: RiLightbulbFlashLine, label: 'Insights' },
+  { to: '/chat', icon: RiChat1Line, label: 'Chat' },
   { to: '/chargers', icon: RiChargingPile2Line, label: 'Chargers' },
   { to: '/rooms', icon: RiDoorOpenLine, label: 'Rooms' },
   { to: '/devices', icon: RiCpuLine, label: 'Devices' },

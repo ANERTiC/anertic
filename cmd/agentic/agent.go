@@ -9,7 +9,7 @@ import (
 	"github.com/anertic/anertic/pkg/llm"
 )
 
-const maxToolIterations = 5
+const maxToolIterations = 15
 
 type Agent struct {
 	provider  llm.Provider
@@ -61,7 +61,6 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 
 		var iterText string
 		var toolCalls []llm.ToolCall
-		done := false
 
 		for event := range ch {
 			switch event.Type {
@@ -73,8 +72,6 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 				if event.ToolCall != nil {
 					toolCalls = append(toolCalls, *event.ToolCall)
 				}
-			case "done":
-				done = true
 			case "error":
 				cb(SSEEvent{Type: "error", Error: event.Error})
 				return fullText, newMessages, fmt.Errorf("llm error: %s", event.Error)
@@ -139,16 +136,15 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 			continue
 		}
 
-		if done {
-			if iterText != "" {
-				newMessages = append(newMessages, llm.Message{
-					Role:    "assistant",
-					Content: iterText,
-				})
-			}
-			cb(SSEEvent{Type: "done"})
-			return fullText, newMessages, nil
+		// Stream ended — either explicit done or channel closed without tool calls.
+		if iterText != "" {
+			newMessages = append(newMessages, llm.Message{
+				Role:    "assistant",
+				Content: iterText,
+			})
 		}
+		cb(SSEEvent{Type: "done"})
+		return fullText, newMessages, nil
 	}
 
 	cb(SSEEvent{Type: "done"})

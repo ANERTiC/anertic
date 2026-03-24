@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	openaiv1 "github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -88,6 +89,7 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 		}
 
 		if err := stream.Err(); err != nil {
+			slog.ErrorContext(ctx, "openai stream error", "error", err)
 			ch <- llm.StreamEvent{
 				Type:  "error",
 				Error: err.Error(),

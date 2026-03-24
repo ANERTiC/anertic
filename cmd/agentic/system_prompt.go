@@ -10,6 +10,9 @@ type SiteContext struct {
 	Name     string
 	Timezone string
 	Currency string
+
+	UserName  string
+	UserEmail string
 }
 
 func buildSystemPrompt(site *SiteContext) string {
@@ -24,6 +27,7 @@ func buildSystemPrompt(site *SiteContext) string {
 You help users understand their energy usage, device status, EV chargers, and provide recommendations to optimize energy consumption and reduce costs.
 
 Current context:
+- User: %s (%s)
 - Site: %s (ID: %s)
 - Timezone: %s
 - Currency: %s
@@ -37,6 +41,7 @@ Guidelines:
 - When users ask about time periods like "today" or "last week", calculate the correct dates based on the current time above
 - If you don't have enough data to answer, say so and suggest what the user can check
 - Proactively suggest energy-saving recommendations when relevant`,
+		site.UserName, site.UserEmail,
 		site.Name, site.ID, site.Timezone, site.Currency,
 		now.Format("2006-01-02 15:04:05 MST"))
 }

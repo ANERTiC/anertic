@@ -23,7 +23,6 @@ import (
 	"github.com/anertic/anertic/pkg/llm"
 	"github.com/anertic/anertic/pkg/llm/anthropic"
 	"github.com/anertic/anertic/pkg/llm/openai"
-	"github.com/anertic/anertic/schema"
 )
 
 func main() {
@@ -46,19 +45,14 @@ func run() error {
 	}
 	defer db.Close()
 
-	ctx := context.Background()
-	if err := schema.Migrate(ctx, db); err != nil {
-		return err
-	}
-
 	// Config
 	apiURL := cfg.StringDefault("API_URL", "http://localhost:8080")
 	llmProvider := cfg.StringDefault("LLM_PROVIDER", "anthropic")
 	llmModel := cfg.StringDefault("LLM_MODEL", "claude-opus-4-6")
-	maxTokensStr := cfg.StringDefault("LLM_MAX_TOKENS", "4096")
+	maxTokensStr := cfg.StringDefault("LLM_MAX_TOKENS", "16384")
 	maxTokens, _ := strconv.Atoi(maxTokensStr)
 	if maxTokens <= 0 {
-		maxTokens = 4096
+		maxTokens = 16384
 	}
 	llmTimeoutStr := cfg.StringDefault("LLM_TIMEOUT", "60s")
 	llmTimeout, _ := time.ParseDuration(llmTimeoutStr)
@@ -86,6 +80,7 @@ func run() error {
 
 	// Tools
 	registry := tools.NewRegistry(
+		tools.NewGetUserProfile(apiClient),
 		tools.NewGetSites(apiClient),
 		tools.NewGetDeviceStatus(apiClient),
 		tools.NewListDevices(apiClient),

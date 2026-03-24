@@ -3,6 +3,7 @@ package anthropic
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	anthropicv1 "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -88,6 +89,7 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 		}
 
 		if err := stream.Err(); err != nil {
+			slog.ErrorContext(ctx, "anthropic stream error", "error", err)
 			ch <- llm.StreamEvent{
 				Type:  "error",
 				Error: err.Error(),
@@ -110,7 +112,7 @@ func (p *Provider) Stream(ctx context.Context, opts llm.StreamOpts) (<-chan llm.
 			}
 		}
 
-		if acc.StopReason == anthropicv1.StopReasonEndTurn {
+		if acc.StopReason == anthropicv1.StopReasonEndTurn || acc.StopReason == anthropicv1.StopReasonMaxTokens {
 			ch <- llm.StreamEvent{
 				Type: "done",
 			}
@@ -143,7 +145,9 @@ func convertMessages(messages []llm.Message) []anthropicv1.MessageParam {
 			for _, tc := range msg.ToolCalls {
 				var input any
 				if len(tc.Input) > 0 {
-					json.Unmarshal(tc.Input, &input)
+					if err := json.Unmarshal(tc.Input, &input); err != nil {
+						slog.Error("unmarshal tool call input", "error", err, "tool", tc.Name)
+					}
 				}
 				blocks = append(blocks, anthropicv1.NewToolUseBlock(tc.ID, input, tc.Name))
 			}

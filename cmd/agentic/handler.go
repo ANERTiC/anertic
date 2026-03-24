@@ -60,7 +60,9 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// Validate token by calling auth.me
 	var me struct {
-		ID string `json:"id"`
+		ID    string `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
 	}
 	authCtx, authCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer authCancel()
@@ -155,11 +157,15 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// Build system prompt
 	systemPrompt := buildSystemPrompt(&SiteContext{
-		ID:       siteResult.ID,
-		Name:     siteResult.Name,
-		Timezone: siteResult.Timezone,
-		Currency: siteResult.Currency,
+		ID:        siteResult.ID,
+		Name:      siteResult.Name,
+		Timezone:  siteResult.Timezone,
+		Currency:  siteResult.Currency,
+		UserName:  me.Name,
+		UserEmail: me.Email,
 	})
+
+	slog.InfoContext(ctx, "system prompt", "prompt", systemPrompt)
 
 	// Run agent loop
 	_, newMessages, err := h.agent.Run(ctx, token, systemPrompt, history, func(event SSEEvent) {

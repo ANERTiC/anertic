@@ -351,7 +351,15 @@ export default function Overview() {
 
   // TODO: Replace with API call when backend is ready
   // const { data } = useSWR(["site.overview", siteId], () => api<SiteOverview>("site.overview", { siteId }), { refreshInterval: 15000 })
-  const [data] = useState<SiteOverview>(() => generateMockData())
+  const [data, setData] = useState<SiteOverview | null>(null)
+
+  useEffect(() => {
+    setData(generateMockData())
+  }, [siteId])
+
+  if (!data) {
+    return null
+  }
 
   const currentHour = new Date().getHours()
 

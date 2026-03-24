@@ -14,6 +14,7 @@ async function proxy(request: Request, params: Route.ActionArgs['params']) {
 
   const session = await getSessionFromRequest(request)
   const accessToken = session.get('accessToken')
+  console.log(accessToken)
   const body = await request.text()
 
   const res = await fetchBackend(method, body, accessToken)

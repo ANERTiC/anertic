@@ -52,10 +52,13 @@ func (t *getDeviceStatusTool) Execute(ctx context.Context, token string, input j
 		return "", fmt.Errorf("get_device_status: device.list: %w", err)
 	}
 
-	var devices []struct {
-		ID string `json:"id"`
+	var deviceList struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
 	}
-	json.Unmarshal(devicesRaw, &devices)
+	json.Unmarshal(devicesRaw, &deviceList)
+	devices := deviceList.Items
 
 	// Fetch meters per device
 	var allMeters []json.RawMessage

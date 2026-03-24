@@ -54,10 +54,13 @@ func (t *getChargerStatusTool) Execute(ctx context.Context, token string, input 
 		return "", fmt.Errorf("get_charger_status: charger.list: %w", err)
 	}
 
-	var chargers []struct {
-		ID string `json:"id"`
+	var chargerList struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
 	}
-	json.Unmarshal(chargersRaw, &chargers)
+	json.Unmarshal(chargersRaw, &chargerList)
+	chargers := chargerList.Items
 
 	// Fetch connectors per charger
 	var allConnectors []json.RawMessage

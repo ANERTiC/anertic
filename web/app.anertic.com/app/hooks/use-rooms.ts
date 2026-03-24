@@ -46,12 +46,14 @@ export function useRoomDetail(roomId: string | null) {
 
 // ---- useFloorList ----
 
-export function useFloorList(siteId: string) {
+export function useFloorList(siteId: string, fallbackData?: FloorItem[]) {
   const { data, isLoading, error, mutate } = useSWR<{ items: FloorItem[] }>(
     ['floor.list', { siteId }],
-    fetcher
+    fetcher,
+    fallbackData?.length ? { fallbackData: { items: fallbackData } } : undefined
   )
-  return { floors: data?.items ?? [], isLoading, error, mutate }
+  const hasData = !!data || (fallbackData?.length ?? 0) > 0
+  return { floors: data?.items ?? fallbackData ?? [], isLoading: isLoading && !hasData, error, mutate }
 }
 
 // ---- useAvailableDevices ----

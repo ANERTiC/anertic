@@ -54,6 +54,25 @@ import {
 } from '~/lib/room-helpers'
 import { ROOM_TYPE_BAR_COLORS, type RoomItem, type FloorItem } from '~/lib/room'
 import { fetcher } from '~/lib/api'
+import { api } from '~/lib/api.server'
+import type { Route } from './+types/rooms'
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url)
+  const siteId = url.searchParams.get('site')
+  if (!siteId) return { floors: [] as FloorItem[] }
+
+  try {
+    const { result } = await api<{ items: FloorItem[] }>(
+      request,
+      'floor.list',
+      { siteId }
+    )
+    return { floors: result.items ?? [] }
+  } catch {
+    return { floors: [] as FloorItem[] }
+  }
+}
 
 export async function clientAction({ request }: { request: Request }) {
   const formData = await request.formData()
@@ -69,7 +88,7 @@ export async function clientAction({ request }: { request: Request }) {
   return data({ ok: false }, { status: 400 })
 }
 
-export default function Rooms() {
+export default function Rooms({ loaderData }: Route.ComponentProps) {
   const siteId = useSiteId()
   const { data: siteData } = useSWR<{ name: string }>(
     ['site.get', { id: siteId }],
@@ -139,7 +158,7 @@ export default function Rooms() {
     floors,
     isLoading: floorsLoading,
     mutate: mutateFloors,
-  } = useFloorList(siteId)
+  } = useFloorList(siteId, loaderData.floors)
   const {
     rooms,
     isLoading: roomsLoading,
@@ -239,7 +258,7 @@ export default function Rooms() {
                   key={floor.level}
                   onClick={() => setActiveLevel(floor.level)}
                   className={cn(
-                    'flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-all',
+                    'flex shrink-0 flex-col rounded-lg border px-3 py-2 text-left transition-[border-color,background-color,box-shadow]',
                     isActive
                       ? 'border-primary/40 bg-primary/5 shadow-sm'
                       : 'border-border bg-card hover:bg-muted/50'
@@ -330,7 +349,7 @@ export default function Rooms() {
                           key={floor.level}
                           onClick={() => setActiveLevel(floor.level)}
                           className={cn(
-                            'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-200 ease-out',
+                            'relative flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out',
                             isActive
                               ? 'scale-[1.02] bg-primary/5 shadow-sm ring-1 ring-primary/20'
                               : 'scale-100 hover:bg-muted/50'
@@ -339,7 +358,7 @@ export default function Rooms() {
                           {/* Riser dot */}
                           <div
                             className={cn(
-                              'mt-1.5 shrink-0 rounded-full border-2 transition-all duration-200',
+                              'mt-1.5 shrink-0 rounded-full border-2 transition-[border-color,background-color,width,height] duration-200',
                               isActive
                                 ? 'size-2.5 border-primary bg-primary shadow-[0_0_6px_rgba(99,102,241,0.4)]'
                                 : 'size-2 border-muted-foreground/30 bg-background'
@@ -372,7 +391,7 @@ export default function Rooms() {
                             <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
                               <div
                                 className={cn(
-                                  'h-full rounded-full transition-all duration-500',
+                                  'h-full rounded-full transition-[width] duration-500',
                                   isActive
                                     ? 'bg-primary'
                                     : 'bg-muted-foreground/25'
@@ -403,6 +422,7 @@ export default function Rooms() {
                   size="sm"
                   className="w-full text-xs text-muted-foreground"
                   onClick={() => setAddFloorOpen(true)}
+                  aria-label="Add Floor"
                 >
                   <RiAddLine className="size-4" />
                 </Button>
@@ -460,7 +480,9 @@ export default function Rooms() {
                           }}
                           onBlur={saveFloorName}
                           autoFocus
-                          className="box-border h-6 w-40 rounded-md border border-input bg-background px-2 text-base font-semibold outline-none focus:ring-1 focus:ring-primary/40"
+                          name="floorName"
+                          aria-label="Floor name"
+                          className="box-border h-6 w-40 rounded-md border border-input bg-background px-2 text-base font-semibold outline-hidden focus-visible:ring-1 focus-visible:ring-primary/40"
                         />
                       ) : (
                         <button
@@ -533,6 +555,7 @@ export default function Rooms() {
                           variant="ghost"
                           size="sm"
                           className="size-8 p-0"
+                          aria-label="Floor actions"
                         >
                           <RiMoreLine className="size-4" />
                         </Button>
@@ -654,10 +677,13 @@ export default function Rooms() {
           )}
 
           {/* Search */}
-          <div className="relative animate-in delay-100 duration-200 fade-in slide-in-from-bottom-1">
+          <div className="relative motion-safe:animate-in motion-safe:delay-100 motion-safe:duration-200 motion-safe:fade-in motion-safe:slide-in-from-bottom-1">
             <RiSearchLine className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search rooms..."
+              placeholder="Search rooms…"
+              name="search"
+              autoComplete="off"
+              aria-label="Search rooms"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 pl-8 text-sm"
@@ -708,7 +734,7 @@ export default function Rooms() {
               {rooms.map((room, i) => (
                 <div
                   key={room.id}
-                  className="animate-in duration-300 fill-mode-both fade-in slide-in-from-bottom-3"
+                  className="motion-safe:animate-in motion-safe:duration-300 motion-safe:fill-mode-both motion-safe:fade-in motion-safe:slide-in-from-bottom-3"
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
                   <RoomCard

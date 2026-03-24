@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import useSWR from 'swr'
 import { RiMenuLine } from '@remixicon/react'
@@ -94,6 +94,24 @@ export default function ChatPage() {
     const urlConversationId = searchParams.get('conversation')
     if (urlConversationId && urlConversationId !== conversationId) {
       handleSelectConversation(urlConversationId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Auto-send prompt from URL (e.g. from Spark launcher)
+  const promptSentRef = useRef(false)
+  useEffect(() => {
+    const prompt = searchParams.get('prompt')
+    if (prompt && !promptSentRef.current && messages.length === 0 && !isStreaming) {
+      promptSentRef.current = true
+      setSearchParams(
+        (prev) => {
+          prev.delete('prompt')
+          return prev
+        },
+        { replace: true }
+      )
+      send(prompt)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

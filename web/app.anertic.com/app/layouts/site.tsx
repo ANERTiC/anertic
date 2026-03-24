@@ -2,6 +2,7 @@ import {
   data,
   Outlet,
   redirect,
+  useLocation,
   useNavigate,
   useOutletContext,
 } from 'react-router'
@@ -13,6 +14,7 @@ import {
   SidebarTrigger,
 } from '~/components/ui/sidebar'
 import { AppSidebar } from '~/components/app-sidebar'
+import { SparkLauncher } from '~/components/spark-launcher'
 import type { Route } from './+types/site'
 import type { ConsoleContext, User } from '~/layouts/console'
 import { currentSiteCookie } from '~/cookies.server'
@@ -56,6 +58,8 @@ export default function SiteLayout({ loaderData }: Route.ComponentProps) {
   const { siteId } = loaderData
   const { user } = useOutletContext<ConsoleContext>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isChat = location.pathname === '/chat'
 
   return (
     <SidebarProvider>
@@ -81,6 +85,7 @@ export default function SiteLayout({ loaderData }: Route.ComponentProps) {
           <Outlet context={{ siteId, user } satisfies SiteContext} />
         </div>
       </SidebarInset>
+      {!isChat && <SparkLauncher siteId={siteId} />}
     </SidebarProvider>
   )
 }

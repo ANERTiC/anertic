@@ -138,6 +138,17 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i, m := range history {
+		if len(m.ToolCalls) > 0 {
+			for _, tc := range m.ToolCalls {
+				slog.InfoContext(ctx, "history tool_use", "idx", i, "role", m.Role, "tool_call_id", tc.ID, "tool_name", tc.Name)
+			}
+		}
+		if m.ToolResult != nil {
+			slog.InfoContext(ctx, "history tool_result", "idx", i, "tool_call_id", m.ToolResult.ToolCallID)
+		}
+	}
+
 	// Setup SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -175,15 +186,8 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 		switch msg.Role {
 		case "assistant":
 			if len(msg.ToolCalls) > 0 {
-				for _, tc := range msg.ToolCalls {
-					if _, err := pgctx.Exec(ctx,
-						`insert into conversation_messages (id, conversation_id, role, content, tool_name, tool_call_id, tool_input)
-						 values ($1, $2, $3, $4, $5, $6, $7)`,
-						xid.New().String(), conversationID, "tool_call", "", tc.Name, tc.ID, string(tc.Input),
-					); err != nil {
-						slog.ErrorContext(ctx, "save tool_call message", "error", err)
-					}
-				}
+				// Save assistant text + tool calls as a single assistant row,
+				// then individual tool_call rows for reconstruction.
 				if msg.Content != "" {
 					if _, err := pgctx.Exec(ctx,
 						`insert into conversation_messages (id, conversation_id, role, content)
@@ -191,6 +195,15 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 						xid.New().String(), conversationID, "assistant", msg.Content,
 					); err != nil {
 						slog.ErrorContext(ctx, "save assistant message", "error", err)
+					}
+				}
+				for _, tc := range msg.ToolCalls {
+					if _, err := pgctx.Exec(ctx,
+						`insert into conversation_messages (id, conversation_id, role, content, tool_name, tool_call_id, tool_input)
+						 values ($1, $2, $3, $4, $5, $6, $7)`,
+						xid.New().String(), conversationID, "tool_call", "", tc.Name, tc.ID, string(tc.Input),
+					); err != nil {
+						slog.ErrorContext(ctx, "save tool_call message", "error", err)
 					}
 				}
 			} else {
@@ -265,10 +278,13 @@ func loadHistory(ctx context.Context, conversationID string) ([]llm.Message, err
 		}
 
 		switch role {
-		case "user", "assistant":
+		case "user":
 			msgs = append(msgs, llm.Message{Role: role, Content: content})
+		case "assistant":
+			// If next rows are tool_calls, they'll attach to this message
+			msgs = append(msgs, llm.Message{Role: "assistant", Content: content})
 		case "tool_call":
-			// Ensure there is a preceding assistant message to attach to
+			// Attach to preceding assistant message, merging content
 			if len(msgs) == 0 || msgs[len(msgs)-1].Role != "assistant" {
 				msgs = append(msgs, llm.Message{Role: "assistant", Content: ""})
 			}

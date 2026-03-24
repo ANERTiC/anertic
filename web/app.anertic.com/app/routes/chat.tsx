@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import { toast } from 'sonner'
 import { cn } from '~/lib/utils'
+import { Skeleton } from '~/components/ui/skeleton'
 
 import { useSiteId } from '~/layouts/site'
 import { chatFetcher } from '~/lib/chat-api'
@@ -17,6 +18,8 @@ import { ChatInput } from '~/components/chat/chat-input'
 import { MessageList } from '~/components/chat/message-list'
 import { SuggestedPrompts } from '~/components/chat/suggested-prompts'
 import { SPARK_SUGGESTIONS } from '~/lib/spark'
+import { agenticApi } from '~/lib/agentic-api.server'
+import type { Route } from './+types/chat'
 
 interface RawMessage {
   id: string
@@ -91,7 +94,30 @@ function formatRelativeTime(dateStr: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(dateStr))
 }
 
-export default function ChatPage() {
+interface ConversationItem {
+  id: string
+  title: string
+  updatedAt: string
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url)
+  const siteId = url.searchParams.get('site')
+  if (!siteId) return { conversations: [] as ConversationItem[] }
+
+  try {
+    const { result } = await agenticApi<{ items: ConversationItem[] }>(
+      request,
+      'conversation.list',
+      { siteId }
+    )
+    return { conversations: (result.items || []).slice(0, 5) }
+  } catch {
+    return { conversations: [] as ConversationItem[] }
+  }
+}
+
+export default function ChatPage({ loaderData }: Route.ComponentProps) {
   const siteId = useSiteId()
   const chat = useChat(siteId)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -121,14 +147,19 @@ export default function ChatPage() {
   const [initialized, setInitialized] = useState(
     () => !searchParams.get('conversation')
   )
+  const [isRestoring, setIsRestoring] = useState(
+    () => !!searchParams.get('conversation')
+  )
 
   // Restore conversation from URL on mount
   useEffect(() => {
     const urlConversationId = searchParams.get('conversation')
     if (urlConversationId && urlConversationId !== conversationId) {
-      handleSelectConversation(urlConversationId).finally(() =>
+      setIsRestoring(true)
+      handleSelectConversation(urlConversationId).finally(() => {
         setInitialized(true)
-      )
+        setIsRestoring(false)
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -186,6 +217,7 @@ export default function ChatPage() {
     async (id: string) => {
       if (isStreaming) stop()
       closeHistory()
+      setIsRestoring(true)
       try {
         const result = await chatFetcher<{
           id: string
@@ -202,6 +234,8 @@ export default function ChatPage() {
         )
       } catch {
         toast.error('Failed to load conversation')
+      } finally {
+        setIsRestoring(false)
       }
     },
     [isStreaming, stop, closeHistory, setConversationId, setMessages, setSearchParams]
@@ -221,10 +255,14 @@ export default function ChatPage() {
     )
   }, [isStreaming, stop, closeHistory, setConversationId, setMessages, setSearchParams])
 
-  // Conversation list for the dropdown
+  // Conversation list from server loader, with SWR for client-side revalidation
   const { data: historyData, mutate: mutateHistory } = useSWR<{
-    items: { id: string; title: string; updatedAt: string }[]
-  }>(historyVisible ? ['conversation.list', { siteId }] : null, chatFetcher)
+    items: ConversationItem[]
+  }>(
+    ['conversation.list', { siteId }],
+    chatFetcher,
+    { fallbackData: { items: loaderData.conversations } }
+  )
   const conversations = (historyData?.items || []).slice(0, 5)
 
   async function handleDelete(e: React.MouseEvent, id: string) {
@@ -236,11 +274,7 @@ export default function ChatPage() {
   }
 
   const isEmpty = initialized && messages.length === 0
-
-  const { data: recentData } = useSWR<{
-    items: { id: string; title: string; updatedAt: string }[]
-  }>(isEmpty ? ['conversation.list', { siteId }] : null, chatFetcher)
-  const recentChats = (recentData?.items || []).slice(0, 3)
+  const recentChats = conversations.slice(0, 3)
 
   return (
     <div className="-m-6 relative h-[calc(100dvh-3rem)]">
@@ -295,10 +329,10 @@ export default function ChatPage() {
                       className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       aria-label={conv.title || 'Untitled'}
                     />
-                    <span className="relative min-w-0 flex-1 truncate text-[13px]">
+                    <span className="pointer-events-none relative min-w-0 flex-1 truncate text-[13px]">
                       {conv.title || 'Untitled'}
                     </span>
-                    <span className="relative shrink-0 text-[10px] tabular-nums text-muted-foreground/40 group-hover:hidden">
+                    <span className="pointer-events-none relative shrink-0 text-[10px] tabular-nums text-muted-foreground/40 group-hover:hidden">
                       {formatRelativeTime(conv.updatedAt)}
                     </span>
                     <button
@@ -315,7 +349,38 @@ export default function ChatPage() {
           )}
         </div>
 
-        {isEmpty ? (
+        {isRestoring ? (
+          /* Skeleton while loading a conversation */
+          <div className="flex-1 overflow-hidden px-3 py-4 md:px-4 md:py-6">
+            <div className="mx-auto max-w-3xl space-y-4">
+              {/* User bubble skeleton */}
+              <div className="flex justify-end">
+                <Skeleton className="h-10 w-48 rounded-2xl rounded-br-sm" />
+              </div>
+              {/* Assistant bubble skeleton */}
+              <div className="flex gap-2.5">
+                <Skeleton className="size-7 shrink-0 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-64" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-56" />
+                </div>
+              </div>
+              {/* User bubble skeleton */}
+              <div className="flex justify-end">
+                <Skeleton className="h-10 w-36 rounded-2xl rounded-br-sm" />
+              </div>
+              {/* Assistant bubble skeleton */}
+              <div className="flex gap-2.5">
+                <Skeleton className="size-7 shrink-0 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-72" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : isEmpty ? (
           /* Empty state — everything centered */
           <div className="flex flex-1 flex-col items-center justify-center px-4">
             <SuggestedPrompts

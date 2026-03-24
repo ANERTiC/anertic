@@ -572,15 +572,23 @@ export default function Settings() {
                       }
                       navigator.geolocation.getCurrentPosition(
                         (pos) => {
-                          update(
-                            'latitude',
+                          const lat =
                             Math.round(pos.coords.latitude * 1e6) / 1e6
-                          )
-                          update(
-                            'longitude',
+                          const lng =
                             Math.round(pos.coords.longitude * 1e6) / 1e6
-                          )
+                          update('latitude', lat)
+                          update('longitude', lng)
                           toast.success('Location detected')
+                          fetch(
+                            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`
+                          )
+                            .then((r) => r.json())
+                            .then((d) => {
+                              if (d.display_name) {
+                                update('address', d.display_name)
+                              }
+                            })
+                            .catch(() => {})
                         },
                         () => toast.error('Unable to get location')
                       )

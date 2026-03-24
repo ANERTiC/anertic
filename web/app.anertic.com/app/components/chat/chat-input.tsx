@@ -51,13 +51,14 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className="border-t bg-background p-3">
-      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border bg-muted/50 px-3 py-2">
+    <div className="border-t bg-background p-4">
+      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-4 py-3">
         <textarea
           ref={textareaRef}
-          rows={1}
-          placeholder="Ask about your energy..."
-          className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          name="message"
+          rows={2}
+          placeholder="Ask about your energy…"
+          className="flex-1 resize-none bg-transparent text-base leading-relaxed outline-none focus-visible:outline-none focus-visible:ring-0 placeholder:text-muted-foreground"
           onKeyDown={handleKeyDown}
           onInput={handleInput}
           disabled={disabled}
@@ -67,7 +68,7 @@ export function ChatInput({
           <button
             onClick={onStop}
             className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              'flex size-9 shrink-0 items-center justify-center rounded-lg',
               'text-destructive-foreground bg-destructive transition-colors',
               'hover:bg-destructive/90'
             )}
@@ -79,7 +80,7 @@ export function ChatInput({
           <button
             onClick={handleSubmit}
             className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              'flex size-9 shrink-0 items-center justify-center rounded-lg',
               'bg-primary text-primary-foreground transition-colors',
               'hover:bg-primary/90',
               'disabled:opacity-50'

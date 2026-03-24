@@ -23,7 +23,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     <div>
       <div className="flex gap-2.5">
         <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
-          <span className="text-xs text-white">✦</span>
+          <span className="text-xs text-white" aria-hidden="true">✦</span>
         </div>
         <div
           className={cn(
@@ -38,7 +38,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {message.content ? (
             <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
           ) : (
-            <span className="inline-block size-1.5 animate-pulse rounded-full bg-muted-foreground/40" />
+            <span className="inline-block size-1.5 rounded-full bg-muted-foreground/40 motion-safe:animate-pulse" />
           )}
         </div>
       </div>

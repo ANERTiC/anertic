@@ -18,7 +18,7 @@ func NewQueryEnergy(api Invoker) Tool {
 func (t *queryEnergyTool) Name() string { return "query_energy" }
 
 func (t *queryEnergyTool) Description() string {
-	return "Queries historical energy readings for a site, optionally filtered by device or meter and time range. Interval can be raw, hourly, or daily."
+	return "Queries historical energy readings. Requires either device_id or meter_id (or both). Use get_device_status first to find device and meter IDs."
 }
 
 func (t *queryEnergyTool) InputSchema() json.RawMessage {
@@ -31,11 +31,11 @@ func (t *queryEnergyTool) InputSchema() json.RawMessage {
 			},
 			"device_id": {
 				"type": "string",
-				"description": "Optional device ID to filter readings"
+				"description": "Device ID to query readings for"
 			},
 			"meter_id": {
 				"type": "string",
-				"description": "Optional meter ID to filter readings"
+				"description": "Meter ID to query readings for"
 			},
 			"start_time": {
 				"type": "string",
@@ -81,6 +81,9 @@ func (t *queryEnergyTool) Execute(ctx context.Context, token string, input json.
 	}
 	if p.SiteID == "" {
 		return "", fmt.Errorf("query_energy: site_id is required")
+	}
+	if p.DeviceID == "" && p.MeterID == "" {
+		return "", fmt.Errorf("query_energy: device_id or meter_id is required")
 	}
 
 	body := queryEnergyBody{

@@ -16,7 +16,7 @@ export function ThinkingSteps({ steps }: ThinkingStepsProps) {
   const hasError = steps.some((s) => s.status === 'error')
   const doneCount = steps.filter((s) => s.status === 'done').length
   const label = isRunning
-    ? steps.find((s) => s.status === 'running')?.name || 'Working...'
+    ? steps.find((s) => s.status === 'running')?.name || 'Working…'
     : hasError
       ? 'Completed with errors'
       : `Used ${doneCount} tool${doneCount !== 1 ? 's' : ''}`
@@ -36,7 +36,7 @@ export function ThinkingSteps({ steps }: ThinkingStepsProps) {
         aria-expanded={expanded}
       >
         {isRunning && (
-          <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+          <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
         )}
         <RiArrowRightSLine
           className={cn(
@@ -59,7 +59,7 @@ export function ThinkingSteps({ steps }: ThinkingStepsProps) {
               <span
                 className={cn(
                   'size-1.5 rounded-full',
-                  step.status === 'running' && 'animate-pulse bg-primary',
+                  step.status === 'running' && 'bg-primary motion-safe:animate-pulse',
                   step.status === 'done' && 'bg-green-500',
                   step.status === 'error' && 'bg-destructive'
                 )}

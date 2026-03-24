@@ -47,21 +47,33 @@ func (t *getDeviceStatusTool) Execute(ctx context.Context, token string, input j
 		return "", fmt.Errorf("get_device_status: site_id is required")
 	}
 
-	body := map[string]any{"siteId": p.SiteID}
-
-	var devices json.RawMessage
-	if err := t.api.Invoke(ctx, token, "device.list", body, &devices); err != nil {
+	var devicesRaw json.RawMessage
+	if err := t.api.Invoke(ctx, token, "device.list", map[string]any{"siteId": p.SiteID}, &devicesRaw); err != nil {
 		return "", fmt.Errorf("get_device_status: device.list: %w", err)
 	}
 
-	var meters json.RawMessage
-	if err := t.api.Invoke(ctx, token, "meter.list", body, &meters); err != nil {
-		return "", fmt.Errorf("get_device_status: meter.list: %w", err)
+	var devices []struct {
+		ID string `json:"id"`
+	}
+	json.Unmarshal(devicesRaw, &devices)
+
+	// Fetch meters per device
+	var allMeters []json.RawMessage
+	for _, d := range devices {
+		var meters json.RawMessage
+		if err := t.api.Invoke(ctx, token, "meter.list", map[string]any{
+			"siteId":   p.SiteID,
+			"deviceId": d.ID,
+		}, &meters); err != nil {
+			return "", fmt.Errorf("get_device_status: meter.list (device %s): %w", d.ID, err)
+		}
+		allMeters = append(allMeters, meters)
 	}
 
+	metersJSON, _ := json.Marshal(allMeters)
 	out, err := json.Marshal(map[string]json.RawMessage{
-		"devices": devices,
-		"meters":  meters,
+		"devices": devicesRaw,
+		"meters":  json.RawMessage(metersJSON),
 	})
 	if err != nil {
 		return "", fmt.Errorf("get_device_status: marshal result: %w", err)

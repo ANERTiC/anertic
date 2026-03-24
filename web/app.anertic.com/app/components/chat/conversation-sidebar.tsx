@@ -37,7 +37,7 @@ function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function SidebarContent_({
@@ -55,6 +55,7 @@ function SidebarContent_({
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    if (!window.confirm('Delete this conversation?')) return
     await chatFetcher(['conversation.delete', { id }])
     mutate()
   }
@@ -88,11 +89,19 @@ function SidebarContent_({
           </div>
         ) : (
           conversations.map((conv) => (
-            <button
+            <div
               key={conv.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelect(conv.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelect(conv.id)
+                }
+              }}
               className={cn(
-                'group flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
+                'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                 activeId === conv.id
                   ? 'bg-primary/10 text-primary'
                   : 'text-foreground hover:bg-muted'
@@ -108,12 +117,12 @@ function SidebarContent_({
               </div>
               <button
                 onClick={(e) => handleDelete(e, conv.id)}
-                className="hidden size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors group-hover:flex hover:bg-destructive/10 hover:text-destructive"
+                className="hidden size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex group-focus-within:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={`Delete conversation: ${conv.title}`}
               >
                 <RiDeleteBinLine className="size-3" />
               </button>
-            </button>
+            </div>
           ))
         )}
       </div>

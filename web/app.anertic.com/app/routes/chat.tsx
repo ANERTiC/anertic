@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'react-router'
 import { RiMenuLine } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -74,6 +75,7 @@ export default function ChatPage() {
   const siteId = useSiteId()
   const chat = useChat(siteId)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const {
     send,
@@ -85,6 +87,15 @@ export default function ChatPage() {
     messages,
   } = chat
 
+  // Restore conversation from URL on mount
+  useEffect(() => {
+    const urlConversationId = searchParams.get('conversation')
+    if (urlConversationId && urlConversationId !== conversationId) {
+      handleSelectConversation(urlConversationId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleSelectConversation = useCallback(
     async (id: string) => {
       if (isStreaming) stop()
@@ -95,18 +106,34 @@ export default function ChatPage() {
         }>(['conversation.get', { id }])
         setConversationId(result.id)
         setMessages(reconstructMessages(result.messages))
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev)
+            next.set('conversation', result.id)
+            return next
+          },
+          { replace: true }
+        )
       } catch {
         toast.error('Failed to load conversation')
       }
     },
-    [isStreaming, stop, setConversationId, setMessages]
+    [isStreaming, stop, setConversationId, setMessages, setSearchParams]
   )
 
   const handleNewConversation = useCallback(() => {
     if (isStreaming) stop()
     setConversationId(null)
     setMessages([])
-  }, [isStreaming, stop, setConversationId, setMessages])
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('conversation')
+        return next
+      },
+      { replace: true }
+    )
+  }, [isStreaming, stop, setConversationId, setMessages, setSearchParams])
 
   const isEmpty = messages.length === 0
 

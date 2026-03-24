@@ -49,19 +49,32 @@ func (t *getChargerStatusTool) Execute(ctx context.Context, token string, input 
 
 	body := map[string]any{"siteId": p.SiteID}
 
-	var chargers json.RawMessage
-	if err := t.api.Invoke(ctx, token, "charger.list", body, &chargers); err != nil {
+	var chargersRaw json.RawMessage
+	if err := t.api.Invoke(ctx, token, "charger.list", body, &chargersRaw); err != nil {
 		return "", fmt.Errorf("get_charger_status: charger.list: %w", err)
 	}
 
-	var connectors json.RawMessage
-	if err := t.api.Invoke(ctx, token, "connector.list", body, &connectors); err != nil {
-		return "", fmt.Errorf("get_charger_status: connector.list: %w", err)
+	var chargers []struct {
+		ID string `json:"id"`
+	}
+	json.Unmarshal(chargersRaw, &chargers)
+
+	// Fetch connectors per charger
+	var allConnectors []json.RawMessage
+	for _, c := range chargers {
+		var connectors json.RawMessage
+		if err := t.api.Invoke(ctx, token, "connector.list", map[string]any{
+			"chargerId": c.ID,
+		}, &connectors); err != nil {
+			return "", fmt.Errorf("get_charger_status: connector.list (charger %s): %w", c.ID, err)
+		}
+		allConnectors = append(allConnectors, connectors)
 	}
 
+	connectorsJSON, _ := json.Marshal(allConnectors)
 	out, err := json.Marshal(map[string]json.RawMessage{
-		"chargers":   chargers,
-		"connectors": connectors,
+		"chargers":   chargersRaw,
+		"connectors": json.RawMessage(connectorsJSON),
 	})
 	if err != nil {
 		return "", fmt.Errorf("get_charger_status: marshal result: %w", err)

@@ -249,6 +249,9 @@ func loadHistory(ctx context.Context, conversationID string) ([]llm.Message, err
 	defer rows.Close()
 
 	var msgs []llm.Message
+	toolCallIDs := make(map[string]bool)
+	toolResultIDs := make(map[string]bool)
+
 	for rows.Next() {
 		var (
 			role       string
@@ -265,15 +268,21 @@ func loadHistory(ctx context.Context, conversationID string) ([]llm.Message, err
 		case "user", "assistant":
 			msgs = append(msgs, llm.Message{Role: role, Content: content})
 		case "tool_call":
-			// Attach tool call to the preceding assistant message
-			if len(msgs) > 0 && msgs[len(msgs)-1].Role == "assistant" {
-				msgs[len(msgs)-1].ToolCalls = append(msgs[len(msgs)-1].ToolCalls, llm.ToolCall{
-					ID:    toolCallID.String,
-					Name:  toolName.String,
-					Input: json.RawMessage(toolInput.String),
-				})
+			// Ensure there is a preceding assistant message to attach to
+			if len(msgs) == 0 || msgs[len(msgs)-1].Role != "assistant" {
+				msgs = append(msgs, llm.Message{Role: "assistant", Content: ""})
 			}
+			msgs[len(msgs)-1].ToolCalls = append(msgs[len(msgs)-1].ToolCalls, llm.ToolCall{
+				ID:    toolCallID.String,
+				Name:  toolName.String,
+				Input: json.RawMessage(toolInput.String),
+			})
+			toolCallIDs[toolCallID.String] = true
 		case "tool_result":
+			if !toolCallIDs[toolCallID.String] {
+				continue
+			}
+			toolResultIDs[toolCallID.String] = true
 			msgs = append(msgs, llm.Message{
 				Role: "tool_result",
 				ToolResult: &llm.ToolResult{
@@ -284,7 +293,57 @@ func loadHistory(ctx context.Context, conversationID string) ([]llm.Message, err
 		}
 	}
 
-	return msgs, nil
+	// Ensure every tool_use has a matching tool_result.
+	// Anthropic requires tool_result blocks immediately after tool_use.
+	for i := range msgs {
+		if msgs[i].Role != "assistant" || len(msgs[i].ToolCalls) == 0 {
+			continue
+		}
+		// Check if all tool calls in this message have results
+		allHaveResults := true
+		for _, tc := range msgs[i].ToolCalls {
+			if !toolResultIDs[tc.ID] {
+				allHaveResults = false
+				break
+			}
+		}
+		if allHaveResults {
+			continue
+		}
+		// Strip tool calls without results from the assistant message
+		var kept []llm.ToolCall
+		for _, tc := range msgs[i].ToolCalls {
+			if toolResultIDs[tc.ID] {
+				kept = append(kept, tc)
+			}
+		}
+		msgs[i].ToolCalls = kept
+	}
+
+	// Remove orphaned tool_result messages whose tool_call was stripped
+	var cleaned []llm.Message
+	for _, m := range msgs {
+		if m.Role == "assistant" && m.Content == "" && len(m.ToolCalls) == 0 {
+			continue
+		}
+		if m.ToolResult != nil {
+			// Check the tool call still exists
+			found := false
+			for _, cm := range msgs {
+				for _, tc := range cm.ToolCalls {
+					if tc.ID == m.ToolResult.ToolCallID {
+						found = true
+					}
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		cleaned = append(cleaned, m)
+	}
+
+	return cleaned, nil
 }
 
 // ConversationListParams is the request body for POST /conversation.list.

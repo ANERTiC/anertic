@@ -24,6 +24,14 @@ export interface Device {
   createdAt: string
 }
 
+export interface DeviceLocation {
+  location: 'site' | 'floor' | 'room' | ''
+  level: number | null
+  floorName: string | null
+  roomId: string | null
+  roomName: string | null
+}
+
 // Extended device with connection/runtime fields (from list API)
 export interface DeviceListItem extends Device {
   connectionStatus: ConnectionStatus
@@ -33,6 +41,7 @@ export interface DeviceListItem extends Device {
   roomId: string | null
   roomName: string | null
   level: number | null
+  isSiteDevice: boolean
 }
 
 // --- Config Maps ---

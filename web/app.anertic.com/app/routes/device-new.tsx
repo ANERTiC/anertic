@@ -9,9 +9,13 @@ import {
   RiSunLine,
   RiPlugLine,
   RiFlashlightLine,
+  RiBuildingLine,
+  RiStackLine,
+  RiDoorOpenLine,
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
+import useSWR from 'swr'
 import { fetcher } from '~/lib/api'
 import { useSiteId } from '~/layouts/site'
 import { Button } from '~/components/ui/button'
@@ -23,12 +27,13 @@ import { cn } from '~/lib/utils'
 // --- Types ---
 
 type DeviceType = 'meter' | 'inverter' | 'solar_panel' | 'appliance'
-type Step = 'type' | 'details'
+type Step = 'type' | 'details' | 'location'
 
-const STEPS: Step[] = ['type', 'details']
+const STEPS: Step[] = ['type', 'details', 'location']
 const STEP_LABELS: Record<Step, string> = {
   type: 'Type',
   details: 'Details',
+  location: 'Location',
 }
 
 const DEVICE_TYPES: {
@@ -117,6 +122,9 @@ export default function DeviceNew() {
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
   const [creating, setCreating] = useState(false)
+  const [locationType, setLocationType] = useState<string>('')
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null)
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
 
   const stepIndex = STEPS.indexOf(step)
   const hints = selectedType ? DETAIL_HINTS[selectedType] : DETAIL_HINTS.meter
@@ -124,6 +132,7 @@ export default function DeviceNew() {
   const canContinue = (() => {
     if (step === 'type') return selectedType !== null
     if (step === 'details') return name.trim() !== ''
+    if (step === 'location') return true
     return false
   })()
 
@@ -141,6 +150,22 @@ export default function DeviceNew() {
           model: model.trim(),
         },
       ])
+      if (locationType) {
+        try {
+          await fetcher([
+            'device.setLocation',
+            {
+              siteId,
+              deviceId: result.id,
+              location: locationType,
+              level: selectedLevel,
+              roomId: selectedRoomId,
+            },
+          ])
+        } catch {
+          // location assignment is non-critical, device is already created
+        }
+      }
       toast.success(`Device "${name}" created`)
       navigate(`/devices/${result.id}?site=${siteId}`)
     } catch (err) {
@@ -182,6 +207,7 @@ export default function DeviceNew() {
           <p className="mt-1 text-sm text-muted-foreground">
             {step === 'type' && 'Select the device type'}
             {step === 'details' && 'Enter device information'}
+            {step === 'location' && 'Set where this device is installed (optional)'}
           </p>
         </div>
         <span className="text-xs text-muted-foreground tabular-nums">
@@ -376,16 +402,234 @@ export default function DeviceNew() {
               Back
             </Button>
             <Button
-              disabled={!canContinue || creating}
-              onClick={handleCreate}
+              disabled={!canContinue}
+              onClick={goNext}
               className="gap-1.5"
             >
-              <RiCheckLine className="size-4" />
-              {creating ? 'Creating…' : 'Create Device'}
+              Continue
+              <RiArrowRightSLine className="size-4" />
             </Button>
           </div>
         </div>
       )}
+
+      {/* Step: Location */}
+      {step === 'location' && (
+        <LocationStep
+          siteId={siteId}
+          locationType={locationType}
+          setLocationType={setLocationType}
+          selectedLevel={selectedLevel}
+          setSelectedLevel={setSelectedLevel}
+          selectedRoomId={selectedRoomId}
+          setSelectedRoomId={setSelectedRoomId}
+          creating={creating}
+          onBack={goBack}
+          onCreate={handleCreate}
+        />
+      )}
+    </div>
+  )
+}
+
+interface FloorItem {
+  siteId: string
+  name: string
+  level: number
+}
+
+interface RoomItem {
+  id: string
+  siteId: string
+  name: string
+  type: string
+  level: number
+}
+
+function LocationStep({
+  siteId,
+  locationType,
+  setLocationType,
+  selectedLevel,
+  setSelectedLevel,
+  selectedRoomId,
+  setSelectedRoomId,
+  creating,
+  onBack,
+  onCreate,
+}: {
+  siteId: string
+  locationType: string
+  setLocationType: (v: string) => void
+  selectedLevel: number | null
+  setSelectedLevel: (v: number | null) => void
+  selectedRoomId: string | null
+  setSelectedRoomId: (v: string | null) => void
+  creating: boolean
+  onBack: () => void
+  onCreate: () => void
+}) {
+  const { data: floorsData } = useSWR<{ items: FloorItem[] }>(
+    ['floor.list', { siteId }],
+    fetcher
+  )
+  const { data: roomsData } = useSWR<{ items: RoomItem[] }>(
+    selectedLevel != null ? ['room.list', { siteId, level: selectedLevel }] : null,
+    fetcher
+  )
+
+  const floors = floorsData?.items ?? []
+  const rooms = roomsData?.items ?? []
+
+  const locationOptions = [
+    {
+      value: 'site',
+      label: 'Site Level',
+      description: 'Monitors whole-site parameters',
+      icon: RiBuildingLine,
+    },
+    {
+      value: 'floor',
+      label: 'Floor',
+      description: 'Assigned to a specific floor',
+      icon: RiStackLine,
+    },
+    {
+      value: 'room',
+      label: 'Room',
+      description: 'Assigned to a specific room',
+      icon: RiDoorOpenLine,
+    },
+  ]
+
+  return (
+    <div className="animate-in space-y-5 duration-200 fade-in slide-in-from-bottom-1">
+      <Card className="border-border/50">
+        <CardContent className="space-y-2 p-5">
+          {locationOptions.map((opt) => {
+            const Icon = opt.icon
+            const isSelected = locationType === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  setLocationType(opt.value)
+                  if (opt.value === 'site') {
+                    setSelectedLevel(null)
+                    setSelectedRoomId(null)
+                  }
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all',
+                  isSelected
+                    ? 'border-foreground/20 bg-foreground/[0.03]'
+                    : 'border-border/50 hover:border-border hover:bg-muted/20'
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-lg',
+                    isSelected ? 'bg-foreground/8' : 'bg-muted/50'
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'size-4',
+                      isSelected ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground">{opt.description}</p>
+                </div>
+                <div
+                  className={cn(
+                    'size-4 shrink-0 rounded-full border-2 transition-all',
+                    isSelected
+                      ? 'border-foreground bg-foreground'
+                      : 'border-border'
+                  )}
+                />
+              </button>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      {(locationType === 'floor' || locationType === 'room') && (
+        <Card className="border-border/50">
+          <CardContent className="space-y-4 p-5">
+            <div>
+              <Label className="text-xs">Floor</Label>
+              <select
+                value={selectedLevel ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : Number(e.target.value)
+                  setSelectedLevel(val)
+                  setSelectedRoomId(null)
+                }}
+                className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <option value="">Select a floor</option>
+                {floors.map((f) => (
+                  <option key={f.level} value={f.level}>
+                    Floor {f.level}{f.name ? ` · ${f.name}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {locationType === 'room' && selectedLevel != null && (
+              <div>
+                <Label className="text-xs">Room</Label>
+                <select
+                  value={selectedRoomId ?? ''}
+                  onChange={(e) => setSelectedRoomId(e.target.value || null)}
+                  className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <option value="">Select a room</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={onBack}>
+          <RiArrowLeftSLine className="size-4" />
+          Back
+        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setLocationType('')
+              setSelectedLevel(null)
+              setSelectedRoomId(null)
+              onCreate()
+            }}
+            disabled={creating}
+          >
+            Skip
+          </Button>
+          <Button
+            disabled={creating}
+            onClick={onCreate}
+            className="gap-1.5"
+          >
+            <RiCheckLine className="size-4" />
+            {creating ? 'Creating…' : 'Create Device'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

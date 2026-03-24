@@ -7,7 +7,9 @@ import {
   RiArrowRightSLine,
   RiLink,
   RiRefreshLine,
+  RiBuildingLine,
   RiDoorOpenLine,
+  RiStackLine,
 } from '@remixicon/react'
 
 import { useSiteId } from '~/layouts/site'
@@ -343,13 +345,23 @@ function DeviceRow({ device, href }: { device: DeviceListItem; href: string }) {
           <p className="truncate text-xs text-muted-foreground">
             {device.tag || `${device.brand} ${device.model}`}
           </p>
-          {device.roomName && (
+          {device.isSiteDevice ? (
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <RiBuildingLine aria-hidden="true" className="size-3" />
+              Site
+            </span>
+          ) : device.roomName ? (
             <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               <RiDoorOpenLine aria-hidden="true" className="size-3" />
               {device.level != null ? `F${device.level} · ` : ''}
               {device.roomName}
             </span>
-          )}
+          ) : device.level != null ? (
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <RiStackLine aria-hidden="true" className="size-3" />
+              {`F${device.level}`}
+            </span>
+          ) : null}
         </div>
       </div>
       <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">

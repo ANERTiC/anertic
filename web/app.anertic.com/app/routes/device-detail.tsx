@@ -14,6 +14,10 @@ import {
   RiArrowDownSLine,
   RiArrowUpSLine,
   RiLoader4Line,
+  RiBuildingLine,
+  RiStackLine,
+  RiDoorOpenLine,
+  RiMapPinLine,
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -46,6 +50,7 @@ import {
   DEVICE_CHANNEL_HINTS,
   formatLastSeen,
   type Device,
+  type DeviceLocation,
   type DeviceType,
 } from '~/lib/device'
 
@@ -77,6 +82,7 @@ export default function DeviceDetail() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showAddMeter, setShowAddMeter] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
+  const [showLocationDialog, setShowLocationDialog] = useState(false)
 
   const {
     data: device,
@@ -98,6 +104,14 @@ export default function DeviceDetail() {
 
   const { data: latestReading } = useSWR<LatestReadingResult>(
     deviceId ? ['reading.latest', { deviceId }] : null,
+    fetcher
+  )
+
+  const {
+    data: locationData,
+    mutate: mutateLocation,
+  } = useSWR<DeviceLocation>(
+    deviceId && siteId ? ['device.getLocation', { siteId, deviceId }] : null,
     fetcher
   )
 
@@ -209,6 +223,12 @@ export default function DeviceDetail() {
           </div>
         </div>
       </div>
+
+      {/* Location */}
+      <LocationCard
+        location={locationData ?? null}
+        onEdit={() => setShowLocationDialog(true)}
+      />
 
       {/* Metrics Strip */}
       <div className="grid grid-cols-3 gap-3">
@@ -401,6 +421,16 @@ export default function DeviceDetail() {
         siteId={siteId}
         onCreated={() => mutateMeters()}
       />
+
+      {/* Location Picker Dialog */}
+      <LocationPickerDialog
+        open={showLocationDialog}
+        onOpenChange={setShowLocationDialog}
+        device={device}
+        siteId={siteId}
+        location={locationData ?? null}
+        onUpdated={() => mutateLocation()}
+      />
     </div>
   )
 }
@@ -576,6 +606,313 @@ function EditDeviceDialog({
               {submitting ? 'Saving...' : 'Save'}
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function LocationCard({
+  location,
+  onEdit,
+}: {
+  location: DeviceLocation | null
+  onEdit: () => void
+}) {
+  let Icon = RiMapPinLine
+  let label = 'Not assigned'
+  let description = 'This device has no location set'
+  let dimmed = true
+
+  if (location?.location === 'site') {
+    Icon = RiBuildingLine
+    label = 'Site Level'
+    description = 'Monitors whole-site parameters'
+    dimmed = false
+  } else if (location?.location === 'floor') {
+    Icon = RiStackLine
+    label = `Floor ${location.level}${location.floorName ? ` · ${location.floorName}` : ''}`
+    description = 'Floor-level device'
+    dimmed = false
+  } else if (location?.location === 'room') {
+    Icon = RiDoorOpenLine
+    label = location.roomName ?? 'Room'
+    description = location.level != null ? `Floor ${location.level}` : 'Room'
+    dimmed = false
+  }
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted/50">
+          <Icon
+            className={cn(
+              'size-4',
+              dimmed ? 'text-muted-foreground/30' : 'text-muted-foreground'
+            )}
+          />
+        </div>
+        <div>
+          <p className={cn('text-sm font-medium', dimmed && 'text-muted-foreground/60')}>
+            {label}
+          </p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Button variant="outline" size="sm" onClick={onEdit}>
+        {location?.location ? 'Change' : 'Assign'}
+      </Button>
+    </div>
+  )
+}
+
+interface FloorItem {
+  siteId: string
+  name: string
+  level: number
+}
+
+interface RoomItem {
+  id: string
+  siteId: string
+  name: string
+  type: string
+  level: number
+}
+
+function LocationPickerDialog({
+  open,
+  onOpenChange,
+  device,
+  siteId,
+  location,
+  onUpdated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  device: Device
+  siteId: string
+  location: DeviceLocation | null
+  onUpdated: () => void
+}) {
+  const [locationType, setLocationType] = useState<string>(location?.location ?? '')
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(location?.level ?? null)
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(location?.roomId ?? null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const { data: floorsData } = useSWR<{ items: FloorItem[] }>(
+    open ? ['floor.list', { siteId }] : null,
+    fetcher
+  )
+  const { data: roomsData } = useSWR<{ items: RoomItem[] }>(
+    open && selectedLevel != null ? ['room.list', { siteId, level: selectedLevel }] : null,
+    fetcher
+  )
+
+  const floors = floorsData?.items ?? []
+  const rooms = roomsData?.items ?? []
+
+  async function handleSave() {
+    setSubmitting(true)
+    try {
+      await fetcher([
+        'device.setLocation',
+        {
+          siteId,
+          deviceId: device.id,
+          location: locationType,
+          level: selectedLevel,
+          roomId: selectedRoomId,
+        },
+      ])
+      toast.success('Location updated')
+      onUpdated()
+      onOpenChange(false)
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update location')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleRemove() {
+    setSubmitting(true)
+    try {
+      await fetcher([
+        'device.setLocation',
+        {
+          siteId,
+          deviceId: device.id,
+          location: '',
+        },
+      ])
+      toast.success('Location removed')
+      onUpdated()
+      onOpenChange(false)
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to remove location')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const locationOptions = [
+    {
+      value: 'site',
+      label: 'Site Level',
+      description: 'Monitors whole-site parameters',
+      icon: RiBuildingLine,
+    },
+    {
+      value: 'floor',
+      label: 'Floor',
+      description: 'Assigned to a specific floor',
+      icon: RiStackLine,
+    },
+    {
+      value: 'room',
+      label: 'Room',
+      description: 'Assigned to a specific room',
+      icon: RiDoorOpenLine,
+    },
+  ]
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md gap-0 p-0">
+        <div className="space-y-5 p-6">
+          <div>
+            <h2 className="text-lg font-semibold">Assign Location</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Set where this device is physically installed
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {locationOptions.map((opt) => {
+              const Icon = opt.icon
+              const isSelected = locationType === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setLocationType(opt.value)
+                    if (opt.value === 'site') {
+                      setSelectedLevel(null)
+                      setSelectedRoomId(null)
+                    }
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all',
+                    isSelected
+                      ? 'border-foreground/20 bg-foreground/[0.03]'
+                      : 'border-border/50 hover:border-border hover:bg-muted/20'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex size-8 shrink-0 items-center justify-center rounded-lg',
+                      isSelected ? 'bg-foreground/8' : 'bg-muted/50'
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'size-4',
+                        isSelected ? 'text-foreground' : 'text-muted-foreground'
+                      )}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.description}</p>
+                  </div>
+                  <div
+                    className={cn(
+                      'size-4 shrink-0 rounded-full border-2 transition-all',
+                      isSelected
+                        ? 'border-foreground bg-foreground'
+                        : 'border-border'
+                    )}
+                  />
+                </button>
+              )
+            })}
+          </div>
+
+          {(locationType === 'floor' || locationType === 'room') && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Floor</Label>
+                <select
+                  value={selectedLevel ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? null : Number(e.target.value)
+                    setSelectedLevel(val)
+                    setSelectedRoomId(null)
+                  }}
+                  className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <option value="">Select a floor</option>
+                  {floors.map((f) => (
+                    <option key={f.level} value={f.level}>
+                      Floor {f.level}{f.name ? ` · ${f.name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {locationType === 'room' && selectedLevel != null && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Room</Label>
+                  <select
+                    value={selectedRoomId ?? ''}
+                    onChange={(e) => setSelectedRoomId(e.target.value || null)}
+                    className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <option value="">Select a room</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {location?.location && (
+            <button
+              onClick={handleRemove}
+              disabled={submitting}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+            >
+              Remove assignment
+            </button>
+          )}
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center justify-end gap-2 p-4 px-6">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={
+              submitting ||
+              !locationType ||
+              (locationType === 'floor' && selectedLevel == null) ||
+              (locationType === 'room' && (selectedLevel == null || !selectedRoomId))
+            }
+          >
+            {submitting ? (
+              <RiLoader4Line className="mr-1.5 size-3.5 animate-spin" />
+            ) : null}
+            {submitting ? 'Saving...' : 'Save'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

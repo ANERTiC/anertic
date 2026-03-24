@@ -82,6 +82,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /site.myInvites", am.Handler(site.MyInvites))
 	a.Handle("POST /site.getApiKey", am.Handler(site.GetApiKey))
 	a.Handle("POST /site.regenerateApiKey", am.Handler(site.RegenerateApiKey))
+	a.Handle("POST /site.listDevices", am.Handler(site.ListDevices))
+	a.Handle("POST /site.assignDevice", am.Handler(site.AssignDevice))
+	a.Handle("POST /site.unassignDevice", am.Handler(site.UnassignDevice))
 
 	// Devices
 	a.Handle("POST /device.list", am.Handler(device.List))
@@ -89,6 +92,8 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /device.get", am.Handler(device.Get))
 	a.Handle("POST /device.update", am.Handler(device.Update))
 	a.Handle("POST /device.delete", am.Handler(device.Delete))
+	a.Handle("POST /device.setLocation", am.Handler(device.SetLocation))
+	a.Handle("POST /device.getLocation", am.Handler(device.GetLocation))
 
 	// Meters
 	a.Handle("POST /meter.list", am.Handler(meter.List))

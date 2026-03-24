@@ -2,6 +2,8 @@ package device
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"slices"
 	"time"
 
@@ -17,9 +19,13 @@ import (
 )
 
 var (
-	ErrNotFound = arpc.NewErrorCode("device/not-found", "device not found")
+	ErrNotFound        = arpc.NewErrorCode("device/not-found", "device not found")
+	ErrFloorNotFound   = arpc.NewErrorCode("device/floor-not-found", "floor not found")
+	ErrRoomNotFound    = arpc.NewErrorCode("device/room-not-found", "room not found")
+	ErrInvalidLocation = arpc.NewErrorCode("device/invalid-location", "location must be site, floor, room, or empty")
 
-	validDeviceTypes = []string{"meter", "inverter", "solar_panel", "appliance"}
+	validDeviceTypes  = []string{"meter", "inverter", "solar_panel", "appliance"}
+	validLocations    = []string{"site", "floor", "room", ""}
 )
 
 // List
@@ -53,6 +59,7 @@ type Item struct {
 	RoomID           *string    `json:"roomId"`
 	RoomName         *string    `json:"roomName"`
 	Level            *int       `json:"level"`
+	IsSiteDevice     bool       `json:"isSiteDevice"`
 }
 
 type ListResult struct {
@@ -86,6 +93,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			"r.id",
 			"r.name",
 			"fd.level",
+			pgstmt.Raw("sd.device_id is not null"),
 		)
 		b.From("devices d")
 		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
@@ -111,6 +119,9 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 		b.LeftJoin("floor_devices fd").On(func(c pgstmt.Cond) {
 			c.EqRaw("fd.device_id", "d.id")
 			c.EqRaw("fd.site_id", "d.site_id")
+		})
+		b.LeftJoin("site_devices sd").On(func(c pgstmt.Cond) {
+			c.EqRaw("sd.device_id", "d.id")
 		})
 		b.Where(func(c pgstmt.Cond) {
 			c.Mode().And()
@@ -150,6 +161,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			pgsql.Null(&it.RoomID),
 			pgsql.Null(&it.RoomName),
 			pgsql.Null(&it.Level),
+			&it.IsSiteDevice,
 		)
 		if err != nil {
 			return err
@@ -285,6 +297,96 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 	return &r, nil
 }
 
+// GetLocation
+
+type GetLocationParams struct {
+	SiteID   string `json:"siteId"`
+	DeviceID string `json:"deviceId"`
+}
+
+func (p *GetLocationParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.DeviceID != "", "deviceId is required")
+	return v.Error()
+}
+
+type GetLocationResult struct {
+	Location  string  `json:"location"`
+	Level     *int    `json:"level"`
+	FloorName *string `json:"floorName"`
+	RoomID    *string `json:"roomId"`
+	RoomName  *string `json:"roomName"`
+}
+
+func GetLocation(ctx context.Context, p *GetLocationParams) (*GetLocationResult, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	var (
+		isSiteDevice bool
+		floorLevel   *int
+		floorName    *string
+		roomID       *string
+		roomName     *string
+		roomLevel    *int
+	)
+	err := pgctx.QueryRow(ctx, `
+		select
+			sd.device_id is not null as is_site_device,
+			fd.level as floor_level,
+			f.name as floor_name,
+			rd.room_id,
+			rm.name as room_name,
+			rm.level as room_level
+		from devices d
+		left join site_devices sd on sd.device_id = d.id
+		left join floor_devices fd on fd.device_id = d.id
+		left join floors f on f.site_id = fd.site_id and f.level = fd.level
+		left join room_devices rd on rd.device_id = d.id
+		left join rooms rm on rm.id = rd.room_id and rm.deleted_at is null
+		where d.id = $1
+		  and d.site_id = $2
+		  and d.deleted_at is null
+	`, p.DeviceID, p.SiteID).Scan(
+		&isSiteDevice,
+		pgsql.Null(&floorLevel),
+		pgsql.Null(&floorName),
+		pgsql.Null(&roomID),
+		pgsql.Null(&roomName),
+		pgsql.Null(&roomLevel),
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var r GetLocationResult
+	switch {
+	case roomID != nil:
+		r.Location = "room"
+		r.RoomID = roomID
+		r.RoomName = roomName
+		r.Level = roomLevel
+	case floorLevel != nil:
+		r.Location = "floor"
+		r.Level = floorLevel
+		r.FloorName = floorName
+	case isSiteDevice:
+		r.Location = "site"
+	default:
+		r.Location = ""
+	}
+
+	return &r, nil
+}
+
 // Update
 
 type UpdateParams struct {
@@ -386,4 +488,179 @@ func Update(ctx context.Context, p *UpdateParams) (*struct{}, error) {
 	}
 
 	return new(struct{}), nil
+}
+
+// SetLocation
+
+type SetLocationParams struct {
+	SiteID   string  `json:"siteId"`
+	DeviceID string  `json:"deviceId"`
+	Location string  `json:"location"`
+	Level    *int    `json:"level"`
+	RoomID   *string `json:"roomId"`
+}
+
+func (p *SetLocationParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.DeviceID != "", "deviceId is required")
+	v.Must(slices.Contains(validLocations, p.Location), "location must be site, floor, room, or empty")
+	if p.Location == "floor" {
+		v.Must(p.Level != nil, "level is required when location is floor")
+	}
+	if p.Location == "room" {
+		v.Must(p.RoomID != nil, "roomId is required when location is room")
+	}
+	return v.Error()
+}
+
+func SetLocation(ctx context.Context, p *SetLocationParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	if err := verifyDeviceInSite(ctx, p.DeviceID, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	// Verify target exists before clearing assignments
+	if p.Location == "floor" {
+		if err := verifyFloorExists(ctx, p.SiteID, *p.Level); err != nil {
+			return nil, err
+		}
+	}
+	if p.Location == "room" {
+		if err := verifyRoomInSite(ctx, *p.RoomID, p.SiteID); err != nil {
+			return nil, err
+		}
+	}
+
+	// Remove all existing location assignments for this device
+	_, err := pgctx.Exec(ctx, `
+		delete from site_devices
+		where device_id = $1
+	`, p.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = pgctx.Exec(ctx, `
+		delete from floor_devices
+		where device_id = $1
+	`, p.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = pgctx.Exec(ctx, `
+		delete from room_devices
+		where device_id = $1
+	`, p.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Insert into the requested location
+	switch p.Location {
+	case "site":
+		_, err = pgctx.Exec(ctx, `
+			insert into site_devices (site_id, device_id)
+			values ($1, $2)
+			on conflict (site_id, device_id) do nothing
+		`, p.SiteID, p.DeviceID)
+		if err != nil {
+			return nil, err
+		}
+	case "floor":
+		_, err = pgctx.Exec(ctx, `
+			insert into floor_devices (site_id, level, device_id)
+			values ($1, $2, $3)
+			on conflict (site_id, level, device_id) do nothing
+		`, p.SiteID, *p.Level, p.DeviceID)
+		if err != nil {
+			return nil, err
+		}
+	case "room":
+		_, err = pgctx.Exec(ctx, `
+			insert into room_devices (room_id, device_id)
+			values ($1, $2)
+			on conflict (room_id, device_id) do nothing
+		`, *p.RoomID, p.DeviceID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return new(struct{}), nil
+}
+
+func verifyDeviceInSite(ctx context.Context, deviceID, siteID string) error {
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from devices
+			where id = $1
+			  and site_id = $2
+			  and deleted_at is null
+		)
+	`,
+		deviceID,
+		siteID,
+	).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func verifyFloorExists(ctx context.Context, siteID string, level int) error {
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from floors
+			where site_id = $1
+			  and level = $2
+		)
+	`,
+		siteID,
+		level,
+	).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrFloorNotFound
+	}
+	return nil
+}
+
+func verifyRoomInSite(ctx context.Context, roomID, siteID string) error {
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from rooms
+			where id = $1
+			  and site_id = $2
+			  and deleted_at is null
+		)
+	`,
+		roomID,
+		siteID,
+	).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrRoomNotFound
+	}
+	return nil
 }

@@ -19,10 +19,12 @@ import (
 
 	"github.com/anertic/anertic/api/auth"
 	"github.com/anertic/anertic/api/iam"
+	"github.com/anertic/anertic/pkg/devicestatus"
 )
 
 var (
-	ErrNotFound = arpc.NewErrorCode("site/not-found", "site not found")
+	ErrNotFound       = arpc.NewErrorCode("site/not-found", "site not found")
+	ErrDeviceNotFound = arpc.NewErrorCode("site/device-not-found", "device not found")
 )
 
 // List
@@ -591,4 +593,189 @@ func createStarterDevice(ctx context.Context, siteID string) error {
 		"DEMO-"+strings.ToUpper(batteryMeterID),
 	)
 	return err
+}
+
+// AssignDevice
+
+type AssignDeviceParams struct {
+	SiteID   string `json:"siteId"`
+	DeviceID string `json:"deviceId"`
+}
+
+func (p *AssignDeviceParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.DeviceID != "", "deviceId is required")
+	return v.Error()
+}
+
+func AssignDevice(ctx context.Context, p *AssignDeviceParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+	if err := verifyDeviceInSite(ctx, p.DeviceID, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	_, err := pgctx.Exec(ctx, `
+		insert into site_devices (site_id, device_id)
+		values ($1, $2)
+		on conflict (site_id, device_id) do nothing
+	`, p.SiteID, p.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
+// UnassignDevice
+
+type UnassignDeviceParams struct {
+	SiteID   string `json:"siteId"`
+	DeviceID string `json:"deviceId"`
+}
+
+func (p *UnassignDeviceParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	v.Must(p.DeviceID != "", "deviceId is required")
+	return v.Error()
+}
+
+func UnassignDevice(ctx context.Context, p *UnassignDeviceParams) (*struct{}, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	_, err := pgctx.Exec(ctx, `
+		delete from site_devices
+		where site_id = $1
+		  and device_id = $2
+	`, p.SiteID, p.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(struct{}), nil
+}
+
+// ListDevices returns devices assigned at the site level
+
+type ListDevicesParams struct {
+	SiteID string `json:"siteId"`
+}
+
+func (p *ListDevicesParams) Valid() error {
+	v := validator.New()
+	v.Must(p.SiteID != "", "siteId is required")
+	return v.Error()
+}
+
+type DeviceItem struct {
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Type             string     `json:"type"`
+	Tag              string     `json:"tag"`
+	ConnectionStatus string     `json:"connectionStatus"`
+	MeterCount       int        `json:"meterCount"`
+	LastSeenAt       *time.Time `json:"lastSeenAt"`
+}
+
+type ListDevicesResult struct {
+	Items []DeviceItem `json:"items"`
+}
+
+func ListDevices(ctx context.Context, p *ListDevicesParams) (*ListDevicesResult, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+	if err := iam.InSite(ctx, p.SiteID); err != nil {
+		return nil, err
+	}
+
+	items := make([]DeviceItem, 0)
+
+	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
+		b.Columns(
+			"d.id",
+			"d.name",
+			"d.type",
+			"d.tag",
+			pgstmt.Raw("coalesce(m.meter_count, 0)"),
+			pgstmt.Raw("coalesce(m.online_count, 0)"),
+			"m.last_seen_at",
+		)
+		b.From("site_devices sd")
+		b.Join("devices d").On(func(c pgstmt.Cond) {
+			c.EqRaw("d.id", "sd.device_id")
+			c.IsNull("d.deleted_at")
+		})
+		b.LeftJoinLateralSelect(func(b pgstmt.SelectStatement) {
+			b.Columns(
+				pgstmt.Raw("count(*) as meter_count"),
+				pgstmt.Raw("count(*) filter (where is_online) as online_count"),
+				pgstmt.Raw("max(last_seen_at) as last_seen_at"),
+			)
+			b.From("meters")
+			b.Where(func(c pgstmt.Cond) {
+				c.EqRaw("device_id", "d.id")
+			})
+		}, "m").On(func(c pgstmt.Cond) {
+			c.Raw("true")
+		})
+		b.Where(func(c pgstmt.Cond) {
+			c.Eq("sd.site_id", p.SiteID)
+		})
+		b.OrderBy("d.created_at").Desc()
+	}).IterWith(ctx, func(scan pgsql.Scanner) error {
+		var it DeviceItem
+		var onlineCount int
+		err := scan(
+			&it.ID,
+			&it.Name,
+			&it.Type,
+			&it.Tag,
+			&it.MeterCount,
+			&onlineCount,
+			pgsql.Null(&it.LastSeenAt),
+		)
+		if err != nil {
+			return err
+		}
+		it.ConnectionStatus = devicestatus.Derive(it.MeterCount, onlineCount, it.LastSeenAt)
+		items = append(items, it)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListDevicesResult{Items: items}, nil
+}
+
+func verifyDeviceInSite(ctx context.Context, deviceID, siteID string) error {
+	var exists bool
+	err := pgctx.QueryRow(ctx, `
+		select exists (
+			select 1
+			from devices
+			where id = $1
+			  and site_id = $2
+			  and deleted_at is null
+		)
+	`, deviceID, siteID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrDeviceNotFound
+	}
+	return nil
 }

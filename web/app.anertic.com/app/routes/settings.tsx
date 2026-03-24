@@ -31,6 +31,8 @@ import {
   RiArrowDownSLine,
   RiUserUnfollowLine,
   RiSendPlaneLine,
+  RiFocus3Line,
+  RiMapPin2Fill,
 } from '@remixicon/react'
 import { useSiteId } from '~/layouts/site'
 import { Card, CardContent } from '~/components/ui/card'
@@ -553,6 +555,140 @@ export default function Settings() {
                 <p className="text-sm font-medium">{settings.address}</p>
               )}
             </div>
+
+            {/* Location Coordinates */}
+            <div className="space-y-3 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">
+                  Location
+                </Label>
+                {editingGeneral && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!navigator.geolocation) {
+                        toast.error('Geolocation not supported')
+                        return
+                      }
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          update(
+                            'latitude',
+                            Math.round(pos.coords.latitude * 1e6) / 1e6
+                          )
+                          update(
+                            'longitude',
+                            Math.round(pos.coords.longitude * 1e6) / 1e6
+                          )
+                          toast.success('Location detected')
+                        },
+                        () => toast.error('Unable to get location')
+                      )
+                    }}
+                    className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <RiFocus3Line className="size-3" />
+                    Use my location
+                  </button>
+                )}
+              </div>
+
+              {isLoadingSite ? (
+                <Skeleton className="h-[180px] w-full rounded-lg" />
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-border/60">
+                  {/* Map Preview */}
+                  {settings.latitude !== 0 || settings.longitude !== 0 ? (
+                    <div className="relative h-[180px] bg-muted/30">
+                      <iframe
+                        title="Site location"
+                        className="pointer-events-none h-full w-full border-0"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${settings.longitude - 0.008}%2C${settings.latitude - 0.005}%2C${settings.longitude + 0.008}%2C${settings.latitude + 0.005}&layer=mapnik&marker=${settings.latitude}%2C${settings.longitude}`}
+                        loading="lazy"
+                      />
+                      {editingGeneral && (
+                        <div className="absolute right-2 bottom-2 rounded-md bg-background/90 px-2 py-1 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
+                          Edit coordinates below
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-[180px] flex-col items-center justify-center gap-2 bg-muted/20">
+                      <RiMapPin2Fill className="size-6 text-muted-foreground/30" />
+                      <p className="text-xs text-muted-foreground/50">
+                        No location set
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Coordinate Inputs */}
+                  {editingGeneral ? (
+                    <div className="grid grid-cols-2 gap-px border-t border-border/60 bg-border/60">
+                      <div className="bg-background p-3">
+                        <Label className="text-[10px] font-medium tracking-wider text-muted-foreground/70 uppercase">
+                          Latitude
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          min={-90}
+                          max={90}
+                          value={settings.latitude || ''}
+                          onChange={(e) =>
+                            update(
+                              'latitude',
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          placeholder="13.736717"
+                          className="mt-1 h-8 border-0 bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+                        />
+                      </div>
+                      <div className="bg-background p-3">
+                        <Label className="text-[10px] font-medium tracking-wider text-muted-foreground/70 uppercase">
+                          Longitude
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          min={-180}
+                          max={180}
+                          value={settings.longitude || ''}
+                          onChange={(e) =>
+                            update(
+                              'longitude',
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          placeholder="100.523186"
+                          className="mt-1 h-8 border-0 bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+                        />
+                      </div>
+                    </div>
+                  ) : (settings.latitude !== 0 || settings.longitude !== 0) ? (
+                    <div className="grid grid-cols-2 gap-px border-t border-border/60 bg-border/60">
+                      <div className="bg-background px-3 py-2">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground/60 uppercase">
+                          Lat
+                        </span>
+                        <p className="font-mono text-xs font-medium tabular-nums">
+                          {settings.latitude}
+                        </p>
+                      </div>
+                      <div className="bg-background px-3 py-2">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground/60 uppercase">
+                          Lng
+                        </span>
+                        <p className="font-mono text-xs font-medium tabular-nums">
+                          {settings.longitude}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Currency</Label>
               {isLoadingSite ? (

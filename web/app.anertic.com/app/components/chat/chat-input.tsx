@@ -86,6 +86,7 @@ export function ChatInput({
           name="message"
           rows={2}
           placeholder="Ask about your energy…"
+          autoComplete="off"
           className="flex-1 resize-none bg-transparent text-base leading-relaxed outline-none focus-visible:outline-none focus-visible:ring-0 placeholder:text-muted-foreground"
           onKeyDown={handleKeyDown}
           onInput={handleInput}

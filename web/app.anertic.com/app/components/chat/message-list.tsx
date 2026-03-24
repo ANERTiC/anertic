@@ -17,7 +17,8 @@ export function MessageList({ messages, isStreaming, className, quickReplies, on
   const [justFinishedId, setJustFinishedId] = useState<string | null>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    bottomRef.current?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' })
   }, [messages, isStreaming])
 
   // Detect streaming → done transition

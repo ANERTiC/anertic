@@ -77,27 +77,34 @@ function reconstructMessages(raw: RawMessage[]): ChatMessage[] {
   return messages
 }
 
+const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'always', style: 'narrow' })
+
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60000)
   if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 60) return rtf.format(-minutes, 'minute')
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return rtf.format(-hours, 'hour')
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })
+  if (days < 7) return rtf.format(-days, 'day')
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(dateStr))
 }
 
 export default function ChatPage() {
   const siteId = useSiteId()
   const chat = useChat(siteId)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyClosing, setHistoryClosing] = useState(false)
+  const historyVisible = historyOpen || historyClosing
   const panelRef = useRef<HTMLDivElement>(null)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const closeHistory = useCallback(() => {
+    setHistoryOpen(false)
+    setHistoryClosing(true)
+    setTimeout(() => setHistoryClosing(false), 150)
+  }, [])
 
   const {
     send,
@@ -168,17 +175,17 @@ export default function ChatPage() {
     if (!historyOpen) return
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setHistoryOpen(false)
+        closeHistory()
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [historyOpen])
+  }, [historyOpen, closeHistory])
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
       if (isStreaming) stop()
-      setHistoryOpen(false)
+      closeHistory()
       try {
         const result = await chatFetcher<{
           id: string
@@ -197,14 +204,14 @@ export default function ChatPage() {
         toast.error('Failed to load conversation')
       }
     },
-    [isStreaming, stop, setConversationId, setMessages, setSearchParams]
+    [isStreaming, stop, closeHistory, setConversationId, setMessages, setSearchParams]
   )
 
   const handleNewConversation = useCallback(() => {
     if (isStreaming) stop()
     setConversationId(null)
     setMessages([])
-    setHistoryOpen(false)
+    closeHistory()
     setSearchParams(
       (prev) => {
         prev.delete('conversation')
@@ -212,12 +219,12 @@ export default function ChatPage() {
       },
       { replace: true }
     )
-  }, [isStreaming, stop, setConversationId, setMessages, setSearchParams])
+  }, [isStreaming, stop, closeHistory, setConversationId, setMessages, setSearchParams])
 
   // Conversation list for the dropdown
   const { data: historyData, mutate: mutateHistory } = useSWR<{
     items: { id: string; title: string; updatedAt: string }[]
-  }>(historyOpen ? ['conversation.list', { siteId }] : null, chatFetcher)
+  }>(historyVisible ? ['conversation.list', { siteId }] : null, chatFetcher)
   const conversations = (historyData?.items || []).slice(0, 5)
 
   async function handleDelete(e: React.MouseEvent, id: string) {
@@ -242,10 +249,10 @@ export default function ChatPage() {
         <div className="relative flex items-center px-2 pt-2 pb-1" ref={panelRef}>
           <div className="flex items-center gap-0.5">
             <button
-              onClick={() => setHistoryOpen(!historyOpen)}
+              onClick={() => (historyOpen ? closeHistory() : setHistoryOpen(true))}
               className={cn(
                 'flex size-9 items-center justify-center rounded-lg transition-colors',
-                historyOpen
+                historyVisible
                   ? 'bg-muted text-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
@@ -263,42 +270,45 @@ export default function ChatPage() {
           </div>
 
           {/* History dropdown */}
-          {historyOpen && (
-            <div className="absolute left-2 top-full z-40 mt-1 min-w-56 max-w-80 rounded-xl bg-background p-1 shadow-lg ring-1 ring-border/30 motion-safe:animate-fade-in-up">
+          {historyVisible && (
+            <div className={cn(
+              "absolute left-2 top-full z-40 mt-1 min-w-56 max-w-80 rounded-xl bg-background p-1 shadow-lg ring-1 ring-border/30",
+              historyClosing ? "motion-safe:animate-fade-out-down" : "motion-safe:animate-fade-in-up"
+            )}>
               {conversations.length === 0 ? (
                 <div className="px-3 py-4 text-center text-xs text-muted-foreground/50">
                   No conversations yet
                 </div>
               ) : (
                 conversations.map((conv) => (
-                  <button
+                  <div
                     key={conv.id}
-                    onClick={() => handleSelectConversation(conv.id)}
                     className={cn(
-                      'group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                      'group relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
                       conversationId === conv.id
                         ? 'bg-primary/8 text-foreground'
                         : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                     )}
                   >
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                    <button
+                      onClick={() => handleSelectConversation(conv.id)}
+                      className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      aria-label={conv.title || 'Untitled'}
+                    />
+                    <span className="relative min-w-0 flex-1 truncate text-[13px]">
                       {conv.title || 'Untitled'}
                     </span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40 group-hover:hidden">
+                    <span className="relative shrink-0 text-[10px] tabular-nums text-muted-foreground/40 group-hover:hidden">
                       {formatRelativeTime(conv.updatedAt)}
                     </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
+                    <button
                       onClick={(e) => handleDelete(e, conv.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleDelete(e as unknown as React.MouseEvent, conv.id)
-                      }}
-                      className="hidden shrink-0 rounded-md p-1 text-muted-foreground/30 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:block"
+                      className="relative z-10 hidden shrink-0 rounded-md p-1 text-muted-foreground/30 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-hover:block"
+                      aria-label={`Delete ${conv.title || 'conversation'}`}
                     >
                       <RiDeleteBinLine className="size-3" />
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                 ))
               )}
             </div>

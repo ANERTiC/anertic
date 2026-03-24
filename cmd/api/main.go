@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/httpmux"
 	"github.com/moonrhythm/parapet"
+	"github.com/moonrhythm/validator"
 	"github.com/moonrhythm/parapet/pkg/cors"
 	"github.com/moonrhythm/session"
 	"github.com/moonrhythm/session/store"
@@ -84,6 +86,16 @@ func run() error {
 			OK     bool `json:"ok"`
 			Result any  `json:"result"`
 		}{true, v})
+	}
+	am.WrapError = func(err error) error {
+		var arpcErr *arpc.Error
+		if errors.As(err, &arpcErr) {
+			return err
+		}
+		if validator.IsError(err) {
+			return arpc.NewErrorCode("validation", err.Error())
+		}
+		return arpc.NewErrorCode("unknown", "unknown error")
 	}
 	am.OnOK(func(w http.ResponseWriter, r *http.Request, req any, res any) {
 		slog.Info("api", "method", r.Method, "path", r.URL.Path)

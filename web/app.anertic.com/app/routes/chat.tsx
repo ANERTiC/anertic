@@ -89,11 +89,18 @@ export default function ChatPage() {
     messages,
   } = chat
 
+  // Track whether initial restore is done to prevent empty-state flash
+  const [initialized, setInitialized] = useState(
+    () => !searchParams.get('conversation')
+  )
+
   // Restore conversation from URL on mount
   useEffect(() => {
     const urlConversationId = searchParams.get('conversation')
     if (urlConversationId && urlConversationId !== conversationId) {
-      handleSelectConversation(urlConversationId)
+      handleSelectConversation(urlConversationId).finally(() =>
+        setInitialized(true)
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -167,7 +174,7 @@ export default function ChatPage() {
     )
   }, [isStreaming, stop, setConversationId, setMessages, setSearchParams])
 
-  const isEmpty = messages.length === 0
+  const isEmpty = initialized && messages.length === 0
 
   const { data: recentData } = useSWR<{
     items: { id: string; title: string; updatedAt: string }[]
@@ -211,7 +218,6 @@ export default function ChatPage() {
                 onSend={send}
                 onStop={stop}
                 isStreaming={isStreaming}
-                suggestions={SPARK_SUGGESTIONS}
                 bordered={false}
               />
             </div>

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useMemo } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { RiArrowUpLine, RiStopFill } from '@remixicon/react'
 import { cn } from '~/lib/utils'
 import { ScrollArea, ScrollBar } from '~/components/ui/scroll-area'
@@ -23,11 +23,8 @@ export function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const visibleSuggestions = useMemo(() => {
-    if (!suggestions || suggestions.length <= 4) return suggestions
-    const shuffled = [...suggestions].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, 4)
-  }, [suggestions])
+  // Take first 4 suggestions deterministically (no Math.random to avoid SSR hydration mismatch)
+  const visibleSuggestions = suggestions?.slice(0, 4)
 
   const handleSubmit = useCallback(() => {
     const value = textareaRef.current?.value.trim()

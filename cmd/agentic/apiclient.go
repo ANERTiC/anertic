@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/acoshift/arpc/v2"
 )
 
 // APIClient calls the ANERTiC REST API.
@@ -66,14 +68,17 @@ func (c *APIClient) Invoke(ctx context.Context, token, method string, body any, 
 			Message string `json:"message"`
 		}
 		json.Unmarshal(envelope.Error, &errObj)
-		if errObj.Message != "" {
-			return fmt.Errorf("%s: %s", errObj.Code, errObj.Message)
-		}
 		if errObj.Code != "" {
-			return fmt.Errorf("%s", errObj.Code)
+			msg := errObj.Message
+			if msg == "" {
+				msg = errObj.Code
+			}
+			return arpc.NewErrorCode(errObj.Code, msg)
 		}
-		// Fallback: use raw error JSON
-		return fmt.Errorf("api error: %s", string(envelope.Error))
+		if errObj.Message != "" {
+			return arpc.NewErrorCode("unknown", errObj.Message)
+		}
+		return arpc.NewErrorCode("unknown", fmt.Sprintf("api error: %s", string(envelope.Error)))
 	}
 	if out != nil && len(envelope.Result) > 0 {
 		if err := json.Unmarshal(envelope.Result, out); err != nil {

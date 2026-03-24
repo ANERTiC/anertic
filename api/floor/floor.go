@@ -37,12 +37,12 @@ func (p *ListParams) Valid() error {
 }
 
 type Item struct {
-	SiteID    string     `json:"siteId"`
-	Name      string     `json:"name"`
-	Level     int        `json:"level"`
+	SiteID    string      `json:"siteId"`
+	Name      string      `json:"name"`
+	Level     int         `json:"level"`
 	Stats     floor.Stats `json:"stats"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	CreatedAt time.Time   `json:"createdAt"`
+	UpdatedAt time.Time   `json:"updatedAt"`
 }
 
 type ListResult struct {

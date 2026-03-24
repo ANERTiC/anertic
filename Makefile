@@ -35,6 +35,9 @@ run-ingester:
 run-ocpp:
 	go run ./cmd/ocpp
 
+run-agentic:
+	go run ./cmd/agentic
+
 # Deployment
 -include .env
 GIT_REV := $(shell git rev-parse --short HEAD)
@@ -84,6 +87,15 @@ deploy-ingester:
 		.
 	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,staging-ingester,olufy-0)
 
+deploy-agentic:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/agentic:$(GIT_REV) \
+		-f build/agentic/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/agentic:$(GIT_REV),anertic,staging-agentic,olufy-0)
+
 release-api:
 	$(call deploy,$(IMAGE_BASE)/api:$(GIT_REV),anertic,api,olufy-0)
 
@@ -95,6 +107,9 @@ release-worker:
 
 release-ingester:
 	$(call deploy,$(IMAGE_BASE)/ingester:$(GIT_REV),anertic,ingester,olufy-0)
+
+release-agentic:
+	$(call deploy,$(IMAGE_BASE)/agentic:$(GIT_REV),anertic,agentic,olufy-0)
 
 VITE_API_URL ?= https://api.anertic.com
 VITE_APP_URL ?= https://app.anertic.com

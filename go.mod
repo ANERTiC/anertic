@@ -7,6 +7,7 @@ require (
 	github.com/acoshift/arpc/v2 v2.2.0
 	github.com/acoshift/configfile v1.9.0
 	github.com/acoshift/pgsql v0.16.0
+	github.com/anthropics/anthropic-sdk-go v1.27.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/coder/websocket v1.8.14
 	github.com/coreos/go-oidc/v3 v3.17.0
@@ -16,6 +17,7 @@ require (
 	github.com/moonrhythm/parapet v0.13.6
 	github.com/moonrhythm/session v0.19.0
 	github.com/moonrhythm/validator v1.3.0
+	github.com/openai/openai-go v1.12.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/rs/xid v1.6.0
 	github.com/samber/go-quickwit v0.1.2
@@ -47,6 +49,10 @@ require (
 	github.com/kavu/go_reuseport v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect

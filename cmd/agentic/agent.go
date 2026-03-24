@@ -167,10 +167,14 @@ func (a *Agent) Run(ctx context.Context, token string, systemPrompt string, hist
 				Content: iterText,
 			})
 		}
+		// TODO: quick replies disabled for now
+		// quickReplies := detectQuickReplies(fullText)
 		cb(SSEEvent{Type: "done"})
 		return fullText, newMessages, nil
 	}
 
+	// TODO: quick replies disabled for now
+	// quickReplies := detectQuickReplies(fullText)
 	cb(SSEEvent{Type: "done"})
 	return fullText, newMessages, nil
 }

@@ -51,7 +51,7 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className="safe-area-pb border-t bg-background p-3 md:p-4">
+    <div className="safe-area-pb border-t bg-background p-3 md:p-4 motion-safe:animate-fade-in-up [animation-delay:200ms]">
       <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
         <textarea
           ref={textareaRef}

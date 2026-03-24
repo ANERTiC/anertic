@@ -116,7 +116,7 @@
   animation: bar-grow 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Chat sidebar animations */
+/* Chat animations */
 @keyframes slide-in-left {
   from {
     transform: translateX(-100%);
@@ -139,9 +139,49 @@
   }
 }
 
+@keyframes scale-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px 0 oklch(0.65 0.24 277 / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px oklch(0.65 0.24 277 / 0.5);
+  }
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @theme inline {
   --animate-slide-in-left: slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-in-up: fade-in-up 0.25s ease-out both;
+  --animate-scale-fade-in: scale-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-shimmer-glow: shimmer-glow 2.5s ease-in-out infinite;
+  --animate-message-in: message-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Safe area utilities for notched devices */

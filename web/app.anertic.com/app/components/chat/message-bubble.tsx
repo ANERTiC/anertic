@@ -11,7 +11,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end motion-safe:animate-message-in">
         <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground md:max-w-[75%] md:text-sm">
           {message.content}
         </div>
@@ -20,7 +20,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return (
-    <div>
+    <div className="motion-safe:animate-message-in">
       <div className="flex gap-2.5">
         <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
           <span className="text-xs text-white" aria-hidden="true">✦</span>

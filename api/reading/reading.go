@@ -26,11 +26,16 @@ func (p *QueryParams) Valid() error {
 }
 
 type Reading struct {
-	Time      time.Time       `json:"time"`
-	PowerW    decimal.Decimal `json:"powerW"`
-	EnergyKWh decimal.Decimal `json:"energyKwh"`
-	VoltageV  decimal.Decimal `json:"voltageV"`
-	CurrentA  decimal.Decimal `json:"currentA"`
+	Time         time.Time        `json:"time"`
+	PowerW       decimal.Decimal  `json:"powerW"`
+	EnergyKWh    decimal.Decimal  `json:"energyKwh"`
+	VoltageV     decimal.Decimal  `json:"voltageV"`
+	CurrentA     decimal.Decimal  `json:"currentA"`
+	Frequency    *decimal.Decimal `json:"frequency"`
+	PF           *decimal.Decimal `json:"pf"`
+	THDV         *decimal.Decimal `json:"thdV"`
+	THDI         *decimal.Decimal `json:"thdI"`
+	TemperatureC *decimal.Decimal `json:"temperatureC"`
 }
 
 type QueryResult struct {
@@ -80,18 +85,37 @@ func Query(ctx context.Context, p *QueryParams) (*QueryResult, error) {
 
 	var readings []Reading
 
+	var extraCols string
+	if interval == "raw" {
+		extraCols = `,
+			frequency,
+			pf,
+			thd_v,
+			thd_i,
+			temperature_c`
+	}
+
+	var voltageCol, currentCol string
+	if interval == "raw" {
+		voltageCol = "voltage_v"
+		currentCol = "current_a"
+	} else {
+		voltageCol = "avg_voltage_v"
+		currentCol = "avg_current_a"
+	}
+
 	rows, err := pgctx.Query(ctx, `
-		SELECT
+		select
 			`+timeCol+`,
-			COALESCE(`+powerCol+`, 0),
-			COALESCE(`+energyCol+`, 0),
-			COALESCE(avg_voltage_v, 0),
-			COALESCE(avg_current_a, 0)
-		FROM `+table+`
-		WHERE meter_id = $1
-		  AND `+timeCol+` >= $2
-		  AND `+timeCol+` <= $3
-		ORDER BY `+timeCol+` ASC
+			coalesce(`+powerCol+`, 0),
+			coalesce(`+energyCol+`, 0),
+			coalesce(`+voltageCol+`, 0),
+			coalesce(`+currentCol+`, 0)`+extraCols+`
+		from `+table+`
+		where meter_id = $1
+		  and `+timeCol+` >= $2
+		  and `+timeCol+` <= $3
+		order by `+timeCol+` asc
 	`,
 		p.MeterID,
 		startTime,
@@ -104,14 +128,36 @@ func Query(ctx context.Context, p *QueryParams) (*QueryResult, error) {
 
 	for rows.Next() {
 		var r Reading
-		if err := rows.Scan(
+		dest := []any{
 			&r.Time,
 			&r.PowerW,
 			&r.EnergyKWh,
 			&r.VoltageV,
 			&r.CurrentA,
-		); err != nil {
+		}
+		var freq, pf, thdV, thdI, tempC decimal.NullDecimal
+		if interval == "raw" {
+			dest = append(dest, &freq, &pf, &thdV, &thdI, &tempC)
+		}
+		if err := rows.Scan(dest...); err != nil {
 			return nil, err
+		}
+		if interval == "raw" {
+			if freq.Valid {
+				r.Frequency = &freq.Decimal
+			}
+			if pf.Valid {
+				r.PF = &pf.Decimal
+			}
+			if thdV.Valid {
+				r.THDV = &thdV.Decimal
+			}
+			if thdI.Valid {
+				r.THDI = &thdI.Decimal
+			}
+			if tempC.Valid {
+				r.TemperatureC = &tempC.Decimal
+			}
 		}
 		readings = append(readings, r)
 	}
@@ -144,13 +190,20 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 	}
 
 	var r Reading
+	var freq, pf, thdV, thdI, tempC decimal.NullDecimal
+
 	err := pgctx.QueryRow(ctx, `
 		select
 			m.last_seen_at,
 			coalesce((m.latest_reading->>'powerW')::numeric, 0),
 			coalesce((m.latest_reading->>'energyKwh')::numeric, 0),
 			coalesce((m.latest_reading->>'voltageV')::numeric, 0),
-			coalesce((m.latest_reading->>'currentA')::numeric, 0)
+			coalesce((m.latest_reading->>'currentA')::numeric, 0),
+			(m.latest_reading->>'frequency')::numeric,
+			(m.latest_reading->>'pf')::numeric,
+			(m.latest_reading->>'thdV')::numeric,
+			(m.latest_reading->>'thdI')::numeric,
+			(m.latest_reading->>'temperatureC')::numeric
 		from meters m
 		where m.device_id = $1
 		  and m.latest_reading is not null
@@ -162,9 +215,29 @@ func Latest(ctx context.Context, p *LatestParams) (*LatestResult, error) {
 		&r.EnergyKWh,
 		&r.VoltageV,
 		&r.CurrentA,
+		&freq,
+		&pf,
+		&thdV,
+		&thdI,
+		&tempC,
 	)
 	if err != nil {
 		return &LatestResult{Reading: nil}, nil
+	}
+	if freq.Valid {
+		r.Frequency = &freq.Decimal
+	}
+	if pf.Valid {
+		r.PF = &pf.Decimal
+	}
+	if thdV.Valid {
+		r.THDV = &thdV.Decimal
+	}
+	if thdI.Valid {
+		r.THDI = &thdI.Decimal
+	}
+	if tempC.Valid {
+		r.TemperatureC = &tempC.Decimal
 	}
 
 	return &LatestResult{Reading: &r}, nil

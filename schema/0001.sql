@@ -176,6 +176,7 @@ create table if not exists anomalies
 (
     id          varchar(20) primary key not null,
     site_id     varchar(20) not null references sites (id),
+    device_id   varchar(20) references devices (id),
     metric      text        not null,
     expected    numeric     not null,
     actual      numeric     not null,
@@ -187,6 +188,7 @@ create table if not exists anomalies
 
 create index if not exists idx_anomalies_site_created on anomalies (site_id, created_at desc);
 create index if not exists idx_anomalies_site_severity on anomalies (site_id, severity);
+create index if not exists idx_anomalies_device_created on anomalies (device_id, created_at desc) where device_id is not null;
 
 create table if not exists site_energy_daily
 (
@@ -201,4 +203,36 @@ create table if not exists site_energy_daily
     optimal_kwh     numeric     not null default 0,
     co2_avoided_kg  numeric     not null default 0,
     primary key (site_id, date)
+);
+
+alter table site_energy_daily
+      add column if not exists peak_kwh        numeric not null default 0,
+      add column if not exists off_peak_kwh    numeric not null default 0,
+      add column if not exists import_cost     numeric not null default 0,
+      add column if not exists export_revenue  numeric not null default 0;
+
+
+create table if not exists device_energy_daily (
+    device_id    varchar(20) not null references devices (id),
+    site_id      varchar(20) not null references sites (id),
+    date         date        not null,
+    energy_kwh   numeric     not null default 0,
+    peak_power_w numeric     not null default 0,
+    avg_power_w  numeric     not null default 0,
+    primary key (device_id, date)
+);
+
+create index if not exists idx_device_energy_daily_site_date
+    on device_energy_daily (site_id, date desc);
+
+create table if not exists site_energy_forecasts (
+    site_id         varchar(20) not null references sites (id),
+    forecast_date   date        not null,
+    generated_at    timestamptz not null default now(),
+    solar_kwh       numeric     not null default 0,
+    consumption_kwh numeric     not null default 0,
+    import_cost     numeric     not null default 0,
+    method          text        not null default 'linear', -- 'linear', 'ml'
+    confidence      smallint    not null default 0,
+    primary key (site_id, forecast_date)
 );

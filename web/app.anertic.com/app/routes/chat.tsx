@@ -198,24 +198,36 @@ export default function ChatPage() {
           <span className="text-sm font-medium">Spark</span>
         </div>
 
-        {/* Messages or empty state */}
         {isEmpty ? (
-          <SuggestedPrompts
-            onSelect={send}
-            recentChats={recentChats}
-            onSelectChat={handleSelectConversation}
-          />
+          /* Empty state — everything centered */
+          <div className="flex flex-1 flex-col items-center justify-center px-4">
+            <SuggestedPrompts
+              onSelect={send}
+              recentChats={recentChats}
+              onSelectChat={handleSelectConversation}
+            />
+            <div className="w-full max-w-2xl">
+              <ChatInput
+                onSend={send}
+                onStop={stop}
+                isStreaming={isStreaming}
+                suggestions={SPARK_SUGGESTIONS}
+                bordered={false}
+              />
+            </div>
+          </div>
         ) : (
-          <MessageList messages={messages} isStreaming={isStreaming} />
+          /* Active conversation — messages + input at bottom */
+          <>
+            <MessageList messages={messages} isStreaming={isStreaming} />
+            <ChatInput
+              onSend={send}
+              onStop={stop}
+              isStreaming={isStreaming}
+              suggestions={SPARK_SUGGESTIONS}
+            />
+          </>
         )}
-
-        {/* Input */}
-        <ChatInput
-          onSend={send}
-          onStop={stop}
-          isStreaming={isStreaming}
-          suggestions={SPARK_SUGGESTIONS}
-        />
       </div>
     </div>
   )

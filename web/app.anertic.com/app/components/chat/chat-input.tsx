@@ -10,6 +10,7 @@ interface ChatInputProps {
   isStreaming: boolean
   disabled?: boolean
   suggestions?: SparkSuggestion[]
+  bordered?: boolean
 }
 
 export function ChatInput({
@@ -18,6 +19,7 @@ export function ChatInput({
   isStreaming,
   disabled,
   suggestions,
+  bordered = true,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -61,7 +63,7 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className="safe-area-pb border-t bg-background p-3 md:p-4 motion-safe:animate-fade-in-up [animation-delay:200ms]">
+    <div className={cn("safe-area-pb bg-background p-3 md:p-4 motion-safe:animate-fade-in-up [animation-delay:200ms]", bordered && "border-t")}>
       {visibleSuggestions && visibleSuggestions.length > 0 && !isStreaming && (
         <ScrollArea className="mx-auto mb-2 max-w-3xl">
           <div className="flex gap-1.5 pb-2">

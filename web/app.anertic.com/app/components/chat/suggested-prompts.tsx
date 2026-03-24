@@ -19,7 +19,7 @@ export function SuggestedPrompts({
   onSelectChat,
 }: SuggestedPromptsProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4">
+    <div className="flex flex-col items-center px-4 pb-6">
       <div className="mb-8 text-center">
         <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 motion-safe:animate-scale-fade-in motion-safe:animate-shimmer-glow">
           <span className="text-xl text-white" aria-hidden="true">✦</span>

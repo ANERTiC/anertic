@@ -14,6 +14,7 @@ import (
 	"github.com/moonrhythm/validator"
 	"github.com/rs/xid"
 
+	"github.com/anertic/anertic/cmd/agentic/weather"
 	"github.com/anertic/anertic/pkg/llm"
 )
 
@@ -76,12 +77,26 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 	var siteResult struct {
 		ID       string `json:"id"`
 		Name     string `json:"name"`
+		Address  string `json:"address"`
 		Timezone string `json:"timezone"`
 		Currency string `json:"currency"`
 	}
 	if err := h.apiClient.Invoke(ctx, token, "site.get", map[string]any{"id": p.SiteID}, &siteResult); err != nil {
 		http.Error(w, "site not found", http.StatusNotFound)
 		return
+	}
+
+	// Pre-fetch weather for site location (best-effort, non-blocking timeout)
+	var weatherResult *weather.Result
+	if siteResult.Address != "" {
+		weatherCtx, weatherCancel := context.WithTimeout(ctx, 5*time.Second)
+		w, err := weather.Fetch(weatherCtx, siteResult.Address, 1)
+		weatherCancel()
+		if err != nil {
+			slog.WarnContext(ctx, "pre-fetch weather", "address", siteResult.Address, "error", err)
+		} else {
+			weatherResult = w
+		}
 	}
 
 	// Load or create conversation
@@ -167,10 +182,12 @@ func (h *Handlers) Chat(w http.ResponseWriter, r *http.Request) {
 	systemPrompt := buildSystemPrompt(&SiteContext{
 		ID:        siteResult.ID,
 		Name:      siteResult.Name,
+		Address:   siteResult.Address,
 		Timezone:  siteResult.Timezone,
 		Currency:  siteResult.Currency,
 		UserName:  me.Name,
 		UserEmail: me.Email,
+		Weather:   weatherResult,
 	})
 
 	// Run agent loop

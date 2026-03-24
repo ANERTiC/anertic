@@ -61,20 +61,20 @@ function SidebarContent_({
   }
 
   return (
-    <div className="flex h-full w-60 flex-col border-r bg-background">
+    <div className="flex h-full w-60 flex-col border-r bg-background motion-safe:animate-slide-in-left">
       <div className="flex items-center justify-between border-b px-3 py-2.5">
         <span className="text-sm font-semibold">Conversations</span>
         <div className="flex gap-1">
           <button
             onClick={onNew}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="New conversation"
           >
             <RiAddLine className="size-4" />
           </button>
           <button
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Close sidebar"
           >
             <RiCloseLine className="size-4" />
@@ -88,7 +88,7 @@ function SidebarContent_({
             No conversations yet
           </div>
         ) : (
-          conversations.map((conv) => (
+          conversations.map((conv, i) => (
             <div
               key={conv.id}
               role="button"
@@ -100,8 +100,9 @@ function SidebarContent_({
                   onSelect(conv.id)
                 }
               }}
+              style={{ animationDelay: `${i * 40}ms` }}
               className={cn(
-                'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-safe:animate-fade-in-up',
                 activeId === conv.id
                   ? 'bg-primary/10 text-primary'
                   : 'text-foreground hover:bg-muted'
@@ -117,7 +118,7 @@ function SidebarContent_({
               </div>
               <button
                 onClick={(e) => handleDelete(e, conv.id)}
-                className="hidden size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex group-focus-within:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="hidden size-8 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex group-focus-within:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={`Delete conversation: ${conv.title}`}
               >
                 <RiDeleteBinLine className="size-3" />

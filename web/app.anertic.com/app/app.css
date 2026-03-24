@@ -144,6 +144,11 @@
   --animate-fade-in-up: fade-in-up 0.25s ease-out both;
 }
 
+/* Safe area utilities for notched devices */
+@utility safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -12,7 +12,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground md:max-w-[75%] md:text-sm">
           {message.content}
         </div>
       </div>
@@ -27,7 +27,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </div>
         <div
           className={cn(
-            'max-w-[80%] rounded-2xl rounded-tl-sm border bg-card px-4 py-2.5 text-sm',
+            'max-w-[90%] rounded-2xl rounded-tl-sm border bg-card px-3.5 py-2.5 text-sm md:max-w-[80%] md:px-4',
             'prose prose-sm prose-neutral dark:prose-invert max-w-none',
             '[&_pre]:rounded-lg [&_pre]:bg-muted [&_pre]:p-3',
             '[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs',

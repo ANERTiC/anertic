@@ -16,11 +16,11 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
 
   return (
     <div
-      className="flex-1 overflow-y-auto px-4 py-6"
+      className="flex-1 overflow-y-auto px-3 py-4 md:px-4 md:py-6"
       role="log"
       aria-live="polite"
     >
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto max-w-3xl space-y-3 md:space-y-4">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}

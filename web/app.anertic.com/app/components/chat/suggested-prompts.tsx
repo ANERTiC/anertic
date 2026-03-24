@@ -46,7 +46,7 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
           <button
             key={prompt.text}
             onClick={() => onSelect(prompt.text)}
-            className="rounded-xl border bg-card p-3 text-left transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="min-h-11 rounded-xl border bg-card p-3 text-left transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98]"
           >
             <div className={`mb-1 text-xs font-semibold ${prompt.color}`}>
               {prompt.icon} {prompt.label}

@@ -153,10 +153,10 @@ export default function ChatPage() {
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-8"
             aria-label="Toggle conversation history"
           >
-            <RiMenuLine className="size-4" />
+            <RiMenuLine className="size-5 md:size-4" />
           </button>
           <span className="text-sm font-medium">Spark</span>
         </div>

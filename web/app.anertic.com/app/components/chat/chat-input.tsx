@@ -51,8 +51,8 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className="border-t bg-background p-4">
-      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-4 py-3">
+    <div className="safe-area-pb border-t bg-background p-3 md:p-4">
+      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
         <textarea
           ref={textareaRef}
           name="message"
@@ -68,7 +68,7 @@ export function ChatInput({
           <button
             onClick={onStop}
             className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-lg',
+              'flex size-10 shrink-0 items-center justify-center rounded-lg md:size-9',
               'text-destructive-foreground bg-destructive transition-colors',
               'hover:bg-destructive/90'
             )}
@@ -80,7 +80,7 @@ export function ChatInput({
           <button
             onClick={handleSubmit}
             className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-lg',
+              'flex size-10 shrink-0 items-center justify-center rounded-lg md:size-9',
               'bg-primary text-primary-foreground transition-colors',
               'hover:bg-primary/90',
               'disabled:opacity-50'

@@ -18,7 +18,7 @@ func NewQueryEnergy(api Invoker) Tool {
 func (t *queryEnergyTool) Name() string { return "query_energy" }
 
 func (t *queryEnergyTool) Description() string {
-	return "Queries historical energy readings. Requires either device_id or meter_id (or both). Use get_device_status first to find device and meter IDs."
+	return "Queries historical energy readings for a site. If no device_id is provided, it automatically queries the first device found at the site."
 }
 
 func (t *queryEnergyTool) InputSchema() json.RawMessage {
@@ -31,11 +31,7 @@ func (t *queryEnergyTool) InputSchema() json.RawMessage {
 			},
 			"device_id": {
 				"type": "string",
-				"description": "Device ID to query readings for"
-			},
-			"meter_id": {
-				"type": "string",
-				"description": "Meter ID to query readings for"
+				"description": "Optional device ID. If omitted, uses the first device at the site."
 			},
 			"start_time": {
 				"type": "string",
@@ -58,19 +54,8 @@ func (t *queryEnergyTool) InputSchema() json.RawMessage {
 type queryEnergyInput struct {
 	SiteID    string `json:"site_id"`
 	DeviceID  string `json:"device_id"`
-	MeterID   string `json:"meter_id"`
 	StartTime string `json:"start_time"`
 	EndTime   string `json:"end_time"`
-	Interval  string `json:"interval"`
-}
-
-// queryEnergyBody maps to the camelCase API params expected by reading.query.
-type queryEnergyBody struct {
-	SiteID    string `json:"siteId"`
-	DeviceID  string `json:"deviceId"`
-	MeterID   string `json:"meterId"`
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
 	Interval  string `json:"interval"`
 }
 
@@ -82,17 +67,34 @@ func (t *queryEnergyTool) Execute(ctx context.Context, token string, input json.
 	if p.SiteID == "" {
 		return "", fmt.Errorf("query_energy: site_id is required")
 	}
-	if p.DeviceID == "" && p.MeterID == "" {
-		return "", fmt.Errorf("query_energy: device_id or meter_id is required")
+
+	// Auto-resolve device_id if not provided
+	if p.DeviceID == "" {
+		var devices struct {
+			Items []struct {
+				ID string `json:"id"`
+			} `json:"items"`
+		}
+		if err := t.api.Invoke(ctx, token, "device.list", map[string]any{"siteId": p.SiteID}, &devices); err != nil {
+			return "", fmt.Errorf("query_energy: failed to list devices: %w", err)
+		}
+		if len(devices.Items) == 0 {
+			return "No devices found at this site.", nil
+		}
+		p.DeviceID = devices.Items[0].ID
 	}
 
-	body := queryEnergyBody{
-		SiteID:    p.SiteID,
-		DeviceID:  p.DeviceID,
-		MeterID:   p.MeterID,
-		StartTime: p.StartTime,
-		EndTime:   p.EndTime,
-		Interval:  p.Interval,
+	body := map[string]any{
+		"deviceId": p.DeviceID,
+	}
+	if p.StartTime != "" {
+		body["startTime"] = p.StartTime
+	}
+	if p.EndTime != "" {
+		body["endTime"] = p.EndTime
+	}
+	if p.Interval != "" {
+		body["interval"] = p.Interval
 	}
 
 	var result json.RawMessage

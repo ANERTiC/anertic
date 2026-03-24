@@ -1,8 +1,4 @@
-interface SuggestedPromptsProps {
-  onSelect: (prompt: string) => void
-}
-
-const prompts = [
+export const prompts = [
   {
     icon: '⚡',
     label: 'Energy',
@@ -28,6 +24,10 @@ const prompts = [
     color: 'text-blue-600',
   },
 ]
+
+interface SuggestedPromptsProps {
+  onSelect: (prompt: string) => void
+}
 
 export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
   return (

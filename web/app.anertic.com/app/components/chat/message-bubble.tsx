@@ -6,9 +6,10 @@ import type { ChatMessage } from './use-chat'
 
 interface MessageBubbleProps {
   message: ChatMessage
+  justFinished?: boolean
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, justFinished }: MessageBubbleProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end motion-safe:animate-message-in">
@@ -22,7 +23,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   return (
     <div className="motion-safe:animate-message-in">
       <div className="flex gap-2.5">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
+        <div
+          className={cn(
+            'flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600',
+            justFinished && 'motion-safe:animate-spark-complete'
+          )}
+        >
           <span className="text-xs text-white" aria-hidden="true">✦</span>
         </div>
         <div

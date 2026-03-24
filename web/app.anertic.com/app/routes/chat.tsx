@@ -9,7 +9,7 @@ import { useChat } from '~/components/chat/use-chat'
 import type { ChatMessage } from '~/components/chat/use-chat'
 import { ChatInput } from '~/components/chat/chat-input'
 import { MessageList } from '~/components/chat/message-list'
-import { SuggestedPrompts } from '~/components/chat/suggested-prompts'
+import { SuggestedPrompts, prompts } from '~/components/chat/suggested-prompts'
 import { ConversationSidebar } from '~/components/chat/conversation-sidebar'
 
 interface RawMessage {
@@ -96,6 +96,20 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Sync conversationId to URL (covers new conversations from SSE)
+  useEffect(() => {
+    if (!conversationId) return
+    setSearchParams(
+      (prev) => {
+        if (prev.get('conversation') === conversationId) return prev
+        prev.set('conversation', conversationId)
+        return prev
+      },
+      { replace: true }
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
+
   const handleSelectConversation = useCallback(
     async (id: string) => {
       if (isStreaming) stop()
@@ -108,9 +122,8 @@ export default function ChatPage() {
         setMessages(reconstructMessages(result.messages))
         setSearchParams(
           (prev) => {
-            const next = new URLSearchParams(prev)
-            next.set('conversation', result.id)
-            return next
+            prev.set('conversation', result.id)
+            return prev
           },
           { replace: true }
         )
@@ -127,9 +140,8 @@ export default function ChatPage() {
     setMessages([])
     setSearchParams(
       (prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('conversation')
-        return next
+        prev.delete('conversation')
+        return prev
       },
       { replace: true }
     )
@@ -169,7 +181,12 @@ export default function ChatPage() {
         )}
 
         {/* Input */}
-        <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} />
+        <ChatInput
+          onSend={send}
+          onStop={stop}
+          isStreaming={isStreaming}
+          suggestions={isEmpty ? undefined : prompts}
+        />
       </div>
     </div>
   )

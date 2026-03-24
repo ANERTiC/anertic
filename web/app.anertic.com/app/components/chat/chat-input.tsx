@@ -2,11 +2,18 @@ import { useCallback, useRef, useEffect } from 'react'
 import { RiArrowUpLine, RiStopFill } from '@remixicon/react'
 import { cn } from '~/lib/utils'
 
+interface Suggestion {
+  icon: string
+  label: string
+  text: string
+}
+
 interface ChatInputProps {
   onSend: (message: string) => void
   onStop: () => void
   isStreaming: boolean
   disabled?: boolean
+  suggestions?: Suggestion[]
 }
 
 export function ChatInput({
@@ -14,6 +21,7 @@ export function ChatInput({
   onStop,
   isStreaming,
   disabled,
+  suggestions,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -92,6 +100,20 @@ export function ChatInput({
           </button>
         )}
       </div>
+      {suggestions && suggestions.length > 0 && !isStreaming && (
+        <div className="mx-auto mt-2 flex max-w-3xl flex-wrap gap-1.5">
+          {suggestions.map((s) => (
+            <button
+              key={s.text}
+              onClick={() => onSend(s.text)}
+              className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.97]"
+            >
+              <span aria-hidden="true">{s.icon}</span>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

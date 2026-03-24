@@ -60,7 +60,10 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className={cn("safe-area-pb bg-background p-3 md:p-4 motion-safe:animate-fade-in-up [animation-delay:200ms]", bordered && "border-t")}>
+    <div className={cn("safe-area-pb relative", bordered && "border-t")}>
+      {/* Fade mask — messages dissolve behind input */}
+      <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-background to-transparent" />
+      <div className="bg-background px-3 pb-3 pt-2 md:px-4 md:pb-4">
       {visibleSuggestions && visibleSuggestions.length > 0 && !isStreaming && (
         <ScrollArea className="mx-auto mb-2 max-w-3xl">
           <div className="flex gap-1.5 pb-2">
@@ -68,7 +71,7 @@ export function ChatInput({
               <button
                 key={s.text}
                 onClick={() => onSend(s.text)}
-                className="inline-flex shrink-0 items-center rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.97]"
+                className="inline-flex shrink-0 items-center rounded-full bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.97]"
               >
                 {s.text}
               </button>
@@ -77,7 +80,7 @@ export function ChatInput({
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )}
-      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl bg-muted/40 px-3 py-2.5 ring-1 ring-border/50 transition-shadow focus-within:ring-border focus-within:shadow-sm md:px-4 md:py-3">
         <textarea
           ref={textareaRef}
           name="message"
@@ -116,6 +119,7 @@ export function ChatInput({
             <RiArrowUpLine className="size-4" />
           </button>
         )}
+      </div>
       </div>
     </div>
   )

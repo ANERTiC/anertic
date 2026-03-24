@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageBubble } from './message-bubble'
 import type { ChatMessage } from './use-chat'
+import { cn } from '~/lib/utils'
 
 interface MessageListProps {
   messages: ChatMessage[]
   isStreaming: boolean
+  className?: string
 }
 
-export function MessageList({ messages, isStreaming }: MessageListProps) {
+export function MessageList({ messages, isStreaming, className }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const wasStreamingRef = useRef(false)
   const [justFinishedId, setJustFinishedId] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
 
   return (
     <div
-      className="flex-1 overflow-y-auto px-3 py-4 md:px-4 md:py-6"
+      className={cn("flex-1 overflow-y-auto px-3 py-4 pb-2 md:px-4 md:py-6 md:pb-2", className)}
       role="log"
       aria-live="polite"
     >

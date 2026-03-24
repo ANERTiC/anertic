@@ -61,30 +61,32 @@ function SidebarContent_({
   }
 
   return (
-    <div className="flex h-full w-60 flex-col border-r bg-background motion-safe:animate-slide-in-left">
-      <div className="flex items-center justify-between border-b px-3 py-2.5">
-        <span className="text-sm font-semibold">Conversations</span>
-        <div className="flex gap-1">
+    <div className="flex h-full w-56 flex-col rounded-2xl bg-background shadow-lg ring-1 ring-border/30 motion-safe:animate-slide-in-left">
+      <div className="flex items-center justify-between px-3 pt-3 pb-1">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          History
+        </span>
+        <div className="flex gap-0.5">
           <button
             onClick={onNew}
-            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-background hover:text-foreground"
             aria-label="New conversation"
           >
-            <RiAddLine className="size-4" />
+            <RiAddLine className="size-3.5" />
           </button>
           <button
             onClick={onClose}
-            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-background hover:text-foreground"
             aria-label="Close sidebar"
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine className="size-3.5" />
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-1.5">
+      <div className="flex-1 overflow-y-auto rounded-b-2xl px-2 py-1">
         {conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
-            <RiChat1Line className="size-8 opacity-30" />
+          <div className="flex flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground/50">
+            <RiChat1Line className="size-6" />
             No conversations yet
           </div>
         ) : (
@@ -100,25 +102,25 @@ function SidebarContent_({
                   onSelect(conv.id)
                 }
               }}
-              style={{ animationDelay: `${i * 40}ms` }}
+              style={{ animationDelay: `${i * 30}ms` }}
               className={cn(
-                'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-safe:animate-fade-in-up',
+                'group relative flex w-full cursor-pointer items-center rounded-lg px-2.5 py-2 text-left transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-safe:animate-fade-in-up',
                 activeId === conv.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-foreground hover:bg-muted'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
               )}
             >
-              <div className="flex-1 overflow-hidden">
-                <div className="truncate text-xs font-medium">
+              <div className="flex-1 min-w-0">
+                <div className="truncate text-[13px] leading-tight font-medium">
                   {conv.title || 'New conversation'}
                 </div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="mt-0.5 text-[10px] text-muted-foreground/60">
                   {formatRelativeTime(conv.updatedAt)}
                 </div>
               </div>
               <button
                 onClick={(e) => handleDelete(e, conv.id)}
-                className="hidden size-8 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex group-focus-within:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="absolute right-1.5 hidden size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={`Delete conversation: ${conv.title}`}
               >
                 <RiDeleteBinLine className="size-3" />
@@ -136,18 +138,32 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
 
   if (!props.open) return null
 
+  // Wait for hydration
+  if (isMobile === undefined) return null
+
   if (isMobile) {
     return (
       <Sheet
         open={props.open}
         onOpenChange={(open) => !open && props.onClose()}
       >
-        <SheetContent side="left" className="w-60 p-0">
+        <SheetContent side="left" className="w-56 p-0">
           <SidebarContent_ {...props} />
         </SheetContent>
       </Sheet>
     )
   }
 
-  return <SidebarContent_ {...props} />
+  // Desktop: floating panel with backdrop
+  return (
+    <>
+      <div
+        className="absolute inset-0 z-30 bg-black/10 motion-safe:animate-fade-in"
+        onClick={props.onClose}
+      />
+      <div className="absolute left-2 top-2 bottom-2 z-40">
+        <SidebarContent_ {...props} />
+      </div>
+    </>
+  )
 }

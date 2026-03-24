@@ -80,6 +80,8 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 
 ## Environment Variables
 
+### API (`cmd/api`)
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
@@ -89,4 +91,20 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth |
 | `GOOGLE_REDIRECT_URL` | `http://localhost:8080/auth/google/callback` | OAuth callback |
 | `APP_URL` | `http://localhost:5173` | Frontend URL for auth redirects |
+
+### Agentic (`cmd/agentic`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_URL` | `postgres://anertic:anertic@localhost:5432/anertic?sslmode=disable` | PostgreSQL |
+| `REDIS_URL` | `redis://localhost:6379` | Redis |
+| `AGENTIC_ADDR` | `:8082` | Agentic server address |
+| `API_URL` | `http://localhost:8080` | Backend API base URL |
+| `LLM_PROVIDER` | `anthropic` | LLM provider (`anthropic` or `openai`) |
+| `LLM_MODEL` | `claude-opus-4-6` | Model ID |
+| `LLM_MAX_TOKENS` | `16384` | Max output tokens |
+| `LLM_TIMEOUT` | `60s` | Stream timeout |
+| `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
+| `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
+| `OPENAI_BASE_URL` | — | Custom OpenAI-compatible endpoint |
 

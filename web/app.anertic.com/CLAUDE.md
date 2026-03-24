@@ -105,6 +105,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 | Variable         | Default                 | Description                                    |
 | ---------------- | ----------------------- | ---------------------------------------------- |
 | `API_URL`        | `http://localhost:8080` | Backend API base URL                           |
+| `AGENTIC_URL`    | `http://localhost:8082` | Agentic AI chat service URL                    |
 | `APP_URL`        | `http://localhost:5173` | Frontend URL (for OAuth redirect)              |
 | `SESSION_SECRET` | `dev-secret`            | Signs session cookies (required in production) |
 

@@ -1,0 +1,96 @@
+import { useCallback, useRef, useEffect } from 'react'
+import { RiArrowUpLine, RiStopFill } from '@remixicon/react'
+import { cn } from '~/lib/utils'
+
+interface ChatInputProps {
+  onSend: (message: string) => void
+  onStop: () => void
+  isStreaming: boolean
+  disabled?: boolean
+}
+
+export function ChatInput({
+  onSend,
+  onStop,
+  isStreaming,
+  disabled,
+}: ChatInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const handleSubmit = useCallback(() => {
+    const value = textareaRef.current?.value.trim()
+    if (!value || isStreaming) return
+    onSend(value)
+    if (textareaRef.current) {
+      textareaRef.current.value = ''
+      textareaRef.current.style.height = 'auto'
+    }
+  }, [onSend, isStreaming])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleSubmit()
+      }
+    },
+    [handleSubmit]
+  )
+
+  const handleInput = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [])
+
+  useEffect(() => {
+    if (!isStreaming) {
+      textareaRef.current?.focus()
+    }
+  }, [isStreaming])
+
+  return (
+    <div className="border-t bg-background p-3">
+      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border bg-muted/50 px-3 py-2">
+        <textarea
+          ref={textareaRef}
+          rows={1}
+          placeholder="Ask about your energy..."
+          className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          disabled={disabled}
+          aria-label="Message input"
+        />
+        {isStreaming ? (
+          <button
+            onClick={onStop}
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              'text-destructive-foreground bg-destructive transition-colors',
+              'hover:bg-destructive/90'
+            )}
+            aria-label="Stop generating"
+          >
+            <RiStopFill className="size-4" />
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              'bg-primary text-primary-foreground transition-colors',
+              'hover:bg-primary/90',
+              'disabled:opacity-50'
+            )}
+            disabled={disabled}
+            aria-label="Send message"
+          >
+            <RiArrowUpLine className="size-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -6,6 +6,8 @@ import {
 } from '@react-router/dev/routes'
 
 export default [
+  // Chat API proxy (must be before generic api/*)
+  route('api/chat/*', 'routes/api.chat.$.tsx'),
   // API proxy
   route('api/*', 'routes/api.$.ts'),
 
@@ -38,6 +40,7 @@ export default [
       route('devices/:deviceId', 'routes/device-detail.tsx'),
       route('rooms', 'routes/rooms.tsx'),
       route('insights', 'routes/insights.tsx'),
+      route('chat', 'routes/chat.tsx'),
       route('integrations', 'routes/integrations.tsx'),
       route('settings', 'routes/settings.tsx'),
     ]),

@@ -116,6 +116,7 @@ Boundaries:
 - Power: kW or W (e.g. **2.4 kW**, **350 W**)
 - Cost: %s with 2 decimal places (e.g. **%s1,250.00**)
 - Percentages: 1 decimal place (e.g. **8.4%%**)
+- Time: always use 24-hour format (e.g. **14:30**, not 2:30 PM)
 - Time periods: resolve "today", "last week", "this month" using the current date/time above.
 
 `, currencySymbol, currencySymbol)

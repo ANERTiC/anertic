@@ -329,23 +329,23 @@ export default function Dashboard() {
         <Card className="overflow-hidden border-border/50 py-0 md:col-span-3">
           <CardContent className="h-full p-0">
             <div className="flex h-full items-stretch">
-              <div className="flex-1 p-5">
+              <div className="flex-1 p-4 sm:p-5">
                 <p className="text-xs font-medium tracking-widest text-muted-foreground/60 uppercase">
                   Total Consumption
                 </p>
                 {summaryLoading ? (
-                  <Skeleton className="mt-3 h-12 w-40" />
+                  <Skeleton className="mt-3 h-10 w-32 sm:h-12 sm:w-40" />
                 ) : (
                   <div className="mt-2">
-                    <span className="text-5xl font-bold tracking-tight tabular-nums">
+                    <span className="text-3xl font-bold tracking-tight tabular-nums sm:text-5xl">
                       {summary?.todayEnergyKwh ?? 0}
                     </span>
-                    <span className="ml-2 text-lg font-normal text-muted-foreground">
+                    <span className="ml-1.5 text-base font-normal text-muted-foreground sm:ml-2 sm:text-lg">
                       kWh
                     </span>
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground sm:gap-4">
                   <span className="flex items-center gap-1">
                     <span className="inline-block size-2 rounded-full bg-amber-400" />
                     {summary?.todaySolarKwh ?? 0} kWh solar
@@ -355,7 +355,7 @@ export default function Dashboard() {
                     {summary?.todayGridKwh ?? 0} kWh grid
                   </span>
                 </div>
-                {/* Mini bar chart placeholder */}
+                {/* Mini bar chart */}
                 <div className="mt-4 flex h-2 gap-0.5 overflow-hidden rounded-full">
                   <div
                     className="rounded-full bg-amber-400 transition-[width] duration-700"
@@ -366,6 +366,7 @@ export default function Dashboard() {
                   <div className="flex-1 rounded-full bg-cyan-400/60" />
                 </div>
               </div>
+              {/* Desktop: vertical stats column */}
               <div className="hidden w-px bg-border/50 sm:block" />
               <div
                 className="hidden flex-col justify-center gap-3 p-5 sm:flex"
@@ -388,12 +389,30 @@ export default function Dashboard() {
                 />
               </div>
             </div>
+            {/* Mobile: horizontal stats row */}
+            <div className="flex gap-4 border-t border-border/50 px-4 py-3 sm:hidden">
+              <MiniStat
+                label="Devices"
+                value={summary?.totalDevices ?? 0}
+                icon={RiCpuLine}
+              />
+              <MiniStat
+                label="Sites"
+                value={summary?.totalSites ?? 0}
+                icon={RiBuilding2Line}
+              />
+              <MiniStat
+                label="Chargers"
+                value={summary?.totalChargers ?? 0}
+                icon={RiChargingPile2Line}
+              />
+            </div>
           </CardContent>
         </Card>
 
         {/* AI Insight */}
         <Card className="border-border/50 bg-gradient-to-br from-primary/5 via-background to-violet-500/5 py-0 md:col-span-2">
-          <CardContent className="flex h-full flex-col p-5">
+          <CardContent className="flex h-full flex-col p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
                 <RiSparklingLine
@@ -426,16 +445,16 @@ export default function Dashboard() {
 
       {/* Sites */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold tracking-tight">Your Sites</h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="truncate text-xs text-muted-foreground">
               {sites.length > 0
                 ? `${sites.length} site${sites.length > 1 ? 's' : ''} connected`
                 : 'Get started by creating a site'}
             </p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <Button variant="outline" size="sm" className="min-h-9 shrink-0 gap-1.5" asChild>
             <Link to="/sites/create">
               <RiAddLine aria-hidden="true" data-icon="inline-start" />
               New Site
@@ -452,15 +471,15 @@ export default function Dashboard() {
         ) : sites.length === 0 ? (
           <Link
             to="/sites/create"
-            className="group flex w-full items-center gap-5 rounded-xl border-2 border-dashed border-border/60 p-6 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+            className="group flex w-full items-center gap-4 rounded-xl border-2 border-dashed border-border/60 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 active:bg-primary/5 sm:gap-5 sm:p-6"
           >
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10 sm:size-14">
               <RiBuilding2Line
                 aria-hidden="true"
-                className="size-6 text-muted-foreground transition-colors group-hover:text-primary"
+                className="size-5 text-muted-foreground transition-colors group-hover:text-primary sm:size-6"
               />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Create your first site</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Add a location to start monitoring energy production,
@@ -469,7 +488,7 @@ export default function Dashboard() {
             </div>
             <RiArrowRightLine
               aria-hidden="true"
-              className="ml-auto size-5 text-muted-foreground/40 transition-transform group-hover:translate-x-1 group-hover:text-primary motion-reduce:transition-none"
+              className="ml-auto hidden size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-1 group-hover:text-primary motion-reduce:transition-none sm:block"
             />
           </Link>
         ) : (
@@ -504,8 +523,8 @@ function SiteCard({
     <button
       onClick={() => onSelect(site)}
       className={cn(
-        'group relative flex flex-col items-start rounded-xl border border-border/50 p-5 text-left transition-colors',
-        'hover:border-border hover:shadow-md motion-reduce:transition-none'
+        'group relative flex min-h-28 flex-col items-start rounded-xl border border-border/50 p-4 text-left transition-colors sm:p-5',
+        'hover:border-border hover:shadow-md active:bg-muted/50 motion-reduce:transition-none'
       )}
     >
       <div className="flex w-full items-start justify-between">

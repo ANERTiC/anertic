@@ -23,7 +23,7 @@ export default function GlobalLayout() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2"

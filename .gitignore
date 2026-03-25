@@ -35,6 +35,7 @@ Thumbs.db
 # Tools
 .goreload
 .claude/
+.superpowers/
 
 # Debug
 __debug_bin*

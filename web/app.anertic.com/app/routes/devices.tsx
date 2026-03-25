@@ -115,8 +115,8 @@ export default function Devices() {
       </div>
 
       {/* Connection Summary Strip */}
-      <div className="flex items-center gap-6 rounded-xl border border-border/50 bg-muted/20 px-5 py-3.5">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 overflow-x-auto rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 sm:gap-6 sm:px-5 sm:py-3.5">
+        <div className="hidden items-center gap-2 sm:flex">
           <RiLink
             aria-hidden="true"
             className="size-4 text-muted-foreground/50"
@@ -125,8 +125,8 @@ export default function Devices() {
             Connections
           </span>
         </div>
-        <Separator orientation="vertical" className="h-5" />
-        <div className="flex items-center gap-5">
+        <Separator orientation="vertical" className="hidden h-5 sm:block" />
+        <div className="flex items-center gap-2 sm:gap-5">
           <SummaryPill
             count={summary.total}
             label="Total"
@@ -169,7 +169,7 @@ export default function Devices() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <RiSearchLine
             aria-hidden="true"
@@ -183,7 +183,7 @@ export default function Devices() {
             onChange={(e) => setFilter('q', e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
           {(Object.keys(DEVICE_TYPE_CONFIG) as DeviceType[]).map((type) => {
             const config = DEVICE_TYPE_CONFIG[type]
             const Icon = config.icon
@@ -193,14 +193,15 @@ export default function Devices() {
                 key={type}
                 onClick={() => setFilter('type', isActive ? 'all' : type)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                   isActive
                     ? 'border-foreground/20 bg-foreground/5 text-foreground'
                     : 'border-transparent text-muted-foreground hover:bg-muted/50'
                 )}
               >
                 <Icon aria-hidden="true" className="size-3.5" />
-                {config.label}
+                <span className="hidden sm:inline">{config.label}</span>
+                <span className="sm:hidden">{config.label}</span>
               </button>
             )
           })}
@@ -319,17 +320,17 @@ function DeviceRow({ device, href }: { device: DeviceListItem; href: string }) {
   return (
     <Link
       to={href}
-      className="group flex w-full items-center gap-4 rounded-xl border border-border/50 p-4 text-left transition-colors hover:border-border hover:shadow-sm"
+      className="group flex w-full items-center gap-3 rounded-xl border border-border/50 p-3 text-left transition-colors hover:border-border hover:shadow-sm sm:gap-4 sm:p-4"
     >
       <div
         className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-xl',
+          'flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-10',
           typeConfig.bg
         )}
       >
         <TypeIcon
           aria-hidden="true"
-          className={cn('size-5', typeConfig.color)}
+          className={cn('size-4 sm:size-5', typeConfig.color)}
         />
       </div>
       <div className="min-w-0 flex-1">
@@ -346,31 +347,28 @@ function DeviceRow({ device, href }: { device: DeviceListItem; href: string }) {
             {device.tag || `${device.brand} ${device.model}`}
           </p>
           {device.isSiteDevice ? (
-            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="hidden shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
               <RiBuildingLine aria-hidden="true" className="size-3" />
               Site
             </span>
           ) : device.roomName ? (
-            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="hidden shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
               <RiDoorOpenLine aria-hidden="true" className="size-3" />
               {device.level != null ? `F${device.level} · ` : ''}
               {device.roomName}
             </span>
           ) : device.level != null ? (
-            <span className="flex shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="hidden shrink-0 items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
               <RiStackLine aria-hidden="true" className="size-3" />
               {`F${device.level}`}
             </span>
           ) : null}
         </div>
       </div>
-      <span className="shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      <span className="hidden shrink-0 rounded-md bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline">
         {device.meterCount} {device.meterCount === 1 ? 'meter' : 'meters'}
       </span>
-      <div
-        className="flex shrink-0 items-center gap-2"
-        style={{ minWidth: 90 }}
-      >
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 sm:min-w-[90px]">
         <span className="relative flex size-2">
           {device.connectionStatus === 'online' && (
             <span
@@ -391,7 +389,7 @@ function DeviceRow({ device, href }: { device: DeviceListItem; href: string }) {
           <p className={cn('text-xs font-medium', statusConfig.color)}>
             {statusConfig.label}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="hidden text-[10px] text-muted-foreground sm:block">
             {formatLastSeen(device.lastSeenAt)}
           </p>
         </div>

@@ -523,30 +523,30 @@ function SiteCard({
     <button
       onClick={() => onSelect(site)}
       className={cn(
-        'group relative flex min-h-28 flex-col items-start rounded-xl border border-border/50 p-4 text-left transition-colors sm:p-5',
+        'group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-border/50 p-3 text-left transition-colors sm:min-h-28 sm:flex-col sm:items-start sm:gap-0 sm:p-5',
         'hover:border-border hover:shadow-md active:bg-muted/50 motion-reduce:transition-none'
       )}
     >
-      <div className="flex w-full items-start justify-between">
-        <div
-          className={cn(
-            'flex size-10 items-center justify-center rounded-xl text-sm font-bold ring-1',
-            accent.bg,
-            accent.text,
-            accent.ring
-          )}
-        >
-          {site.name.charAt(0).toUpperCase()}
-        </div>
-        <RiArrowRightLine
-          aria-hidden="true"
-          className="size-4 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60 motion-reduce:transition-none"
-        />
+      <div
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ring-1 sm:size-10',
+          accent.bg,
+          accent.text,
+          accent.ring
+        )}
+      >
+        {site.name.charAt(0).toUpperCase()}
       </div>
-      <p className="mt-3 text-sm font-semibold">{site.name}</p>
-      <p className="mt-0.5 max-w-full truncate text-xs text-muted-foreground">
-        {site.address || site.timezone}
-      </p>
+      <div className="min-w-0 flex-1 sm:mt-3 sm:flex-none sm:w-full">
+        <p className="truncate text-sm font-semibold">{site.name}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {site.address || site.timezone}
+        </p>
+      </div>
+      <RiArrowRightLine
+        aria-hidden="true"
+        className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60 motion-reduce:transition-none sm:absolute sm:top-5 sm:right-5"
+      />
       {/* Decorative bottom accent */}
       <div
         className={cn(

@@ -3,17 +3,17 @@ import { Button } from '~/components/ui/button'
 import type { Route } from './+types/login'
 
 export async function loader({}: Route.LoaderArgs) {
-  const apiUrl = process.env.API_URL || 'http://localhost:8080'
-  const appUrl = process.env.APP_URL || 'http://localhost:5173'
-  return { apiUrl, appUrl }
+  const authUrl = process.env.AUTH_URL || 'http://localhost:8080/auth/google'
+  const authCallbackUrl =
+    process.env.AUTH_CALLBACK_URL || 'http://localhost:5173/login/callback'
+  return { authUrl, authCallbackUrl }
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
-  const { apiUrl, appUrl } = loaderData
+  const { authUrl, authCallbackUrl } = loaderData
 
   function handleGoogleSignIn() {
-    const redirectUrl = `${appUrl}/login/callback`
-    window.location.href = `${apiUrl}/auth/google?redirect_url=${encodeURIComponent(redirectUrl)}`
+    window.location.href = `${authUrl}?redirect_url=${encodeURIComponent(authCallbackUrl)}`
   }
 
   return (

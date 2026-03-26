@@ -142,7 +142,7 @@ function ChargerDetailContent({ initial }: { initial: Charger }) {
   const siteId = useSiteId()
   const siteParam = siteId ? `?site=${siteId}` : ''
 
-  const { data: charger } = useSWR<Charger>(
+  const { data: charger, mutate: mutateCharger } = useSWR<Charger>(
     ['charger.get', { id: initial.id }],
     fetcher,
     { fallbackData: initial, refreshInterval: 15000 }
@@ -252,6 +252,7 @@ function ChargerDetailContent({ initial }: { initial: Charger }) {
               key={conn.id}
               connector={conn}
               chargerId={charger.id}
+              onMutate={mutateCharger}
             />
           ))}
         </div>
@@ -291,9 +292,11 @@ function ChargerDetailContent({ initial }: { initial: Charger }) {
 function ConnectorCard({
   connector,
   chargerId,
+  onMutate,
 }: {
   connector: ConnectorDetail
   chargerId: string
+  onMutate: () => void
 }) {
   const isActive =
     connector.status === 'Charging' || connector.status === 'Preparing'
@@ -477,6 +480,7 @@ function ConnectorCard({
         connectorId={connector.id}
         maxPowerKw={connector.maxPowerKw}
         connectorType={connector.connectorType}
+        onMutate={onMutate}
       />
 
       <StopChargingDialog
@@ -488,6 +492,7 @@ function ConnectorCard({
         vehicleId={connector.vehicleId}
         sessionKwh={connector.sessionKwh}
         sessionStartedAt={connector.sessionStartedAt}
+        onMutate={onMutate}
       />
     </>
   )
@@ -502,6 +507,7 @@ function StartChargingDialog({
   connectorId,
   maxPowerKw,
   connectorType,
+  onMutate,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -509,6 +515,7 @@ function StartChargingDialog({
   connectorId: number
   maxPowerKw: string
   connectorType: string
+  onMutate: () => void
 }) {
   const [idTag, setIdTag] = useState('')
   const [powerLimit, setPowerLimit] = useState(maxPowerKw)
@@ -538,6 +545,7 @@ function StartChargingDialog({
         'charger.remoteStart',
         { id: chargerId, connectorId, idTag, powerLimitKw: Number(powerLimit) },
       ])
+      onMutate()
       setStep('success')
     } catch {
       toast.error('Failed to start charging')
@@ -727,6 +735,7 @@ function StopChargingDialog({
   vehicleId,
   sessionKwh,
   sessionStartedAt,
+  onMutate,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -736,6 +745,7 @@ function StopChargingDialog({
   vehicleId?: string
   sessionKwh: string
   sessionStartedAt?: string
+  onMutate: () => void
 }) {
   const [step, setStep] = useState<'confirm' | 'stopping' | 'stopped'>(
     'confirm'
@@ -749,6 +759,7 @@ function StopChargingDialog({
         'charger.remoteStop',
         { id: chargerId, transactionId },
       ])
+      onMutate()
       setStep('stopped')
     } catch {
       toast.error('Failed to stop charging')

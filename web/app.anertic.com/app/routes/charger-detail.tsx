@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useFetcher, useNavigate, useParams } from 'react-router'
 import useSWR from 'swr'
 
 import { fetcher } from '~/lib/api'
@@ -138,12 +138,15 @@ interface OcppEvent {
 }
 
 interface Reservation {
+  id: string
   reservationId: number
   connectorId: number
   idTag: string
   parentIdTag: string | null
   expiryDate: string
   status: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface DailyEnergy {
@@ -347,6 +350,67 @@ function OcppUrlStrip({ chargePointId }: { chargePointId: string }) {
   )
 }
 
+// --- Client Action ---
+
+export async function clientAction({ request }: { request: Request }) {
+  const formData = await request.formData()
+  const intent = formData.get('intent')
+
+  switch (intent) {
+    case 'addAuthTag': {
+      const id = String(formData.get('chargerId'))
+      const idTag = String(formData.get('idTag'))
+      const result = await fetcher<{ id: string }>([
+        'charger.addAuthTag',
+        { id, idTag },
+      ])
+      return { ok: true, intent, idTag, ...result }
+    }
+    case 'removeAuthTag': {
+      const id = String(formData.get('chargerId'))
+      const authTagId = String(formData.get('authTagId'))
+      await fetcher(['charger.removeAuthTag', { id, authTagId }])
+      return { ok: true, intent, authTagId }
+    }
+    case 'reserveNow': {
+      const id = String(formData.get('chargerId'))
+      const connectorId = Number(formData.get('connectorId'))
+      const idTag = String(formData.get('idTag'))
+      const expiryDate = String(formData.get('expiryDate'))
+      const parentIdTag = formData.get('parentIdTag')
+        ? String(formData.get('parentIdTag'))
+        : ''
+      const reservationId = Number(formData.get('reservationId'))
+      const result = await fetcher<{ id: string }>([
+        'charger.reserveNow',
+        { id, connectorId, idTag, expiryDate, parentIdTag, reservationId },
+      ])
+      return { ok: true, intent, ...result }
+    }
+    case 'cancelReservation': {
+      const id = String(formData.get('chargerId'))
+      const reservationId = Number(formData.get('reservationId'))
+      await fetcher([
+        'charger.cancelReservation',
+        { id, reservationId },
+      ])
+      return { ok: true, intent, reservationId }
+    }
+    case 'remoteStart': {
+      const id = String(formData.get('chargerId'))
+      const connectorId = Number(formData.get('connectorId'))
+      const idTag = String(formData.get('idTag'))
+      await fetcher([
+        'charger.remoteStart',
+        { id, connectorId, idTag },
+      ])
+      return { ok: true, intent, connectorId, idTag }
+    }
+    default:
+      throw new Response('Invalid intent', { status: 400 })
+  }
+}
+
 // --- Main Component ---
 
 export default function ChargerDetail() {
@@ -505,7 +569,7 @@ export default function ChargerDetail() {
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
           {charger.connectors.map((conn) => (
-            <ConnectorCard key={conn.id} connector={conn} />
+            <ConnectorCard key={conn.id} connector={conn} chargerId={charger.id} />
           ))}
         </div>
       </div>
@@ -973,12 +1037,16 @@ const MOCK_CONFIG_KEYS = [
   { key: 'UnlockConnectorOnEVSideDisconnect', value: 'true', readonly: false },
 ]
 
-const MOCK_AUTH_LIST = [
-  { idTag: 'TESLA-M3', status: 'Accepted', expiryDate: '2026-12-31' },
-  { idTag: 'BYD-ATTO3', status: 'Accepted', expiryDate: '2026-12-31' },
-  { idTag: 'MG-ZS-EV', status: 'Accepted', expiryDate: '2026-06-30' },
-  { idTag: 'NISSAN-LEAF', status: 'Accepted', expiryDate: '2026-12-31' },
-]
+interface AuthTag {
+  id: string
+  idTag: string
+  parentIdTag: string
+  status: string
+  expiryDate: string | null
+  inLocalList: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 function SettingsTab({ charger }: { charger: Charger }) {
   const navigate = useNavigate()
@@ -986,8 +1054,14 @@ function SettingsTab({ charger }: { charger: Charger }) {
   const [configKeys, setConfigKeys] = useState(
     MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value }))
   )
-  const [authList] = useState(MOCK_AUTH_LIST)
+  const { data: authData, mutate: mutateAuth } = useSWR<{ items: AuthTag[] }>(
+    ['charger.listAuthTags', { id: charger.id }],
+    fetcher
+  )
+  const authList = authData?.items ?? []
   const [newIdTag, setNewIdTag] = useState('')
+  const addFetcher = useFetcher()
+  const removeFetcher = useFetcher()
   const [firmwareUrl, setFirmwareUrl] = useState('')
   const [displayName, setDisplayName] = useState(charger.chargePointId)
   const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
@@ -1015,11 +1089,26 @@ function SettingsTab({ charger }: { charger: Charger }) {
     )
   }
 
-  function handleAddIdTag() {
-    if (!newIdTag.trim()) return
-    toast.success(`ID tag "${newIdTag}" added to local auth list`)
-    setNewIdTag('')
-  }
+  // Revalidate SWR after fetcher completes
+  useEffect(() => {
+    if (addFetcher.state === 'idle' && addFetcher.data?.ok) {
+      toast.success(`ID tag "${addFetcher.data.idTag}" added`)
+      setNewIdTag('')
+      mutateAuth()
+    }
+  }, [addFetcher.state, addFetcher.data])
+
+  useEffect(() => {
+    if (removeFetcher.state === 'idle' && removeFetcher.data?.ok) {
+      mutateAuth()
+    }
+  }, [removeFetcher.state, removeFetcher.data])
+
+  // Optimistic removal — hide the tag being removed
+  const removingTagId = removeFetcher.formData?.get('authTagId') as
+    | string
+    | null
+  const visibleAuthList = authList.filter((t) => t.id !== removingTagId)
 
   function handleFirmwareUpdate() {
     if (!firmwareUrl.trim()) return
@@ -1112,7 +1201,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 <span>Key</span>
                 <span>Value</span>
-                <span className="w-16" />
+                <span className="w-6" />
               </div>
               <div className="divide-y">
                 {configKeys.map((config) => (
@@ -1155,7 +1244,7 @@ function SettingsTab({ charger }: { charger: Charger }) {
                         </span>
                       )}
                     </div>
-                    <div className="flex w-16 justify-end">
+                    <div className="flex shrink-0 justify-end">
                       {config.editing ? (
                         <div className="flex gap-1">
                           <Button
@@ -1226,16 +1315,22 @@ function SettingsTab({ charger }: { charger: Charger }) {
             Local authorization list management
           </p>
           <div className="mt-4 rounded-lg border">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
               <span>ID Tag</span>
               <span>Status</span>
               <span>Expiry</span>
+              <span className="sr-only">Actions</span>
             </div>
             <div className="divide-y">
-              {authList.map((auth) => (
+              {visibleAuthList.length === 0 && (
+                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                  No authorization tags configured
+                </p>
+              )}
+              {visibleAuthList.map((auth) => (
                 <div
-                  key={auth.idTag}
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-2"
+                  key={auth.id}
+                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-3 py-2"
                 >
                   <span className="flex items-center gap-2 text-xs font-medium">
                     <RiShieldKeyholeLine
@@ -1255,27 +1350,61 @@ function SettingsTab({ charger }: { charger: Charger }) {
                     {auth.status}
                   </Badge>
                   <span className="text-xs text-muted-foreground tabular-nums">
-                    {auth.expiryDate}
+                    {auth.expiryDate
+                      ? new Date(auth.expiryDate).toLocaleDateString()
+                      : '—'}
                   </span>
+                  <removeFetcher.Form method="post">
+                    <input type="hidden" name="intent" value="removeAuthTag" />
+                    <input
+                      type="hidden"
+                      name="chargerId"
+                      value={charger.id}
+                    />
+                    <input
+                      type="hidden"
+                      name="authTagId"
+                      value={auth.id}
+                    />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon"
+                      className="size-6"
+                    >
+                      <RiDeleteBinLine
+                        aria-hidden="true"
+                        className="size-3.5 text-muted-foreground"
+                      />
+                      <span className="sr-only">Remove {auth.idTag}</span>
+                    </Button>
+                  </removeFetcher.Form>
                 </div>
               ))}
             </div>
           </div>
-          <div className="mt-3 flex gap-2">
+          <addFetcher.Form method="post" className="mt-3 flex gap-2">
+            <input type="hidden" name="intent" value="addAuthTag" />
+            <input type="hidden" name="chargerId" value={charger.id} />
             <Input
+              name="idTag"
               className="h-8 text-xs"
               placeholder="Add ID tag..."
               value={newIdTag}
               onChange={(e) => setNewIdTag(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddIdTag()
-              }}
             />
-            <Button size="sm" className="h-8" onClick={handleAddIdTag}>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-8"
+              disabled={
+                addFetcher.state === 'submitting' || !newIdTag.trim()
+              }
+            >
               <RiAddLine aria-hidden="true" data-icon="inline-start" />
               Add
             </Button>
-          </div>
+          </addFetcher.Form>
         </CardContent>
       </Card>
 
@@ -1377,7 +1506,13 @@ function SettingsTab({ charger }: { charger: Charger }) {
   )
 }
 
-function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
+function ConnectorCard({
+  connector,
+  chargerId,
+}: {
+  connector: ConnectorDetail
+  chargerId: string
+}) {
   const isActive =
     connector.status === 'Charging' || connector.status === 'Preparing'
   const isSuspended =
@@ -1560,6 +1695,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
       <StartChargingDialog
         open={startOpen}
         onOpenChange={setStartOpen}
+        chargerId={chargerId}
         connectorId={connector.id}
         maxPowerKw={connector.maxPowerKw}
         connectorType={connector.connectorType}
@@ -1581,36 +1717,34 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
 function StartChargingDialog({
   open,
   onOpenChange,
+  chargerId,
   connectorId,
   maxPowerKw,
   connectorType,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  chargerId: string
   connectorId: number
   maxPowerKw: string
   connectorType: string
 }) {
-  const [step, setStep] = useState<'config' | 'sending' | 'sent'>('config')
+  const startFetcher = useFetcher()
   const [idTag, setIdTag] = useState('')
   const [powerLimit, setPowerLimit] = useState(maxPowerKw)
-  function handleStart() {
-    if (!idTag.trim()) {
-      toast.error('Please enter an ID tag')
-      return
-    }
-    setStep('sending')
-    // Simulate sending command
-    setTimeout(() => {
-      setStep('sent')
-    }, 1500)
-  }
+
+  const { data: authData } = useSWR<{ items: AuthTag[] }>(
+    open ? ['charger.listAuthTags', { id: chargerId }] : null,
+    fetcher
+  )
+  const authTags = authData?.items ?? []
+
+  const isSubmitting = startFetcher.state === 'submitting'
+  const isSuccess = startFetcher.state === 'idle' && startFetcher.data?.ok
 
   function handleClose() {
     onOpenChange(false)
-    // Reset after animation
     setTimeout(() => {
-      setStep('config')
       setIdTag('')
       setPowerLimit(String(maxPowerKw))
     }, 200)
@@ -1619,7 +1753,7 @@ function StartChargingDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
-        {step === 'config' && (
+        {!isSubmitting && !isSuccess && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1636,7 +1770,14 @@ function StartChargingDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex flex-col gap-4 py-2">
+            <startFetcher.Form
+              method="post"
+              className="flex flex-col gap-4 py-2"
+            >
+              <input type="hidden" name="intent" value="remoteStart" />
+              <input type="hidden" name="chargerId" value={chargerId} />
+              <input type="hidden" name="connectorId" value={connectorId} />
+
               {/* Connector info */}
               <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
                 <RiPlugLine
@@ -1659,28 +1800,32 @@ function StartChargingDialog({
               {/* ID Tag */}
               <div className="grid gap-2">
                 <Label
-                  htmlFor="idTag"
+                  htmlFor="startIdTag"
                   className="flex items-center gap-1.5 text-xs"
                 >
                   <RiUserLine aria-hidden="true" className="size-3" />
                   ID Tag / Identifier
                 </Label>
                 <select
-                  id="idTag"
+                  id="startIdTag"
+                  name="idTag"
                   value={idTag}
                   onChange={(e) => setIdTag(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                  required
                   autoFocus
                 >
                   <option value="">Select an ID tag...</option>
-                  <option value="ADMIN-001">ADMIN-001</option>
-                  <option value="USER-001">USER-001</option>
-                  <option value="USER-002">USER-002</option>
-                  <option value="TESLA-M3">TESLA-M3</option>
-                  <option value="GUEST">GUEST</option>
+                  {authTags.map((tag) => (
+                    <option key={tag.id} value={tag.idTag}>
+                      {tag.idTag}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-[10px] text-muted-foreground">
-                  Select an authorized ID tag from the local auth list
+                  {authTags.length === 0
+                    ? 'No tags configured — add one in Settings'
+                    : 'Select an authorized ID tag from the local auth list'}
                 </p>
               </div>
 
@@ -1706,21 +1851,24 @@ function StartChargingDialog({
                   Max: {maxPowerKw} kW. Leave as-is for full power.
                 </p>
               </div>
-            </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button onClick={handleStart}>
-                <RiFlashlightLine aria-hidden="true" data-icon="inline-start" />
-                Start Charging
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!idTag}>
+                  <RiFlashlightLine
+                    aria-hidden="true"
+                    data-icon="inline-start"
+                  />
+                  Start Charging
+                </Button>
+              </DialogFooter>
+            </startFetcher.Form>
           </>
         )}
 
-        {step === 'sending' && (
+        {isSubmitting && (
           <div className="flex flex-col items-center py-10">
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500" />
@@ -1740,7 +1888,7 @@ function StartChargingDialog({
           </div>
         )}
 
-        {step === 'sent' && (
+        {isSuccess && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
               <RiCheckboxCircleLine
@@ -1758,7 +1906,9 @@ function StartChargingDialog({
               <div className="grid gap-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ID Tag</span>
-                  <span className="font-medium">{idTag}</span>
+                  <span className="font-medium">
+                    {startFetcher.data?.idTag}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Power Limit</span>
@@ -2151,17 +2301,22 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // --- Reservations ---
 
+type ReservationActionData = { ok: boolean; intent: string; reservationId?: number }
+
 function ReservationCard({
   reservation,
-  onCancel,
-  cancelling,
+  chargerId,
+  cancelFetcher,
 }: {
   reservation: Reservation
-  onCancel: (reservationId: number) => void
-  cancelling: number | null
+  chargerId: string
+  cancelFetcher: ReturnType<typeof useFetcher<ReservationActionData>>
 }) {
   const isActive = reservation.status === 'Active'
-  const isCancelling = cancelling === reservation.reservationId
+  const cancellingId = cancelFetcher.formData
+    ? Number(cancelFetcher.formData.get('reservationId'))
+    : null
+  const isCancelling = cancellingId === reservation.reservationId
   const expiryDate = new Date(reservation.expiryDate)
   const isExpired = expiryDate.getTime() < Date.now()
 
@@ -2220,25 +2375,30 @@ function ReservationCard({
 
       {/* Cancel button — active only */}
       {isActive && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 shrink-0 border-red-200 text-xs text-red-600 hover:bg-red-50"
-          disabled={isCancelling}
-          onClick={() => onCancel(reservation.reservationId)}
-        >
-          {isCancelling ? (
-            <RiLoader4Line aria-hidden="true" className="size-3 animate-spin" />
-          ) : (
-            <>
-              <RiCalendarCloseLine
-                aria-hidden="true"
-                data-icon="inline-start"
-              />
-              Cancel
-            </>
-          )}
-        </Button>
+        <cancelFetcher.Form method="post">
+          <input type="hidden" name="intent" value="cancelReservation" />
+          <input type="hidden" name="chargerId" value={chargerId} />
+          <input type="hidden" name="reservationId" value={reservation.reservationId} />
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            className="h-7 shrink-0 border-red-200 text-xs text-red-600 hover:bg-red-50"
+            disabled={isCancelling}
+          >
+            {isCancelling ? (
+              <RiLoader4Line aria-hidden="true" className="size-3 animate-spin" />
+            ) : (
+              <>
+                <RiCalendarCloseLine
+                  aria-hidden="true"
+                  data-icon="inline-start"
+                />
+                Cancel
+              </>
+            )}
+          </Button>
+        </cancelFetcher.Form>
       )}
     </div>
   )
@@ -2247,17 +2407,18 @@ function ReservationCard({
 function NewReservationDialog({
   open,
   onOpenChange,
+  chargerId,
   connectors,
-  onCreated,
+  reserveFetcher,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  chargerId: string
   connectors: ConnectorDetail[]
-  onCreated: (reservation: Reservation) => void
+  reserveFetcher: ReturnType<typeof useFetcher<ReservationActionData>>
 }) {
   const defaultExpiry = () => {
     const d = new Date(Date.now() + 30 * 60000)
-    // Format for datetime-local input: "YYYY-MM-DDTHH:mm"
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
@@ -2268,7 +2429,8 @@ function NewReservationDialog({
   const [expiryDate, setExpiryDate] = useState(defaultExpiry)
   const [parentIdTag, setParentIdTag] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+
+  const submitting = reserveFetcher.state === 'submitting'
 
   function reset() {
     setConnectorId(null)
@@ -2277,13 +2439,20 @@ function NewReservationDialog({
     setExpiryDate(defaultExpiry())
     setParentIdTag('')
     setAdvancedOpen(false)
-    setSubmitting(false)
   }
 
   function handleClose() {
     onOpenChange(false)
     setTimeout(reset, 200)
   }
+
+  // Close dialog on successful submission
+  useEffect(() => {
+    if (reserveFetcher.state === 'idle' && reserveFetcher.data?.ok) {
+      toast.success(`Connector #${connectorId} reserved for ${idTag.trim()}`)
+      handleClose()
+    }
+  }, [reserveFetcher.state, reserveFetcher.data])
 
   function validate(): string | null {
     if (connectorId === null) return 'Please select a connector'
@@ -2304,21 +2473,18 @@ function NewReservationDialog({
       toast.error(err)
       return
     }
-    setSubmitting(true)
-    // TODO: replace with api("charger.reserveNow", { id: chargerId, connectorId, expiryDate, idTag, parentIdTag, reservationId })
-    setTimeout(() => {
-      const newReservation: Reservation = {
-        reservationId: Number(reservationId),
-        connectorId: connectorId!,
+    reserveFetcher.submit(
+      {
+        intent: 'reserveNow',
+        chargerId,
+        connectorId: String(connectorId),
         idTag: idTag.trim(),
-        parentIdTag: parentIdTag.trim() || null,
         expiryDate: new Date(expiryDate).toISOString(),
-        status: 'Active',
-      }
-      onCreated(newReservation)
-      toast.success(`Connector #${connectorId} reserved for ${idTag.trim()}`)
-      handleClose()
-    }, 1200)
+        parentIdTag: parentIdTag.trim(),
+        reservationId,
+      },
+      { method: 'post' },
+    )
   }
 
   return (
@@ -2512,38 +2678,42 @@ function ReservationsTab({
   chargerId: string
   connectors: ConnectorDetail[]
 }) {
-  const [localReservations, setLocalReservations] = useState<Reservation[]>([])
+  const { data: reservationsData, isLoading: loading, mutate: mutateReservations } = useSWR<{ items: Reservation[] }>(
+    ['charger.listReservations', { id: chargerId }],
+    fetcher,
+  )
+  const reservations = reservationsData?.items ?? []
   const [newDialogOpen, setNewDialogOpen] = useState(false)
-  const [cancelling, setCancelling] = useState<number | null>(null)
   const [pastOpen, setPastOpen] = useState(false)
 
-  // TODO: replace with useSWR when charger.listReservations endpoint is ready
-  const loading = false
-  const reservations = localReservations
+  const cancelFetcher = useFetcher<ReservationActionData>()
+  const reserveFetcher = useFetcher<ReservationActionData>()
 
-  function handleCreated(reservation: Reservation) {
-    setLocalReservations((prev) => [reservation, ...prev])
-  }
+  // Revalidate SWR after reserve completes
+  useEffect(() => {
+    if (reserveFetcher.state === 'idle' && reserveFetcher.data?.ok) {
+      mutateReservations()
+    }
+  }, [reserveFetcher.state, reserveFetcher.data])
 
-  function handleCancel(reservationId: number) {
-    setCancelling(reservationId)
-    // TODO: replace with api("charger.cancelReservation", { id: chargerId, reservationId })
-    setTimeout(() => {
-      setLocalReservations((prev) =>
-        prev.map((r) =>
-          r.reservationId === reservationId ? { ...r, status: 'Cancelled' } : r
-        )
-      )
-      setCancelling(null)
-      toast.success(`Reservation #${reservationId} cancelled`)
-    }, 1000)
-  }
+  // Revalidate SWR after cancel completes
+  useEffect(() => {
+    if (cancelFetcher.state === 'idle' && cancelFetcher.data?.ok) {
+      toast.success(`Reservation #${cancelFetcher.data.reservationId} cancelled`)
+      mutateReservations()
+    }
+  }, [cancelFetcher.state, cancelFetcher.data])
 
-  // suppress unused var until real API is wired
-  void chargerId
+  // Optimistic cancel — show cancelled status immediately
+  const cancellingId = cancelFetcher.formData
+    ? Number(cancelFetcher.formData.get('reservationId'))
+    : null
+  const displayReservations = reservations.map((r) =>
+    r.reservationId === cancellingId ? { ...r, status: 'Cancelled' } : r
+  )
 
-  const activeReservations = reservations.filter((r) => r.status === 'Active')
-  const pastReservations = reservations.filter((r) => r.status !== 'Active')
+  const activeReservations = displayReservations.filter((r) => r.status === 'Active')
+  const pastReservations = displayReservations.filter((r) => r.status !== 'Active')
 
   if (loading) {
     return (
@@ -2603,8 +2773,8 @@ function ReservationsTab({
             <ReservationCard
               key={r.reservationId}
               reservation={r}
-              onCancel={handleCancel}
-              cancelling={cancelling}
+              chargerId={chargerId}
+              cancelFetcher={cancelFetcher}
             />
           ))}
         </div>
@@ -2633,8 +2803,8 @@ function ReservationsTab({
               <ReservationCard
                 key={r.reservationId}
                 reservation={r}
-                onCancel={handleCancel}
-                cancelling={cancelling}
+                chargerId={chargerId}
+                cancelFetcher={cancelFetcher}
               />
             ))}
           </CollapsibleContent>
@@ -2644,8 +2814,9 @@ function ReservationsTab({
       <NewReservationDialog
         open={newDialogOpen}
         onOpenChange={setNewDialogOpen}
+        chargerId={chargerId}
         connectors={connectors}
-        onCreated={handleCreated}
+        reserveFetcher={reserveFetcher}
       />
     </div>
   )

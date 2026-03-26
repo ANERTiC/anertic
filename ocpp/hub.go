@@ -494,7 +494,10 @@ type command struct {
 func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 	channel := "ocpp:cp:" + cp.Identity
 	sub := h.rdb.Subscribe(ctx, channel)
-	defer sub.Close()
+	defer func() {
+		sub.Close()
+		slog.InfoContext(ctx, "unsubscribed from chargepoint channel", "chargePointID", cp.Identity, "channel", channel)
+	}()
 
 	slog.InfoContext(ctx, "subscribed to chargepoint channel", "chargePointID", cp.Identity, "channel", channel)
 
@@ -504,6 +507,8 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 			slog.ErrorContext(ctx, "invalid command on chargepoint channel", "error", err, "chargePointID", cp.Identity)
 			continue
 		}
+
+		slog.InfoContext(ctx, "received command from channel", "chargePointID", cp.Identity, "action", cmd.Action)
 
 		go func() {
 			raw, err := cp.Call(ctx, cmd.Action, cmd.Payload)
@@ -516,4 +521,5 @@ func (h *Hub) SubscribeChargePoint(ctx context.Context, cp *ChargePoint) {
 			h.HandleResponse(ctx, cp.Identity, cmd.Action, cmd.Payload, raw)
 		}()
 	}
+	slog.Info("done")
 }

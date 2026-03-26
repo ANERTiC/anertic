@@ -59,11 +59,17 @@ export interface Session {
 }
 
 export interface OcppEvent {
-  id: string
+  messageId: string
   action: string
   direction: 'in' | 'out'
-  timestamp: string
-  payload: string | null
+  requestAt: string
+  responseAt: string | null
+  durationMs: number | null
+  request: string | null
+  response: string | null
+  responseType: number | null
+  errorCode: string | null
+  errorDesc: string | null
 }
 
 export interface Reservation {

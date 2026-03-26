@@ -15,6 +15,20 @@ export interface ConsoleContext {
   user: User
 }
 
+export function shouldRevalidate({
+  formAction,
+  defaultShouldRevalidate,
+}: {
+  formAction?: string
+  defaultShouldRevalidate: boolean
+}) {
+  // Only revalidate auth after form submissions (logout, etc.)
+  if (formAction) {
+    return defaultShouldRevalidate
+  }
+  return false
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSessionFromRequest(request)
   if (!session.get('accessToken')) {

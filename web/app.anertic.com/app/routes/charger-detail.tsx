@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Suspense, useState } from 'react'
+import { Await, Link, NavLink, Outlet } from 'react-router'
 import useSWR from 'swr'
 
 import { fetcher } from '~/lib/api'
@@ -64,17 +64,32 @@ import {
   OCPP_BASE_URL,
 } from './charger-detail/types'
 
+// --- Revalidation ---
+
+export function shouldRevalidate({
+  currentParams,
+  nextParams,
+  defaultShouldRevalidate,
+}: {
+  currentParams: Record<string, string>
+  nextParams: Record<string, string>
+  defaultShouldRevalidate: boolean
+}) {
+  // Skip refetch when switching tabs within the same charger
+  if (currentParams.chargerId === nextParams.chargerId) {
+    return false
+  }
+  return defaultShouldRevalidate
+}
+
 // --- Server Loader ---
 
 export async function loader({ params, request }: Route.LoaderArgs) {
-  try {
-    const { result } = await api<Charger>(request, 'charger.get', {
-      id: params.chargerId,
-    })
-    return { charger: result }
-  } catch {
-    throw new Response('Charger not found', { status: 404 })
-  }
+  const charger = api<Charger>(request, 'charger.get', {
+    id: params.chargerId,
+  }).then((r) => r.result)
+
+  return { charger }
 }
 
 // --- Layout ---
@@ -94,34 +109,46 @@ const tabs = [
   { to: 'log', label: 'OCPP Logs', icon: RiHistoryLine, end: false },
 ]
 
+function ChargerDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-5 w-32" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-lg" />
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  )
+}
+
 export default function ChargerDetailLayout({
   loaderData,
 }: Route.ComponentProps) {
+  return (
+    <Suspense fallback={<ChargerDetailSkeleton />}>
+      <Await resolve={loaderData.charger}>
+        {(charger) => <ChargerDetailContent initial={charger} />}
+      </Await>
+    </Suspense>
+  )
+}
+
+function ChargerDetailContent({ initial }: { initial: Charger }) {
   const siteId = useSiteId()
   const siteParam = siteId ? `?site=${siteId}` : ''
 
   const { data: charger } = useSWR<Charger>(
-    ['charger.get', { id: loaderData.charger.id }],
+    ['charger.get', { id: initial.id }],
     fetcher,
-    { fallbackData: loaderData.charger, refreshInterval: 15000 }
+    { fallbackData: initial, refreshInterval: 15000 }
   )
 
-  if (!charger) {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
-    )
-  }
+  if (!charger) return <ChargerDetailSkeleton />
 
   const isCharging =
     charger.status === 'Charging' || charger.status === 'Preparing'
@@ -237,6 +264,7 @@ export default function ChargerDetailLayout({
             key={tab.to}
             to={`${tab.to}${siteParam}`}
             end={tab.end}
+            prefetch="intent"
             className={({ isActive }) =>
               cn(
                 'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',

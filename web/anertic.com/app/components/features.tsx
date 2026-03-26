@@ -8,6 +8,7 @@ const FEATURES = [
     iconBg: "bg-accent/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -27,6 +28,7 @@ const FEATURES = [
     iconBg: "bg-indigo-500/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -48,6 +50,7 @@ const FEATURES = [
     iconBg: "bg-amber-500/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -69,6 +72,7 @@ const FEATURES = [
     iconBg: "bg-rose-500/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -88,6 +92,7 @@ const FEATURES = [
     iconBg: "bg-cyan-600/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -110,6 +115,7 @@ const FEATURES = [
     iconBg: "bg-violet-600/[0.07]",
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -126,12 +132,12 @@ const FEATURES = [
 
 export function Features() {
   return (
-    <section id="features" className="mx-auto max-w-[1120px] px-8 py-24">
+    <section id="features" className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
       <ScrollReveal>
         <p className="text-xs font-bold tracking-[0.08em] text-accent">
           FEATURES
         </p>
-        <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
+        <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
           One AI. Every energy decision.
         </h2>
         <p className="mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">

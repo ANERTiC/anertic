@@ -28,7 +28,7 @@ export const meta: Route.MetaFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -42,10 +42,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#ffffff" />
         <Meta />
         <Links />
       </head>
       <body className="bg-bg font-sans text-text antialiased">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white">
+          Skip to content
+        </a>
         {children}
         <ScrollRestoration />
         <Scripts />

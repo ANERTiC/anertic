@@ -23,12 +23,12 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section id="how" className="mx-auto max-w-[1120px] px-8 py-24">
+    <section id="how" className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
       <ScrollReveal className="text-center">
         <p className="text-xs font-bold tracking-[0.08em] text-accent">
           HOW IT WORKS
         </p>
-        <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
+        <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
           Three steps to <span className="text-accent">smarter</span> energy
         </h2>
       </ScrollReveal>
@@ -46,7 +46,7 @@ export function HowItWorks() {
         {STEPS.map((step, i) => (
           <ScrollReveal key={step.num} delay={i * 50}>
             <div className="group relative text-center">
-              <div className="relative z-10 mx-auto mb-5 flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-border bg-white text-[22px] font-extrabold text-accent transition-all duration-300 group-hover:border-accent group-hover:shadow-[0_0_0_6px_#e6f7f0] group-hover:scale-105">
+              <div className="relative z-10 mx-auto mb-5 flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-border bg-white text-[22px] font-extrabold text-accent transition-[border-color,box-shadow,transform] duration-300 group-hover:border-accent group-hover:shadow-[0_0_0_6px_#e6f7f0] group-hover:scale-105">
                 {step.num}
               </div>
               <h3 className="mb-1.5 text-base font-bold">{step.title}</h3>

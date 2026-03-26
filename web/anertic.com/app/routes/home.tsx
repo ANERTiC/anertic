@@ -9,18 +9,18 @@ import { Footer } from "~/components/footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div id="main" className="min-h-screen">
       <Nav />
       <Hero />
-      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8"><div className="border-t border-border" /></div>
       <Features />
-      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8"><div className="border-t border-border" /></div>
       <InAction />
-      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8"><div className="border-t border-border" /></div>
       <HowItWorks />
-      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8"><div className="border-t border-border" /></div>
       <Pricing />
-      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8"><div className="border-t border-border" /></div>
       <Contact />
       <Footer />
     </div>

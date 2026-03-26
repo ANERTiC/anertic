@@ -5,7 +5,7 @@ const APP_URL =
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden px-8 pb-24 pt-20 text-center">
+    <section className="relative overflow-hidden px-5 pb-16 pt-14 text-center sm:px-8 sm:pb-24 sm:pt-20">
       {/* Subtle grid background */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -23,7 +23,7 @@ export function Hero() {
       <div className="pointer-events-none absolute -top-24 left-1/2 h-[600px] w-[900px] -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(13,150,104,0.06)_0%,rgba(13,150,104,0.02)_40%,transparent_70%)]" />
 
       {/* Orb */}
-      <div className="relative mx-auto mb-11 h-40 w-40 motion-safe:animate-scale-in motion-safe:[animation-delay:0.1s]">
+      <div className="relative mx-auto mb-8 h-32 w-32 sm:mb-11 sm:h-40 sm:w-40 motion-safe:animate-scale-in motion-safe:[animation-delay:0.1s]">
         {/* Orbit rings */}
         <div className="absolute -inset-6 rounded-full border border-accent/[0.03] motion-safe:animate-spin-slow motion-safe:[animation-duration:38s]">
           <div className="absolute left-[calc(50%-9px)] top-[30%] h-1 w-1 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)] motion-safe:animate-float-y motion-safe:[animation-delay:0.5s]" />
@@ -48,7 +48,7 @@ export function Hero() {
       </div>
 
       {/* Headline */}
-      <h1 className="mx-auto mt-5 max-w-[620px] text-4xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-5xl motion-safe:animate-rise motion-safe:[animation-delay:0.35s]">
+      <h1 className="mx-auto mt-5 max-w-[620px] text-pretty text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-4xl md:text-5xl motion-safe:animate-rise motion-safe:[animation-delay:0.35s]">
         Your <span className="text-accent">intelligent</span> agent
         <br />
         for smarter energy
@@ -61,16 +61,16 @@ export function Hero() {
       </p>
 
       {/* CTA */}
-      <div className="mt-9 flex justify-center gap-2.5 motion-safe:animate-rise motion-safe:[animation-delay:0.55s]">
+      <div className="mt-7 flex justify-center gap-2.5 sm:mt-9 motion-safe:animate-rise motion-safe:[animation-delay:0.55s]">
         <a
           href={APP_URL}
-          className="rounded-[10px] bg-accent px-7 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)] active:scale-[0.97]"
+          className="rounded-[10px] bg-accent px-7 py-3 text-sm font-semibold text-white transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]"
         >
           Get Started
         </a>
         <a
           href="#features"
-          className="rounded-[10px] border border-border px-7 py-3 text-sm font-semibold text-text-2 transition-all hover:-translate-y-0.5 hover:border-text-3 hover:text-text"
+          className="rounded-[10px] border border-border px-7 py-3 text-sm font-semibold text-text-2 transition-[transform,border-color,color] hover:-translate-y-0.5 hover:border-text-3 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           Learn More
         </a>

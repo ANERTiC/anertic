@@ -113,6 +113,7 @@ function AiAvatar() {
   return (
     <div className="mr-2 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent">
       <svg
+        aria-hidden="true"
         width="12"
         height="12"
         viewBox="0 0 24 24"
@@ -186,6 +187,7 @@ function ChatMessage({ msg }: { msg: DisplayMessage }) {
 export function InAction() {
   const [inView, setInView] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const { messages, showTyping } = useChatAnimation(inView);
 
   useEffect(() => {
@@ -201,15 +203,20 @@ export function InAction() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, showTyping]);
+
   return (
-    <section id="in-action" className="mx-auto max-w-[1120px] px-8 py-24">
+    <section id="in-action" className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
       <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
         {/* Left — text */}
         <ScrollReveal>
           <p className="text-xs font-bold tracking-[0.08em] text-accent">
             SEE IT IN ACTION
           </p>
-          <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
+          <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
             Talk to your <span className="text-accent">energy</span>
           </h2>
           <p className="mt-4 max-w-[380px] text-[15px] leading-relaxed text-text-2">
@@ -235,7 +242,7 @@ export function InAction() {
             </div>
 
             {/* Messages area */}
-            <div className="flex h-[400px] flex-col gap-3 overflow-y-auto px-5 py-4">
+            <div ref={messagesRef} className="flex h-[320px] flex-col gap-3 overflow-y-auto px-4 py-4 sm:h-[400px] sm:px-5">
               {messages.map((msg, i) => (
                 <ChatMessage key={`${i}-${msg.role}`} msg={msg} />
               ))}
@@ -246,10 +253,11 @@ export function InAction() {
             <div className="border-t border-border px-5 py-3">
               <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-soft px-4 py-2.5">
                 <span className="flex-1 text-[13px] text-text-3">
-                  Ask your energy agent...
+                  Ask your energy agent…
                 </span>
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
                   <svg
+                    aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 24 24"

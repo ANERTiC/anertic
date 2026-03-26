@@ -34,7 +34,7 @@ export function ScrollReveal({
     <div
       ref={ref}
       className={cn(
-        "motion-safe:translate-y-7 motion-safe:opacity-0 motion-safe:transition-all motion-safe:duration-700",
+        "motion-safe:translate-y-7 motion-safe:opacity-0 motion-safe:transition-[transform,opacity] motion-safe:duration-700",
         "motion-safe:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
         "motion-safe:[&.show]:translate-y-0 motion-safe:[&.show]:opacity-100",
         className,

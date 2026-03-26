@@ -61,12 +61,12 @@ const PLANS = [
 
 export function Pricing() {
   return (
-    <section id="pricing" className="mx-auto max-w-[1120px] px-8 py-24">
+    <section id="pricing" className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
       <ScrollReveal className="text-center">
         <p className="text-xs font-bold tracking-[0.08em] text-accent">
           PRICING
         </p>
-        <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
+        <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
           Hardware + AI, one platform
         </h2>
         <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">
@@ -75,12 +75,12 @@ export function Pricing() {
         </p>
       </ScrollReveal>
 
-      <div className="mx-auto mt-14 grid max-w-[860px] grid-cols-1 gap-5 sm:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-[860px] grid-cols-1 gap-5 sm:mt-14 md:grid-cols-3">
         {PLANS.map((plan, i) => (
           <ScrollReveal key={plan.name} delay={i * 50}>
             <div
               className={cn(
-                "relative rounded-2xl border bg-white p-8 text-center transition-all duration-300 hover:-translate-y-1",
+                "relative rounded-2xl border bg-white p-6 text-center transition-[transform,box-shadow] duration-300 hover:-translate-y-1 sm:p-8",
                 plan.featured
                   ? "border-accent shadow-[0_0_0_1px_#0d9668,0_8px_32px_rgba(13,150,104,0.08)] hover:shadow-[0_0_0_1px_#0d9668,0_12px_40px_rgba(13,150,104,0.12)]"
                   : "border-border hover:shadow-[0_12px_36px_rgba(0,0,0,0.05)]",
@@ -93,7 +93,7 @@ export function Pricing() {
               )}
 
               <p className="text-[13px] font-medium text-text-2">{plan.name}</p>
-              <p className="mt-1.5 text-[42px] font-extrabold tracking-[-0.03em]">
+              <p className="mt-1.5 text-[34px] font-extrabold tabular-nums tracking-[-0.03em] sm:text-[42px]">
                 {plan.price}
                 {plan.period && (
                   <span className="text-sm font-normal text-text-3">
@@ -123,7 +123,7 @@ export function Pricing() {
               <a
                 href={plan.href}
                 className={cn(
-                  "block w-full rounded-lg py-2.5 text-[13px] font-semibold transition-all active:scale-[0.97]",
+                  "block w-full rounded-lg py-2.5 text-[13px] font-semibold transition-[transform,box-shadow,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]",
                   plan.featured
                     ? "bg-accent text-white hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)]"
                     : "border border-border bg-bg-soft text-text-2 hover:border-text-3 hover:text-text",

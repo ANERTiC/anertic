@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
@@ -16,6 +17,114 @@ import (
 	"github.com/anertic/anertic/api/iam"
 	"github.com/anertic/anertic/pkg/ocpp"
 )
+
+// ListChargingProfiles
+
+type ListChargingProfilesParams struct {
+	ID string `json:"id"`
+}
+
+func (p *ListChargingProfilesParams) Valid() error {
+	v := validator.New()
+	v.Must(p.ID != "", "id is required")
+	return v.Error()
+}
+
+type ChargingProfileItem struct {
+	ID                     string            `json:"id"`
+	ChargerID              string            `json:"chargerId"`
+	ConnectorID            int               `json:"connectorId"`
+	ChargingProfileID      int               `json:"chargingProfileId"`
+	StackLevel             int               `json:"stackLevel"`
+	ChargingProfilePurpose string            `json:"chargingProfilePurpose"`
+	ChargingProfileKind    string            `json:"chargingProfileKind"`
+	RecurrencyKind         string            `json:"recurrencyKind"`
+	ValidFrom              *time.Time        `json:"validFrom"`
+	ValidTo                *time.Time        `json:"validTo"`
+	TransactionID          *int              `json:"transactionId"`
+	Schedule               *ChargingSchedule `json:"schedule"`
+	CreatedAt              time.Time         `json:"createdAt"`
+	UpdatedAt              time.Time         `json:"updatedAt"`
+}
+
+type ListChargingProfilesResult struct {
+	Items []ChargingProfileItem `json:"items"`
+}
+
+func ListChargingProfiles(ctx context.Context, p *ListChargingProfilesParams) (*ListChargingProfilesResult, error) {
+	if err := p.Valid(); err != nil {
+		return nil, err
+	}
+
+	var siteID string
+	err := pgctx.QueryRow(ctx, `
+		select site_id
+		from ev_chargers
+		where id = $1
+	`, p.ID).Scan(&siteID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := iam.InSite(ctx, siteID); err != nil {
+		return nil, err
+	}
+
+	items := make([]ChargingProfileItem, 0)
+	err = pgstmt.Select(func(b pgstmt.SelectStatement) {
+		b.Columns(
+			"id",
+			"charger_id",
+			"connector_id",
+			"charging_profile_id",
+			"stack_level",
+			"charging_profile_purpose",
+			"charging_profile_kind",
+			"recurrency_kind",
+			"valid_from",
+			"valid_to",
+			"transaction_id",
+			"schedule",
+			"created_at",
+			"updated_at",
+		)
+		b.From("ev_charging_profiles")
+		b.Where(func(c pgstmt.Cond) {
+			c.Eq("charger_id", p.ID)
+		})
+		b.OrderBy("created_at").Desc()
+	}).IterWith(ctx, func(scan pgsql.Scanner) error {
+		var it ChargingProfileItem
+		if err := scan(
+			&it.ID,
+			&it.ChargerID,
+			&it.ConnectorID,
+			&it.ChargingProfileID,
+			&it.StackLevel,
+			&it.ChargingProfilePurpose,
+			&it.ChargingProfileKind,
+			pgsql.NullString(&it.RecurrencyKind),
+			pgsql.Null(&it.ValidFrom),
+			pgsql.Null(&it.ValidTo),
+			pgsql.Null(&it.TransactionID),
+			pgsql.JSON(&it.Schedule),
+			&it.CreatedAt,
+			&it.UpdatedAt,
+		); err != nil {
+			return err
+		}
+		items = append(items, it)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListChargingProfilesResult{Items: items}, nil
+}
 
 // SetChargingProfile
 

@@ -149,6 +149,37 @@ interface Reservation {
   updatedAt: string
 }
 
+interface ChargingSchedulePeriod {
+  startPeriod: number
+  limit: string
+  numberPhases: number | null
+}
+
+interface ChargingScheduleData {
+  duration: number | null
+  startSchedule: string
+  chargingRateUnit: string
+  chargingSchedulePeriod: ChargingSchedulePeriod[]
+  minChargingRate: string | null
+}
+
+interface ChargingProfileData {
+  id: string
+  chargerId: string
+  connectorId: number
+  chargingProfileId: number
+  stackLevel: number
+  chargingProfilePurpose: string
+  chargingProfileKind: string
+  recurrencyKind: string
+  validFrom: string | null
+  validTo: string | null
+  transactionId: number | null
+  schedule: ChargingScheduleData | null
+  createdAt: string
+  updatedAt: string
+}
+
 interface DailyEnergy {
   date: string
   energyKwh: string
@@ -406,6 +437,29 @@ export async function clientAction({ request }: { request: Request }) {
       ])
       return { ok: true, intent, connectorId, idTag }
     }
+    case 'setChargingProfile': {
+      const id = String(formData.get('chargerId'))
+      const connectorId = Number(formData.get('connectorId'))
+      const profileJson = String(formData.get('profileJson'))
+      const parsed = JSON.parse(profileJson)
+      await fetcher([
+        'charger.setChargingProfile',
+        { id, connectorId, csChargingProfiles: parsed },
+      ])
+      return { ok: true, intent }
+    }
+    case 'clearChargingProfile': {
+      const id = String(formData.get('chargerId'))
+      const profileId = formData.get('chargingProfileId')
+      await fetcher([
+        'charger.clearChargingProfile',
+        {
+          id,
+          chargingProfileId: profileId ? Number(profileId) : undefined,
+        },
+      ])
+      return { ok: true, intent, chargingProfileId: profileId }
+    }
     default:
       throw new Response('Invalid intent', { status: 400 })
   }
@@ -638,6 +692,58 @@ export default function ChargerDetail() {
         {/* Sessions */}
         <TabsContent value="sessions" className="mt-4">
           <div className="flex flex-col gap-4">
+            {sessions.length === 0 && (
+              <div className="relative overflow-hidden rounded-xl border border-dashed border-border bg-gradient-to-b from-muted/30 to-background">
+                {/* Background pattern - subtle charging pulse lines */}
+                <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                  <div className="absolute top-6 left-1/2 h-px w-24 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                  <div className="absolute top-10 left-1/2 h-px w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+                </div>
+
+                <div className="flex flex-col items-center px-6 py-14 text-center">
+                  {/* Animated plug icon with pulse ring */}
+                  <div className="relative mb-5">
+                    <div className="absolute inset-0 scale-150 rounded-full bg-primary/5 motion-safe:animate-ping [animation-duration:3s]" />
+                    <div className="relative flex size-14 items-center justify-center rounded-2xl border border-border bg-background shadow-sm">
+                      <RiChargingPile2Line
+                        aria-hidden="true"
+                        className="size-6 text-muted-foreground/60"
+                      />
+                    </div>
+                  </div>
+
+                  <h3 className="text-sm font-semibold text-foreground">
+                    No charging sessions yet
+                  </h3>
+                  <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    Sessions will appear here when a vehicle connects and starts
+                    charging. Each session tracks energy delivered, duration, and
+                    peak power.
+                  </p>
+
+                  {/* Visual timeline hint */}
+                  <div className="mt-6 flex items-center gap-2" aria-hidden="true">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div
+                          className="size-1.5 rounded-full bg-border"
+                          style={{ opacity: 1 - i * 0.3 }}
+                        />
+                        {i < 2 && (
+                          <div
+                            className="h-px w-6 bg-border"
+                            style={{ opacity: 0.7 - i * 0.25 }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[10px] tracking-widest text-muted-foreground/40 uppercase">
+                    Waiting for first session
+                  </p>
+                </div>
+              </div>
+            )}
             {activeSessions.length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
@@ -1062,6 +1168,13 @@ function SettingsTab({ charger }: { charger: Charger }) {
   const [newIdTag, setNewIdTag] = useState('')
   const addFetcher = useFetcher()
   const removeFetcher = useFetcher()
+  const { data: profilesData, mutate: mutateProfiles } = useSWR<{
+    items: ChargingProfileData[]
+  }>(['charger.listChargingProfiles', { id: charger.id }], fetcher)
+  const profiles = profilesData?.items ?? []
+  const setProfileFetcher = useFetcher()
+  const clearProfileFetcher = useFetcher()
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
   const [firmwareUrl, setFirmwareUrl] = useState('')
   const [displayName, setDisplayName] = useState(charger.chargePointId)
   const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
@@ -1103,6 +1216,30 @@ function SettingsTab({ charger }: { charger: Charger }) {
       mutateAuth()
     }
   }, [removeFetcher.state, removeFetcher.data])
+
+  // Revalidate charging profiles after set/clear
+  useEffect(() => {
+    if (setProfileFetcher.state === 'idle' && setProfileFetcher.data?.ok) {
+      toast.success('Charging profile set successfully')
+      setProfileDialogOpen(false)
+      mutateProfiles()
+    }
+  }, [setProfileFetcher.state, setProfileFetcher.data])
+
+  useEffect(() => {
+    if (clearProfileFetcher.state === 'idle' && clearProfileFetcher.data?.ok) {
+      toast.success('Charging profile cleared')
+      mutateProfiles()
+    }
+  }, [clearProfileFetcher.state, clearProfileFetcher.data])
+
+  // Optimistic removal for charging profiles
+  const clearingProfileId = clearProfileFetcher.formData?.get(
+    'chargingProfileId'
+  ) as string | null
+  const visibleProfiles = profiles.filter(
+    (p) => String(p.chargingProfileId) !== clearingProfileId
+  )
 
   // Optimistic removal — hide the tag being removed
   const removingTagId = removeFetcher.formData?.get('authTagId') as
@@ -1287,25 +1424,133 @@ function SettingsTab({ charger }: { charger: Charger }) {
       {/* Charging Profiles */}
       <Card>
         <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">Charging Profiles</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Set power limits and time-based charging schedules
-          </p>
-          <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
-            <RiFlashlightLine
-              aria-hidden="true"
-              className="mx-auto size-8 text-muted-foreground/40"
-            />
-            <p className="mt-2 text-sm text-muted-foreground">
-              No charging profiles configured
-            </p>
-            <Button variant="outline" size="sm" className="mt-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">Charging Profiles</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Set power limits and time-based charging schedules
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setProfileDialogOpen(true)}
+            >
               <RiAddLine aria-hidden="true" data-icon="inline-start" />
               Create Profile
             </Button>
           </div>
+          {visibleProfiles.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
+              <RiFlashlightLine
+                aria-hidden="true"
+                className="mx-auto size-8 text-muted-foreground/40"
+              />
+              <p className="mt-2 text-sm text-muted-foreground">
+                No charging profiles configured
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-lg border">
+              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <span>ID</span>
+                <span>Purpose</span>
+                <span>Kind</span>
+                <span>Connector</span>
+                <span className="sr-only">Actions</span>
+              </div>
+              <div className="divide-y">
+                {visibleProfiles.map((profile) => (
+                  <div
+                    key={profile.id}
+                    className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 px-3 py-2"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-medium tabular-nums">
+                      <RiFlashlightLine
+                        aria-hidden="true"
+                        className="size-3.5 text-muted-foreground"
+                      />
+                      #{profile.chargingProfileId}
+                    </span>
+                    <div className="flex flex-col">
+                      <Badge
+                        className={cn(
+                          'w-fit text-[10px]',
+                          profile.chargingProfilePurpose ===
+                            'ChargePointMaxProfile'
+                            ? 'bg-blue-500/15 text-blue-700'
+                            : profile.chargingProfilePurpose ===
+                                'TxDefaultProfile'
+                              ? 'bg-amber-500/15 text-amber-700'
+                              : 'bg-purple-500/15 text-purple-700'
+                        )}
+                      >
+                        {profile.chargingProfilePurpose}
+                      </Badge>
+                      {profile.schedule && (
+                        <span className="mt-0.5 text-[10px] text-muted-foreground">
+                          {profile.schedule.chargingSchedulePeriod.length}{' '}
+                          period
+                          {profile.schedule.chargingSchedulePeriod.length !== 1
+                            ? 's'
+                            : ''}
+                          {' \u00b7 '}
+                          {profile.schedule.chargingRateUnit}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {profile.chargingProfileKind}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {profile.connectorId === 0
+                        ? 'All'
+                        : `#${profile.connectorId}`}
+                    </span>
+                    <clearProfileFetcher.Form method="post">
+                      <input
+                        type="hidden"
+                        name="intent"
+                        value="clearChargingProfile"
+                      />
+                      <input
+                        type="hidden"
+                        name="chargerId"
+                        value={charger.id}
+                      />
+                      <input
+                        type="hidden"
+                        name="chargingProfileId"
+                        value={profile.chargingProfileId}
+                      />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
+                        aria-label={`Remove profile #${profile.chargingProfileId}`}
+                      >
+                        <RiDeleteBinLine
+                          aria-hidden="true"
+                          className="size-3"
+                        />
+                      </Button>
+                    </clearProfileFetcher.Form>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Create Charging Profile Dialog */}
+      <CreateChargingProfileDialog
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        chargerId={charger.id}
+        connectors={charger.connectors}
+      />
 
       {/* Authorization */}
       <Card>
@@ -2819,5 +3064,236 @@ function ReservationsTab({
         reserveFetcher={reserveFetcher}
       />
     </div>
+  )
+}
+
+// --- Create Charging Profile Dialog ---
+
+function CreateChargingProfileDialog({
+  open,
+  onOpenChange,
+  chargerId,
+  connectors,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  chargerId: string
+  connectors: ConnectorDetail[]
+}) {
+  const profileFetcher = useFetcher()
+  const [connectorId, setConnectorId] = useState('0')
+  const [profileId, setProfileId] = useState('1')
+  const [stackLevel, setStackLevel] = useState('0')
+  const [purpose, setPurpose] = useState('TxDefaultProfile')
+  const [kind, setKind] = useState('Absolute')
+  const [rateUnit, setRateUnit] = useState('W')
+  const [limit, setLimit] = useState('')
+  const [recurrencyKind, setRecurrencyKind] = useState('')
+
+  const isSubmitting = profileFetcher.state === 'submitting'
+
+  useEffect(() => {
+    if (profileFetcher.state === 'idle' && profileFetcher.data?.ok) {
+      onOpenChange(false)
+      setProfileId('1')
+      setStackLevel('0')
+      setPurpose('TxDefaultProfile')
+      setKind('Absolute')
+      setRateUnit('W')
+      setLimit('')
+      setRecurrencyKind('')
+      setConnectorId('0')
+    }
+  }, [profileFetcher.state, profileFetcher.data])
+
+  const profileJson = JSON.stringify({
+    chargingProfileId: parseInt(profileId) || 1,
+    stackLevel: parseInt(stackLevel) || 0,
+    chargingProfilePurpose: purpose,
+    chargingProfileKind: kind,
+    recurrencyKind: kind === 'Recurring' ? recurrencyKind || 'Daily' : '',
+    chargingSchedule: {
+      chargingRateUnit: rateUnit,
+      chargingSchedulePeriod: limit
+        ? [{ startPeriod: 0, limit: parseFloat(limit), numberPhases: 3 }]
+        : [],
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Charging Profile</DialogTitle>
+          <DialogDescription>
+            Set power limits and time-based charging schedules for this charger.
+          </DialogDescription>
+        </DialogHeader>
+        <profileFetcher.Form method="post" className="flex flex-col gap-4 py-2">
+          <input type="hidden" name="intent" value="setChargingProfile" />
+          <input type="hidden" name="chargerId" value={chargerId} />
+          <input type="hidden" name="connectorId" value={connectorId} />
+          <input type="hidden" name="profileJson" value={profileJson} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-connector" className="text-xs">
+                Connector
+              </Label>
+              <select
+                id="cp-connector"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                value={connectorId}
+                onChange={(e) => setConnectorId(e.target.value)}
+              >
+                <option value="0">All connectors</option>
+                {connectors.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Connector #{c.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-profile-id" className="text-xs">
+                Profile ID
+              </Label>
+              <Input
+                id="cp-profile-id"
+                type="number"
+                className="text-xs"
+                value={profileId}
+                onChange={(e) => setProfileId(e.target.value)}
+                min={1}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-purpose" className="text-xs">
+                Purpose
+              </Label>
+              <select
+                id="cp-purpose"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+              >
+                <option value="ChargePointMaxProfile">
+                  ChargePointMaxProfile
+                </option>
+                <option value="TxDefaultProfile">TxDefaultProfile</option>
+                <option value="TxProfile">TxProfile</option>
+              </select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-kind" className="text-xs">
+                Kind
+              </Label>
+              <select
+                id="cp-kind"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
+                <option value="Absolute">Absolute</option>
+                <option value="Recurring">Recurring</option>
+                <option value="Relative">Relative</option>
+              </select>
+            </div>
+          </div>
+
+          {kind === 'Recurring' && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-recurrency" className="text-xs">
+                Recurrency Kind
+              </Label>
+              <select
+                id="cp-recurrency"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                value={recurrencyKind}
+                onChange={(e) => setRecurrencyKind(e.target.value)}
+              >
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-rate-unit" className="text-xs">
+                Rate Unit
+              </Label>
+              <select
+                id="cp-rate-unit"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                value={rateUnit}
+                onChange={(e) => setRateUnit(e.target.value)}
+              >
+                <option value="W">Watts (W)</option>
+                <option value="A">Amps (A)</option>
+              </select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="cp-limit" className="text-xs">
+                Limit ({rateUnit})
+              </Label>
+              <Input
+                id="cp-limit"
+                type="number"
+                className="text-xs"
+                placeholder={rateUnit === 'W' ? 'e.g. 7400' : 'e.g. 32'}
+                value={limit}
+                onChange={(e) => setLimit(e.target.value)}
+                min={0}
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="cp-stack" className="text-xs">
+              Stack Level
+            </Label>
+            <Input
+              id="cp-stack"
+              type="number"
+              className="text-xs"
+              value={stackLevel}
+              onChange={(e) => setStackLevel(e.target.value)}
+              min={0}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Higher stack level takes priority over lower ones
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={isSubmitting || !limit}>
+              {isSubmitting && (
+                <RiLoader4Line
+                  aria-hidden="true"
+                  className="size-3.5 animate-spin"
+                />
+              )}
+              Set Profile
+            </Button>
+          </DialogFooter>
+        </profileFetcher.Form>
+      </DialogContent>
+    </Dialog>
   )
 }

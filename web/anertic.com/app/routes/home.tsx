@@ -1,6 +1,7 @@
 import { Nav } from "~/components/nav";
 import { Hero } from "~/components/hero";
 import { Features } from "~/components/features";
+import { InAction } from "~/components/in-action";
 import { HowItWorks } from "~/components/how-it-works";
 import { Pricing } from "~/components/pricing";
 import { Contact } from "~/components/contact";
@@ -13,6 +14,8 @@ export default function Home() {
       <Hero />
       <div className="mx-auto max-w-[1120px] border-t border-border" />
       <Features />
+      <div className="mx-auto max-w-[1120px] border-t border-border" />
+      <InAction />
       <div className="mx-auto max-w-[1120px] border-t border-border" />
       <HowItWorks />
       <div className="mx-auto max-w-[1120px] border-t border-border" />

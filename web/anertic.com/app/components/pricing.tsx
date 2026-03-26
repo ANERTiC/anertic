@@ -9,30 +9,32 @@ const APP_URL =
 const PLANS = [
   {
     name: "Starter",
-    price: "Free",
-    period: null,
-    note: "Up to 5 devices",
+    price: "฿1,500",
+    period: "/mo",
+    note: "1–3 smart meters included",
+    hardware: "Hardware from ฿15,000",
     features: [
-      "Energy monitoring",
-      "Basic AI insights",
+      "Real-time dashboard",
+      "Basic alerts",
+      "Monthly reports",
       "1 site",
-      "7-day data retention",
     ],
     cta: "Get Started",
     href: APP_URL,
     featured: false,
   },
   {
-    name: "Pro",
-    price: "$49",
+    name: "Business",
+    price: "฿6,000",
     period: "/mo",
-    note: "Up to 50 devices",
+    note: "5–10 meters + EV chargers",
+    hardware: "Hardware from ฿80,000",
     features: [
       "Everything in Starter",
-      "Advanced AI agent",
-      "EV charger management",
-      "Multi-site support",
-      "90-day data retention",
+      "AI anomaly detection",
+      "EV load balancing",
+      "Solar & battery integration",
+      "API access",
     ],
     cta: "Get Started",
     href: APP_URL,
@@ -42,13 +44,14 @@ const PLANS = [
     name: "Enterprise",
     price: "Custom",
     period: null,
-    note: "Unlimited devices",
+    note: "20+ meters, multi-site, EV fleet",
+    hardware: null,
     features: [
-      "Everything in Pro",
-      "Dedicated AI model",
-      "API access",
-      "Priority support",
-      "Unlimited retention",
+      "Everything in Business",
+      "White-label option",
+      "Dedicated onboarding",
+      "SLA 99.9% uptime",
+      "Custom AI reports",
     ],
     cta: "Contact Us",
     href: "#contact",
@@ -64,10 +67,11 @@ export function Pricing() {
           PRICING
         </p>
         <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
-          Start free, scale as you grow
+          Hardware + AI, one platform
         </h2>
         <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">
-          No credit card required. Upgrade when you need more.
+          Smart meters and AI-powered software bundled together. Pay annually
+          and get 2 months free.
         </p>
       </ScrollReveal>
 
@@ -84,7 +88,7 @@ export function Pricing() {
             >
               {plan.featured && (
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold tracking-[0.08em] text-white">
-                  POPULAR
+                  RECOMMENDED
                 </span>
               )}
 
@@ -97,7 +101,13 @@ export function Pricing() {
                   </span>
                 )}
               </p>
-              <p className="mb-6 text-[12.5px] text-text-3">{plan.note}</p>
+              <p className="text-[12.5px] text-text-3">{plan.note}</p>
+              {plan.hardware && (
+                <p className="mt-1 text-[12px] font-medium text-accent">
+                  {plan.hardware}
+                </p>
+              )}
+              <div className="mb-6" />
 
               <ul className="mb-6 flex flex-col gap-2.5 text-left">
                 {plan.features.map((f) => (

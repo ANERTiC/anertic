@@ -5,26 +5,26 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
-} from 'react-router'
+} from "react-router";
 
-import type { Route } from './+types/root'
-import './app.css'
+import type { Route } from "./+types/root";
+import "./app.css";
 
 export const meta: Route.MetaFunction = () => [
-  { title: 'ANERTiC — AI Personal Energy Platform' },
+  { title: "ANERTiC — AI Personal Energy Platform" },
   {
-    name: 'description',
+    name: "description",
     content:
-      'An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem. EV charging, smart monitoring, and AI-powered insights.',
+      "An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem. EV charging, smart monitoring, and AI-powered insights.",
   },
-  { property: 'og:title', content: 'ANERTiC — AI Personal Energy Platform' },
+  { property: "og:title", content: "ANERTiC — AI Personal Energy Platform" },
   {
-    property: 'og:description',
+    property: "og:description",
     content:
-      'An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem.',
+      "An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem.",
   },
-  { property: 'og:type', content: 'website' },
-]
+  { property: "og:type", content: "website" },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -51,25 +51,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }
 
 export default function App() {
-  return <Outlet />
+  return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let title = 'Something went wrong'
-  let message = 'An unexpected error occurred.'
+  let title = "Something went wrong";
+  let message = "An unexpected error occurred.";
 
   if (isRouteErrorResponse(error)) {
-    title = error.status === 404 ? 'Page not found' : `Error ${error.status}`
+    title = error.status === 404 ? "Page not found" : `Error ${error.status}`;
     message =
       error.status === 404
-        ? 'The page you are looking for does not exist.'
-        : error.statusText
+        ? "The page you are looking for does not exist."
+        : error.statusText;
   } else if (error instanceof Error) {
-    message = error.message
+    message = error.message;
   }
 
   return (
@@ -85,5 +85,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         </a>
       </div>
     </main>
-  )
+  );
 }

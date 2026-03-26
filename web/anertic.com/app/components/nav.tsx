@@ -1,13 +1,14 @@
-const APP_URL = typeof process !== 'undefined'
-  ? process.env.APP_URL ?? 'https://app.anertic.com'
-  : 'https://app.anertic.com'
+const APP_URL =
+  typeof process !== "undefined"
+    ? (process.env.APP_URL ?? "https://app.anertic.com")
+    : "https://app.anertic.com";
 
 const NAV_LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How it Works', href: '#how' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Contact', href: '#contact' },
-]
+  { label: "Features", href: "#features" },
+  { label: "How it Works", href: "#how" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "Contact", href: "#contact" },
+];
 
 export function Nav() {
   return (
@@ -45,5 +46,5 @@ export function Nav() {
         </div>
       </nav>
     </header>
-  )
+  );
 }

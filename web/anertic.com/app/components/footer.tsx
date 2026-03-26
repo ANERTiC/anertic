@@ -8,16 +8,25 @@ export function Footer() {
         </span>
       </div>
       <div className="flex gap-5">
-        <a href="#" className="text-xs text-text-3 transition-colors hover:text-text-2">
+        <a
+          href="#"
+          className="text-xs text-text-3 transition-colors hover:text-text-2"
+        >
           Privacy
         </a>
-        <a href="#" className="text-xs text-text-3 transition-colors hover:text-text-2">
+        <a
+          href="#"
+          className="text-xs text-text-3 transition-colors hover:text-text-2"
+        >
           Terms
         </a>
-        <a href="https://github.com/anertic" className="text-xs text-text-3 transition-colors hover:text-text-2">
+        <a
+          href="https://github.com/anertic"
+          className="text-xs text-text-3 transition-colors hover:text-text-2"
+        >
           GitHub
         </a>
       </div>
     </footer>
-  )
+  );
 }

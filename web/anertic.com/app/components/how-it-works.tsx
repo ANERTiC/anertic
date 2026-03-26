@@ -1,22 +1,25 @@
-import { ScrollReveal } from './scroll-reveal'
+import { ScrollReveal } from "./scroll-reveal";
 
 const STEPS = [
   {
-    num: '1',
-    title: 'Connect Your Devices',
-    description: 'Plug in your meters, EV chargers, and sensors. We support OCPP, MQTT, and more.',
+    num: "1",
+    title: "Connect Your Devices",
+    description:
+      "Plug in your meters, EV chargers, and sensors. We support OCPP, MQTT, and more.",
   },
   {
-    num: '2',
-    title: 'AI Learns Your Patterns',
-    description: 'Your agent analyzes usage, identifies waste, and builds an energy model of your operation.',
+    num: "2",
+    title: "AI Learns Your Patterns",
+    description:
+      "Your agent analyzes usage, identifies waste, and builds an energy model of your operation.",
   },
   {
-    num: '3',
-    title: 'Optimize Automatically',
-    description: 'Real-time recommendations, automated scheduling, and cost savings — managed by your AI agent.',
+    num: "3",
+    title: "Optimize Automatically",
+    description:
+      "Real-time recommendations, automated scheduling, and cost savings — managed by your AI agent.",
   },
-]
+];
 
 export function HowItWorks() {
   return (
@@ -26,8 +29,7 @@ export function HowItWorks() {
           HOW IT WORKS
         </p>
         <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
-          Three steps to{' '}
-          <span className="text-accent">smarter</span> energy
+          Three steps to <span className="text-accent">smarter</span> energy
         </h2>
       </ScrollReveal>
 
@@ -37,7 +39,7 @@ export function HowItWorks() {
           className="pointer-events-none absolute left-[16%] right-[16%] top-9 hidden h-0.5 sm:block"
           style={{
             background:
-              'repeating-linear-gradient(90deg,#e8eaed 0,#e8eaed 8px,transparent 8px,transparent 16px)',
+              "repeating-linear-gradient(90deg,#e8eaed 0,#e8eaed 8px,transparent 8px,transparent 16px)",
           }}
         />
 
@@ -56,5 +58,5 @@ export function HowItWorks() {
         ))}
       </div>
     </section>
-  )
+  );
 }

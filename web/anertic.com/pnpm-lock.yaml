@@ -17,6 +17,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      isbot:
+        specifier: ^5
+        version: 5.1.36
       react:
         specifier: ^19.2.4
         version: 19.2.4

@@ -1,6 +1,7 @@
-const APP_URL = typeof process !== 'undefined'
-  ? process.env.APP_URL ?? 'https://app.anertic.com'
-  : 'https://app.anertic.com'
+const APP_URL =
+  typeof process !== "undefined"
+    ? (process.env.APP_URL ?? "https://app.anertic.com")
+    : "https://app.anertic.com";
 
 export function Hero() {
   return (
@@ -10,11 +11,11 @@ export function Hero() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(0,0,0,0.018) 79px,rgba(0,0,0,0.018) 80px),repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(0,0,0,0.018) 79px,rgba(0,0,0,0.018) 80px)',
+            "repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(0,0,0,0.018) 79px,rgba(0,0,0,0.018) 80px),repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(0,0,0,0.018) 79px,rgba(0,0,0,0.018) 80px)",
           maskImage:
-            'radial-gradient(ellipse 50% 60% at 50% 40%,black,transparent)',
+            "radial-gradient(ellipse 50% 60% at 50% 40%,black,transparent)",
           WebkitMaskImage:
-            'radial-gradient(ellipse 50% 60% at 50% 40%,black,transparent)',
+            "radial-gradient(ellipse 50% 60% at 50% 40%,black,transparent)",
         }}
       />
 
@@ -75,5 +76,5 @@ export function Hero() {
         </a>
       </div>
     </section>
-  )
+  );
 }

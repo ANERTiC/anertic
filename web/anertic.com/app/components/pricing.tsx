@@ -1,42 +1,60 @@
-import { cn } from '~/lib/utils'
-import { ScrollReveal } from './scroll-reveal'
+import { cn } from "~/lib/utils";
+import { ScrollReveal } from "./scroll-reveal";
 
-const APP_URL = typeof process !== 'undefined'
-  ? process.env.APP_URL ?? 'https://app.anertic.com'
-  : 'https://app.anertic.com'
+const APP_URL =
+  typeof process !== "undefined"
+    ? (process.env.APP_URL ?? "https://app.anertic.com")
+    : "https://app.anertic.com";
 
 const PLANS = [
   {
-    name: 'Starter',
-    price: 'Free',
+    name: "Starter",
+    price: "Free",
     period: null,
-    note: 'Up to 5 devices',
-    features: ['Energy monitoring', 'Basic AI insights', '1 site', '7-day data retention'],
-    cta: 'Get Started',
+    note: "Up to 5 devices",
+    features: [
+      "Energy monitoring",
+      "Basic AI insights",
+      "1 site",
+      "7-day data retention",
+    ],
+    cta: "Get Started",
     href: APP_URL,
     featured: false,
   },
   {
-    name: 'Pro',
-    price: '$49',
-    period: '/mo',
-    note: 'Up to 50 devices',
-    features: ['Everything in Starter', 'Advanced AI agent', 'EV charger management', 'Multi-site support', '90-day data retention'],
-    cta: 'Get Started',
+    name: "Pro",
+    price: "$49",
+    period: "/mo",
+    note: "Up to 50 devices",
+    features: [
+      "Everything in Starter",
+      "Advanced AI agent",
+      "EV charger management",
+      "Multi-site support",
+      "90-day data retention",
+    ],
+    cta: "Get Started",
     href: APP_URL,
     featured: true,
   },
   {
-    name: 'Enterprise',
-    price: 'Custom',
+    name: "Enterprise",
+    price: "Custom",
     period: null,
-    note: 'Unlimited devices',
-    features: ['Everything in Pro', 'Dedicated AI model', 'API access', 'Priority support', 'Unlimited retention'],
-    cta: 'Contact Us',
-    href: '#contact',
+    note: "Unlimited devices",
+    features: [
+      "Everything in Pro",
+      "Dedicated AI model",
+      "API access",
+      "Priority support",
+      "Unlimited retention",
+    ],
+    cta: "Contact Us",
+    href: "#contact",
     featured: false,
   },
-]
+];
 
 export function Pricing() {
   return (
@@ -58,10 +76,10 @@ export function Pricing() {
           <ScrollReveal key={plan.name} delay={i * 50}>
             <div
               className={cn(
-                'relative rounded-2xl border bg-white p-8 text-center transition-all duration-300 hover:-translate-y-1',
+                "relative rounded-2xl border bg-white p-8 text-center transition-all duration-300 hover:-translate-y-1",
                 plan.featured
-                  ? 'border-accent shadow-[0_0_0_1px_#0d9668,0_8px_32px_rgba(13,150,104,0.08)] hover:shadow-[0_0_0_1px_#0d9668,0_12px_40px_rgba(13,150,104,0.12)]'
-                  : 'border-border hover:shadow-[0_12px_36px_rgba(0,0,0,0.05)]',
+                  ? "border-accent shadow-[0_0_0_1px_#0d9668,0_8px_32px_rgba(13,150,104,0.08)] hover:shadow-[0_0_0_1px_#0d9668,0_12px_40px_rgba(13,150,104,0.12)]"
+                  : "border-border hover:shadow-[0_12px_36px_rgba(0,0,0,0.05)]",
               )}
             >
               {plan.featured && (
@@ -74,7 +92,9 @@ export function Pricing() {
               <p className="mt-1.5 text-[42px] font-extrabold tracking-[-0.03em]">
                 {plan.price}
                 {plan.period && (
-                  <span className="text-sm font-normal text-text-3">{plan.period}</span>
+                  <span className="text-sm font-normal text-text-3">
+                    {plan.period}
+                  </span>
                 )}
               </p>
               <p className="mb-6 text-[12.5px] text-text-3">{plan.note}</p>
@@ -93,10 +113,10 @@ export function Pricing() {
               <a
                 href={plan.href}
                 className={cn(
-                  'block w-full rounded-lg py-2.5 text-[13px] font-semibold transition-all active:scale-[0.97]',
+                  "block w-full rounded-lg py-2.5 text-[13px] font-semibold transition-all active:scale-[0.97]",
                   plan.featured
-                    ? 'bg-accent text-white hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)]'
-                    : 'border border-border bg-bg-soft text-text-2 hover:border-text-3 hover:text-text',
+                    ? "bg-accent text-white hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)]"
+                    : "border border-border bg-bg-soft text-text-2 hover:border-text-3 hover:text-text",
                 )}
               >
                 {plan.cta}
@@ -106,5 +126,5 @@ export function Pricing() {
         ))}
       </div>
     </section>
-  )
+  );
 }

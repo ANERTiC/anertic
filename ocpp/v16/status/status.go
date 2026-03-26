@@ -42,6 +42,10 @@ func StatusNotification(ctx context.Context, p *Params) (*Result, error) {
 		if err := upsertConnectorStatus(ctx, chargePointID, p.ConnectorID, p.Status, p.ErrorCode, p.Info, ts); err != nil {
 			return nil, err
 		}
+		// Also derive charger-level status from all connectors.
+		if err := deriveChargerStatusFromConnectors(ctx, chargePointID); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Result{}, nil
@@ -77,5 +81,31 @@ func updateChargerStatus(ctx context.Context, chargePointID string, status strin
 		set status = $2, updated_at = now()
 		where charge_point_id = $1
 	`, chargePointID, status)
+	return err
+}
+
+// deriveChargerStatusFromConnectors calculates the charger-level status
+// from all its connectors using OCPP priority rules.
+// Priority: Charging > Preparing > SuspendedEV/SuspendedEVSE > Finishing > Faulted > Reserved > Available > Unavailable
+func deriveChargerStatusFromConnectors(ctx context.Context, chargePointID string) error {
+	_, err := pgctx.Exec(ctx, `
+		update ev_chargers
+		set status = (
+			select case
+				when count(*) filter (where c.status = 'Charging') > 0 then 'Charging'
+				when count(*) filter (where c.status = 'Preparing') > 0 then 'Preparing'
+				when count(*) filter (where c.status in ('SuspendedEV', 'SuspendedEVSE')) > 0 then 'SuspendedEVSE'
+				when count(*) filter (where c.status = 'Finishing') > 0 then 'Finishing'
+				when count(*) filter (where c.status = 'Faulted') > 0 then 'Faulted'
+				when count(*) filter (where c.status = 'Reserved') > 0 then 'Reserved'
+				when count(*) filter (where c.status = 'Available') > 0 then 'Available'
+				else 'Unavailable'
+			end
+			from ev_connectors c
+			where c.charger_id = ev_chargers.id
+		),
+		updated_at = now()
+		where charge_point_id = $1
+	`, chargePointID)
 	return err
 }

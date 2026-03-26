@@ -15,10 +15,10 @@ import (
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/moonrhythm/httpmux"
 	"github.com/moonrhythm/parapet"
-	"github.com/moonrhythm/validator"
 	"github.com/moonrhythm/parapet/pkg/cors"
 	"github.com/moonrhythm/session"
 	"github.com/moonrhythm/session/store"
+	"github.com/moonrhythm/validator"
 	"github.com/redis/go-redis/v9"
 	"github.com/xkamail/godoclive/pkg/godoclive"
 
@@ -96,6 +96,7 @@ func run() error {
 		if validator.IsError(err) {
 			return arpc.NewErrorCode("validation", err.Error())
 		}
+		slog.ErrorContext(ctx, "internal server error", "error", err)
 		return arpc.NewErrorCode("unknown", "unknown error")
 	}
 	am.OnOK(func(w http.ResponseWriter, r *http.Request, req any, res any) {

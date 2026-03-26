@@ -36,7 +36,7 @@ type AuthTagItem struct {
 	ParentIdTag string     `json:"parentIdTag"`
 	Status      string     `json:"status"`
 	ExpiryDate  *time.Time `json:"expiryDate"`
-	InLocalList bool       `json:"inLocalList"`
+	ListVersion int        `json:"listVersion"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	UpdatedAt   time.Time  `json:"updatedAt"`
 }
@@ -75,7 +75,7 @@ func ListAuthTags(ctx context.Context, p *ListAuthTagsParams) (*ListAuthTagsResu
 			"parent_id_tag",
 			"status",
 			"expiry_date",
-			"in_local_list",
+			"list_version",
 			"created_at",
 			"updated_at",
 		)
@@ -92,7 +92,7 @@ func ListAuthTags(ctx context.Context, p *ListAuthTagsParams) (*ListAuthTagsResu
 			pgsql.NullString(&it.ParentIdTag),
 			&it.Status,
 			pgsql.Null(&it.ExpiryDate),
-			&it.InLocalList,
+			&it.ListVersion,
 			&it.CreatedAt,
 			&it.UpdatedAt,
 		); err != nil {

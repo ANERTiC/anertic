@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, useFetcher, useNavigate, useParams } from 'react-router'
+import { useState } from 'react'
+import { Link, NavLink, Outlet } from 'react-router'
 import useSWR from 'swr'
 
 import { fetcher } from '~/lib/api'
+import { api } from '~/lib/api.server'
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -12,29 +13,20 @@ import {
   RiTimeLine,
   RiAlertLine,
   RiCheckboxCircleLine,
-  RiSettings3Line,
-  RiHistoryLine,
-  RiInformationLine,
   RiRestartLine,
   RiShutDownLine,
-  RiEditLine,
-  RiDeleteBinLine,
-  RiUploadLine,
-  RiShieldKeyholeLine,
-  RiAddLine,
-  RiSaveLine,
   RiBarChartBoxLine,
-  RiArrowDownSLine,
+  RiHistoryLine,
+  RiCalendarCheckLine,
+  RiInformationLine,
+  RiSettings3Line,
+  RiRemoteControlLine,
   RiChargingPile2Line,
   RiUserLine,
   RiSpeedLine,
-  RiRemoteControlLine,
-  RiCalendarCheckLine,
-  RiCalendarCloseLine,
-  RiLoader4Line,
+  RiLinksLine,
   RiFileCopyLine,
   RiCheckLine,
-  RiLinksLine,
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -42,15 +34,9 @@ import { useSiteId } from '~/layouts/site'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '~/components/ui/collapsible'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Skeleton } from '~/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -59,448 +45,68 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '~/components/ui/alert-dialog'
 import { cn } from '~/lib/utils'
-import { CommandsTab } from '~/components/commands-tab'
 
-// --- Types ---
+import type { Route } from './+types/charger-detail'
+import type {
+  Charger,
+  ConnectorDetail,
+  AuthTag,
+  ChargerOutletContext,
+} from './charger-detail/types'
+import {
+  statusColor,
+  statusDot,
+  registrationColor,
+  timeAgo,
+  formatPower,
+  sessionDuration,
+  OCPP_BASE_URL,
+} from './charger-detail/types'
 
-interface Charger {
-  id: string
-  siteId: string
-  chargePointId: string
-  ocppVersion: string
-  status: string
-  registrationStatus: string
-  connectorCount: number
-  maxPowerKw: string
-  vendor: string
-  model: string
-  serialNumber: string
-  firmwareVersion: string
-  chargeBoxSerialNumber: string
-  firmwareStatus: string
-  diagnosticsStatus: string
-  heartbeatInterval: number
-  lastHeartbeatAt: string | null
-  createdAt: string
-  currentPowerKw: string
-  todayEnergyKwh: string
-  todaySessions: number
-  totalEnergyKwh: string
-  totalSessions: number
-  connectors: ConnectorDetail[]
-}
+// --- Server Loader ---
 
-interface ConnectorDetail {
-  id: number
-  status: string
-  powerKw: string
-  maxPowerKw: string
-  connectorType: string
-  errorCode: string
-  vehicleId?: string
-  sessionStartedAt?: string
-  sessionKwh: string
-  lastStatusAt: string | null
-}
-
-interface Session {
-  id: string
-  connectorId: number
-  startedAt: string
-  endedAt: string | null
-  energyKwh: string
-  maxPowerKw: string
-  idTag: string
-  status: string
-  meterStart: number
-  meterStop: number | null
-  stopReason: string | null
-  transactionId: number
-}
-
-interface OcppEvent {
-  id: string
-  action: string
-  direction: 'in' | 'out'
-  timestamp: string
-  payload: string | null
-}
-
-interface Reservation {
-  id: string
-  reservationId: number
-  connectorId: number
-  idTag: string
-  parentIdTag: string | null
-  expiryDate: string
-  status: string
-  createdAt: string
-  updatedAt: string
-}
-
-interface ChargingSchedulePeriod {
-  startPeriod: number
-  limit: string
-  numberPhases: number | null
-}
-
-interface ChargingScheduleData {
-  duration: number | null
-  startSchedule: string
-  chargingRateUnit: string
-  chargingSchedulePeriod: ChargingSchedulePeriod[]
-  minChargingRate: string | null
-}
-
-interface ChargingProfileData {
-  id: string
-  chargerId: string
-  connectorId: number
-  chargingProfileId: number
-  stackLevel: number
-  chargingProfilePurpose: string
-  chargingProfileKind: string
-  recurrencyKind: string
-  validFrom: string | null
-  validTo: string | null
-  transactionId: number | null
-  schedule: ChargingScheduleData | null
-  createdAt: string
-  updatedAt: string
-}
-
-interface DailyEnergy {
-  date: string
-  energyKwh: string
-  sessions: number
-  peakPowerKw: string
-}
-
-interface HourlyPower {
-  hour: number
-  powerKw: string
-  energyKwh: string
-}
-
-interface AnalyticsSummary {
-  totalKwh: string
-  totalSessions: number
-  avgDailyKwh: string
-  avgSessionKwh: string
-  peakPowerKw: string
-}
-
-interface AnalyticsResult {
-  daily: DailyEnergy[]
-  hourly: HourlyPower[]
-  summary: AnalyticsSummary
-}
-
-// --- Helpers (client-side computations from analytics data) ---
-
-function dailyLabel(date: string, index: number, total: number): string {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const d = new Date(date)
-  return index === total - 1 ? 'Today' : days[d.getDay()]
-}
-
-// --- Helpers ---
-
-function statusColor(status: string) {
-  switch (status) {
-    case 'Available':
-      return 'bg-emerald-500/15 text-emerald-700'
-    case 'Charging':
-    case 'Preparing':
-      return 'bg-blue-500/15 text-blue-700'
-    case 'SuspendedEV':
-    case 'SuspendedEVSE':
-    case 'Finishing':
-      return 'bg-amber-500/15 text-amber-700'
-    case 'Faulted':
-      return 'bg-red-500/15 text-red-700'
-    case 'Reserved':
-      return 'bg-purple-500/15 text-purple-700'
-    default:
-      return 'bg-gray-500/15 text-gray-700'
+export async function loader({ params, request }: Route.LoaderArgs) {
+  try {
+    const { result } = await api<Charger>(request, 'charger.get', {
+      id: params.chargerId,
+    })
+    return { charger: result }
+  } catch {
+    throw new Response('Charger not found', { status: 404 })
   }
 }
 
-function statusDot(status: string) {
-  switch (status) {
-    case 'Available':
-      return 'bg-emerald-500'
-    case 'Charging':
-    case 'Preparing':
-      return 'bg-blue-500'
-    case 'SuspendedEV':
-    case 'SuspendedEVSE':
-    case 'Finishing':
-      return 'bg-amber-500'
-    case 'Faulted':
-      return 'bg-red-500'
-    default:
-      return 'bg-gray-400'
-  }
-}
+// --- Layout ---
 
-function registrationColor(status: string) {
-  switch (status) {
-    case 'Accepted':
-      return 'bg-emerald-500/15 text-emerald-700'
-    case 'Pending':
-      return 'bg-amber-500/15 text-amber-700'
-    case 'Rejected':
-      return 'bg-red-500/15 text-red-700'
-    default:
-      return 'bg-gray-500/15 text-gray-700'
-  }
-}
+const tabs = [
+  { to: '.', label: 'Analytics', icon: RiBarChartBoxLine, end: true },
+  { to: 'sessions', label: 'Sessions', icon: RiHistoryLine, end: false },
+  {
+    to: 'reservations',
+    label: 'Reservations',
+    icon: RiCalendarCheckLine,
+    end: false,
+  },
+  { to: 'info', label: 'Device Info', icon: RiInformationLine, end: false },
+  { to: 'settings', label: 'Settings', icon: RiSettings3Line, end: false },
+  { to: 'commands', label: 'Commands', icon: RiRemoteControlLine, end: false },
+  { to: 'log', label: 'OCPP Logs', icon: RiHistoryLine, end: false },
+]
 
-function reservationStatusColor(status: string) {
-  switch (status) {
-    case 'Active':
-      return 'bg-emerald-500/15 text-emerald-700'
-    case 'Used':
-      return 'bg-blue-500/15 text-blue-700'
-    case 'Cancelled':
-      return 'bg-red-500/15 text-red-700'
-    case 'Expired':
-    default:
-      return 'bg-gray-500/15 text-gray-600'
-  }
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
-
-function formatPower(kw: number): string {
-  if (kw >= 100) return `${Math.round(kw)} kW`
-  if (kw >= 10) return `${kw.toFixed(1)} kW`
-  return `${kw.toFixed(2)} kW`
-}
-
-function formatEnergy(kwh: number): string {
-  if (kwh >= 1000) return `${(kwh / 1000).toFixed(1)} MWh`
-  if (kwh >= 100) return `${Math.round(kwh)} kWh`
-  return `${kwh.toFixed(1)} kWh`
-}
-
-function sessionDuration(startedAt: string, endedAt?: string | null): string {
-  const end = endedAt ? new Date(endedAt).getTime() : Date.now()
-  const diff = end - new Date(startedAt).getTime()
-  const mins = Math.floor(diff / 60000)
-  const hrs = Math.floor(mins / 60)
-  if (hrs > 0) return `${hrs}h ${mins % 60}m`
-  return `${mins}m`
-}
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  const today = new Date()
-  const isToday = d.toDateString() === today.toDateString()
-  if (isToday) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-const OCPP_BASE_URL = 'wss://ocpp.anertic.com'
-
-function OcppUrlStrip({ chargePointId }: { chargePointId: string }) {
-  const [copied, setCopied] = useState(false)
-  const url = `${OCPP_BASE_URL}/${chargePointId}`
-
-  function handleCopy() {
-    navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="mt-2 flex items-center gap-0">
-      <div className="flex min-w-0 items-center gap-1.5 rounded-l-md border border-r-0 bg-muted/50 px-2.5 py-1">
-        <RiLinksLine
-          aria-hidden="true"
-          className="size-3 shrink-0 text-muted-foreground"
-        />
-        <span className="truncate font-mono text-[11px] text-muted-foreground select-all">
-          {url}
-        </span>
-      </div>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={cn(
-          'flex items-center gap-1 rounded-r-md border px-2 py-1 text-[11px] font-medium transition-colors',
-          copied
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400'
-            : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
-        )}
-        aria-label="Copy OCPP URL"
-      >
-        {copied ? (
-          <RiCheckLine aria-hidden="true" className="size-3" />
-        ) : (
-          <RiFileCopyLine aria-hidden="true" className="size-3" />
-        )}
-        {copied ? 'Copied' : 'Copy'}
-      </button>
-    </div>
-  )
-}
-
-// --- Client Action ---
-
-export async function clientAction({ request }: { request: Request }) {
-  const formData = await request.formData()
-  const intent = formData.get('intent')
-
-  switch (intent) {
-    case 'addAuthTag': {
-      const id = String(formData.get('chargerId'))
-      const idTag = String(formData.get('idTag'))
-      const result = await fetcher<{ id: string }>([
-        'charger.addAuthTag',
-        { id, idTag },
-      ])
-      return { ok: true, intent, idTag, ...result }
-    }
-    case 'removeAuthTag': {
-      const id = String(formData.get('chargerId'))
-      const authTagId = String(formData.get('authTagId'))
-      await fetcher(['charger.removeAuthTag', { id, authTagId }])
-      return { ok: true, intent, authTagId }
-    }
-    case 'reserveNow': {
-      const id = String(formData.get('chargerId'))
-      const connectorId = Number(formData.get('connectorId'))
-      const idTag = String(formData.get('idTag'))
-      const expiryDate = String(formData.get('expiryDate'))
-      const parentIdTag = formData.get('parentIdTag')
-        ? String(formData.get('parentIdTag'))
-        : ''
-      const reservationId = Number(formData.get('reservationId'))
-      const result = await fetcher<{ id: string }>([
-        'charger.reserveNow',
-        { id, connectorId, idTag, expiryDate, parentIdTag, reservationId },
-      ])
-      return { ok: true, intent, ...result }
-    }
-    case 'cancelReservation': {
-      const id = String(formData.get('chargerId'))
-      const reservationId = Number(formData.get('reservationId'))
-      await fetcher([
-        'charger.cancelReservation',
-        { id, reservationId },
-      ])
-      return { ok: true, intent, reservationId }
-    }
-    case 'remoteStart': {
-      const id = String(formData.get('chargerId'))
-      const connectorId = Number(formData.get('connectorId'))
-      const idTag = String(formData.get('idTag'))
-      await fetcher([
-        'charger.remoteStart',
-        { id, connectorId, idTag },
-      ])
-      return { ok: true, intent, connectorId, idTag }
-    }
-    case 'setChargingProfile': {
-      const id = String(formData.get('chargerId'))
-      const connectorId = Number(formData.get('connectorId'))
-      const profileJson = String(formData.get('profileJson'))
-      const parsed = JSON.parse(profileJson)
-      await fetcher([
-        'charger.setChargingProfile',
-        { id, connectorId, csChargingProfiles: parsed },
-      ])
-      return { ok: true, intent }
-    }
-    case 'clearChargingProfile': {
-      const id = String(formData.get('chargerId'))
-      const profileId = formData.get('chargingProfileId')
-      await fetcher([
-        'charger.clearChargingProfile',
-        {
-          id,
-          chargingProfileId: profileId ? Number(profileId) : undefined,
-        },
-      ])
-      return { ok: true, intent, chargingProfileId: profileId }
-    }
-    default:
-      throw new Response('Invalid intent', { status: 400 })
-  }
-}
-
-// --- Main Component ---
-
-export default function ChargerDetail() {
-  const { chargerId } = useParams()
+export default function ChargerDetailLayout({
+  loaderData,
+}: Route.ComponentProps) {
   const siteId = useSiteId()
-  const [mounted, setMounted] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  const siteParam = siteId ? `?site=${siteId}` : ''
 
-  const { data: charger, isLoading: chargerLoading } = useSWR<Charger>(
-    chargerId ? ['charger.get', { id: chargerId }] : null,
+  const { data: charger } = useSWR<Charger>(
+    ['charger.get', { id: loaderData.charger.id }],
     fetcher,
-    { refreshInterval: 15000 },
+    { fallbackData: loaderData.charger, refreshInterval: 15000 }
   )
 
-  const { data: sessionsData } = useSWR<{ items: Session[] }>(
-    chargerId ? ['charger.listSessions', { chargerId }] : null,
-    fetcher,
-  )
-  const sessions = sessionsData?.items ?? []
-
-  const { data: eventsData } = useSWR<{ items: OcppEvent[] }>(
-    chargerId ? ['charger.listEvents', { chargerId, limit: 50 }] : null,
-    fetcher,
-  )
-  const events = eventsData?.items ?? []
-
-  const { data: analytics } = useSWR<AnalyticsResult>(
-    chargerId ? ['charger.analytics', { chargerId, days: 7 }] : null,
-    fetcher,
-  )
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (chargerLoading || !charger) {
+  if (!charger) {
     return (
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-3">
@@ -522,22 +128,14 @@ export default function ChargerDetail() {
   const isFaulted = charger.status === 'Faulted'
   const isOnline = !!charger.lastHeartbeatAt
 
-  const activeSessions = sessions.filter((s) => s.status === 'Active')
-  const completedSessions = sessions.filter((s) => s.status === 'Completed')
-
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-5 transition-opacity duration-500',
-        mounted ? 'opacity-100' : 'opacity-0'
-      )}
-    >
+    <div className="flex flex-col gap-5">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between">
           <div>
             <Button variant="ghost" size="sm" className="mb-2 -ml-2" asChild>
-              <Link to={`/chargers${siteId ? `?site=${siteId}` : ''}`}>
+              <Link to={`/chargers${siteParam}`}>
                 <RiArrowLeftLine aria-hidden="true" data-icon="inline-start" />
                 Chargers
               </Link>
@@ -623,1133 +221,44 @@ export default function ChargerDetail() {
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
           {charger.connectors.map((conn) => (
-            <ConnectorCard key={conn.id} connector={conn} chargerId={charger.id} />
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="analytics">
-        <div>
-          <TabsList className="w-full sm:w-fit">
-            <TabsTrigger value="analytics">
-              <RiBarChartBoxLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="sessions">
-              <RiHistoryLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Sessions</span>
-            </TabsTrigger>
-            <TabsTrigger value="reservations">
-              <RiCalendarCheckLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Reservations</span>
-            </TabsTrigger>
-            <TabsTrigger value="info">
-              <RiInformationLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Device Info</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <RiSettings3Line
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Settings</span>
-            </TabsTrigger>
-            <TabsTrigger value="commands">
-              <RiRemoteControlLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">Commands</span>
-            </TabsTrigger>
-            <TabsTrigger value="log">
-              <RiHistoryLine
-                aria-hidden="true"
-                className="size-3.5 sm:mr-1.5"
-              />
-              <span className="hidden sm:inline">OCPP Logs</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* Analytics */}
-        <TabsContent value="analytics" className="mt-4">
-          <AnalyticsTab analytics={analytics ?? null} charger={charger} />
-        </TabsContent>
-
-        {/* Sessions */}
-        <TabsContent value="sessions" className="mt-4">
-          <div className="flex flex-col gap-4">
-            {sessions.length === 0 && (
-              <div className="relative overflow-hidden rounded-xl border border-dashed border-border bg-gradient-to-b from-muted/30 to-background">
-                {/* Background pattern - subtle charging pulse lines */}
-                <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-                  <div className="absolute top-6 left-1/2 h-px w-24 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-                  <div className="absolute top-10 left-1/2 h-px w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
-                </div>
-
-                <div className="flex flex-col items-center px-6 py-14 text-center">
-                  {/* Animated plug icon with pulse ring */}
-                  <div className="relative mb-5">
-                    <div className="absolute inset-0 scale-150 rounded-full bg-primary/5 motion-safe:animate-ping [animation-duration:3s]" />
-                    <div className="relative flex size-14 items-center justify-center rounded-2xl border border-border bg-background shadow-sm">
-                      <RiChargingPile2Line
-                        aria-hidden="true"
-                        className="size-6 text-muted-foreground/60"
-                      />
-                    </div>
-                  </div>
-
-                  <h3 className="text-sm font-semibold text-foreground">
-                    No charging sessions yet
-                  </h3>
-                  <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                    Sessions will appear here when a vehicle connects and starts
-                    charging. Each session tracks energy delivered, duration, and
-                    peak power.
-                  </p>
-
-                  {/* Visual timeline hint */}
-                  <div className="mt-6 flex items-center gap-2" aria-hidden="true">
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div
-                          className="size-1.5 rounded-full bg-border"
-                          style={{ opacity: 1 - i * 0.3 }}
-                        />
-                        {i < 2 && (
-                          <div
-                            className="h-px w-6 bg-border"
-                            style={{ opacity: 0.7 - i * 0.25 }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[10px] tracking-widest text-muted-foreground/40 uppercase">
-                    Waiting for first session
-                  </p>
-                </div>
-              </div>
-            )}
-            {activeSessions.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                  Active
-                </p>
-                {activeSessions.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    selected={selectedSession?.id === session.id}
-                    onClick={() =>
-                      setSelectedSession(
-                        selectedSession?.id === session.id ? null : session
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            )}
-            {completedSessions.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                  Recent
-                </p>
-                {completedSessions.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    selected={selectedSession?.id === session.id}
-                    onClick={() =>
-                      setSelectedSession(
-                        selectedSession?.id === session.id ? null : session
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Reservations */}
-        <TabsContent value="reservations" className="mt-4">
-          <ReservationsTab
-            chargerId={charger.id}
-            connectors={charger.connectors}
-          />
-        </TabsContent>
-
-        {/* Device Info */}
-        <TabsContent value="info" className="mt-4">
-          <Card>
-            <CardContent className="p-5">
-              <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                <InfoRow
-                  label="Charge Point ID"
-                  value={charger.chargePointId}
-                />
-                <InfoRow label="OCPP Version" value={charger.ocppVersion} />
-                <InfoRow label="Vendor" value={charger.vendor || '—'} />
-                <InfoRow label="Model" value={charger.model || '—'} />
-                <InfoRow
-                  label="Serial Number"
-                  value={charger.serialNumber || '—'}
-                />
-                <InfoRow
-                  label="Charge Box Serial"
-                  value={charger.chargeBoxSerialNumber || '—'}
-                />
-                <InfoRow
-                  label="Firmware"
-                  value={charger.firmwareVersion || '—'}
-                />
-                <InfoRow
-                  label="Firmware Status"
-                  value={charger.firmwareStatus}
-                />
-                <InfoRow
-                  label="Diagnostics Status"
-                  value={charger.diagnosticsStatus}
-                />
-                <InfoRow
-                  label="Connector Count"
-                  value={String(charger.connectorCount)}
-                />
-                <InfoRow label="Max Power" value={`${charger.maxPowerKw} kW`} />
-                <InfoRow
-                  label="Heartbeat Interval"
-                  value={`${charger.heartbeatInterval}s`}
-                />
-                <InfoRow
-                  label="Registered"
-                  value={new Date(charger.createdAt).toLocaleDateString([], {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Settings */}
-        <TabsContent value="settings" className="mt-4">
-          <SettingsTab charger={charger} />
-        </TabsContent>
-
-        {/* Commands */}
-        <TabsContent value="commands" className="mt-4">
-          <CommandsTab
-            chargerId={charger.id}
-            connectors={charger.connectors.map((c) => ({
-              id: c.id,
-              status: c.status,
-            }))}
-            ocppVersion={charger.ocppVersion}
-          />
-        </TabsContent>
-
-        {/* OCPP Logs */}
-        <TabsContent value="log" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center gap-3 px-4 py-2.5"
-                  >
-                    <span
-                      className={cn(
-                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase',
-                        event.direction === 'in'
-                          ? 'bg-blue-500/10 text-blue-600'
-                          : 'bg-amber-500/10 text-amber-600'
-                      )}
-                    >
-                      {event.direction === 'in' ? 'IN' : 'OUT'}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {event.action}
-                    </span>
-                    {event.payload && (
-                      <span className="hidden truncate text-xs text-muted-foreground lg:block lg:max-w-[300px]">
-                        {event.payload}
-                      </span>
-                    )}
-                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                      {formatDateTime(event.timestamp)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
-
-// --- Sub-components ---
-
-function AnalyticsTab({
-  analytics,
-  charger,
-}: {
-  analytics: AnalyticsResult | null
-  charger: Charger
-}) {
-  if (!analytics) {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
-        </div>
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-52 w-full rounded-xl" />
-      </div>
-    )
-  }
-
-  const { daily, hourly, summary } = analytics
-  const maxDailyKwh = Math.max(...daily.map((d) => Number(d.energyKwh)), 0.1)
-  const maxHourlyPower = Math.max(...hourly.map((h) => Number(h.powerKw)), 0.1)
-  const currentHour = new Date().getHours()
-
-  // Compute bussiest day label from data
-  const busiestDay = daily.length > 0
-    ? [...daily].sort((a, b) => Number(b.energyKwh) - Number(a.energyKwh))[0]
-    : null
-  const busiestDayLabel = busiestDay
-    ? dailyLabel(busiestDay.date, daily.indexOf(busiestDay), daily.length)
-    : '—'
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Summary Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              7-Day Total
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {Number(summary.totalKwh).toFixed(1)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                kWh
-              </span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {summary.totalSessions} sessions total
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Sessions
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.totalSessions}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              avg {Number(summary.avgSessionKwh).toFixed(1)} kWh/session
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Daily Average
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {Number(summary.avgDailyKwh).toFixed(1)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                kWh
-              </span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Busiest: {busiestDayLabel}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Peak Power
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {Number(summary.peakPowerKw).toFixed(1)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                kW
-              </span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              of {charger.maxPowerKw} kW capacity
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Daily Energy Chart (7 days) */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">
-              Energy Delivered — Last 7 Days
-            </h3>
-          </div>
-          <div className="mt-4 flex h-48 items-end gap-2">
-            {daily.map((day, i) => {
-              const label = dailyLabel(day.date, i, daily.length)
-              const totalH =
-                maxDailyKwh > 0 ? (Number(day.energyKwh) / maxDailyKwh) * 100 : 0
-
-              return (
-                <div
-                  key={day.date}
-                  className="group relative flex flex-1 flex-col items-center justify-end"
-                >
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-20 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg border bg-card px-3 py-2 text-[11px] shadow-lg group-hover:block">
-                    <p className="font-semibold">{label}</p>
-                    <p className="tabular-nums">
-                      {day.energyKwh} kWh &middot; {day.sessions} sessions
-                    </p>
-                    <p className="text-muted-foreground tabular-nums">
-                      Peak: {day.peakPowerKw} kW
-                    </p>
-                  </div>
-                  {/* Bar */}
-                  <div
-                    className="w-full overflow-hidden rounded-t-md bg-blue-500 transition-[height] duration-500"
-                    style={{ height: `${Math.max(totalH, 2)}%` }}
-                  />
-                  {/* Label */}
-                  <span className="mt-2 text-[10px] text-muted-foreground">
-                    {label}
-                  </span>
-                  <span className="text-[10px] font-medium tabular-nums">
-                    {day.energyKwh}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Hourly Power Profile (Today) */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Power Profile — Today</h3>
-            <span className="text-xs text-muted-foreground">
-              Average kW per hour
-            </span>
-          </div>
-          <div className="mt-4 flex h-36 items-end gap-px">
-            {hourly.map((h) => {
-              const barH =
-                maxHourlyPower > 0 ? (Number(h.powerKw) / maxHourlyPower) * 100 : 0
-              const isCurrent = h.hour === currentHour
-              const isFuture = h.hour > currentHour
-
-              return (
-                <div
-                  key={h.hour}
-                  className="group relative flex flex-1 flex-col items-center justify-end"
-                >
-                  <div className="pointer-events-none absolute -top-14 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] text-background shadow-lg group-hover:block">
-                    <div className="font-medium">
-                      {h.hour.toString().padStart(2, '0')}:00
-                    </div>
-                    <div>{h.powerKw} kW</div>
-                    <div>{h.energyKwh} kWh</div>
-                  </div>
-                  <div
-                    className={cn(
-                      'w-full rounded-t-sm transition-[height] duration-300',
-                      isFuture
-                        ? 'bg-blue-100'
-                        : isCurrent
-                          ? 'bg-blue-600'
-                          : 'bg-blue-400'
-                    )}
-                    style={{ height: `${Math.max(barH, 1)}%` }}
-                  />
-                  {h.hour % 4 === 0 && (
-                    <span className="mt-1.5 text-[10px] text-muted-foreground tabular-nums">
-                      {h.hour.toString().padStart(2, '0')}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-    </div>
-  )
-}
-
-// Mock OCPP configuration keys
-const MOCK_CONFIG_KEYS = [
-  { key: 'HeartbeatInterval', value: '60', readonly: false },
-  { key: 'MeterValueSampleInterval', value: '30', readonly: false },
-  { key: 'ClockAlignedDataInterval', value: '0', readonly: false },
-  { key: 'ConnectionTimeOut', value: '120', readonly: false },
-  {
-    key: 'MeterValuesAlignedData',
-    value: 'Energy.Active.Import.Register',
-    readonly: false,
-  },
-  {
-    key: 'MeterValuesSampledData',
-    value: 'Energy.Active.Import.Register,Power.Active.Import',
-    readonly: false,
-  },
-  { key: 'NumberOfConnectors', value: '2', readonly: true },
-  { key: 'ChargePointModel', value: 'Terra AC W22-T-RD-M-0', readonly: true },
-  { key: 'ChargePointVendor', value: 'ABB', readonly: true },
-  {
-    key: 'SupportedFeatureProfiles',
-    value: 'Core,FirmwareManagement,LocalAuthListManagement,SmartCharging',
-    readonly: true,
-  },
-  { key: 'AuthorizeRemoteTxRequests', value: 'true', readonly: false },
-  { key: 'LocalAuthListEnabled', value: 'true', readonly: false },
-  { key: 'LocalPreAuthorize', value: 'false', readonly: false },
-  { key: 'StopTransactionOnEVSideDisconnect', value: 'true', readonly: false },
-  { key: 'UnlockConnectorOnEVSideDisconnect', value: 'true', readonly: false },
-]
-
-interface AuthTag {
-  id: string
-  idTag: string
-  parentIdTag: string
-  status: string
-  expiryDate: string | null
-  inLocalList: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-function SettingsTab({ charger }: { charger: Charger }) {
-  const navigate = useNavigate()
-  const siteId = useSiteId()
-  const [configKeys, setConfigKeys] = useState(
-    MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value }))
-  )
-  const { data: authData, mutate: mutateAuth } = useSWR<{ items: AuthTag[] }>(
-    ['charger.listAuthTags', { id: charger.id }],
-    fetcher
-  )
-  const authList = authData?.items ?? []
-  const [newIdTag, setNewIdTag] = useState('')
-  const addFetcher = useFetcher()
-  const removeFetcher = useFetcher()
-  const { data: profilesData, mutate: mutateProfiles } = useSWR<{
-    items: ChargingProfileData[]
-  }>(['charger.listChargingProfiles', { id: charger.id }], fetcher)
-  const profiles = profilesData?.items ?? []
-  const setProfileFetcher = useFetcher()
-  const clearProfileFetcher = useFetcher()
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
-  const [firmwareUrl, setFirmwareUrl] = useState('')
-  const [displayName, setDisplayName] = useState(charger.chargePointId)
-  const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
-
-  function handleEditConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) =>
-        k.key === key ? { ...k, editing: true, editValue: k.value } : k
-      )
-    )
-  }
-
-  function handleSaveConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) =>
-        k.key === key ? { ...k, editing: false, value: k.editValue } : k
-      )
-    )
-    toast.success(`Configuration "${key}" updated`)
-  }
-
-  function handleCancelConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) => (k.key === key ? { ...k, editing: false } : k))
-    )
-  }
-
-  // Revalidate SWR after fetcher completes
-  useEffect(() => {
-    if (addFetcher.state === 'idle' && addFetcher.data?.ok) {
-      toast.success(`ID tag "${addFetcher.data.idTag}" added`)
-      setNewIdTag('')
-      mutateAuth()
-    }
-  }, [addFetcher.state, addFetcher.data])
-
-  useEffect(() => {
-    if (removeFetcher.state === 'idle' && removeFetcher.data?.ok) {
-      mutateAuth()
-    }
-  }, [removeFetcher.state, removeFetcher.data])
-
-  // Revalidate charging profiles after set/clear
-  useEffect(() => {
-    if (setProfileFetcher.state === 'idle' && setProfileFetcher.data?.ok) {
-      toast.success('Charging profile set successfully')
-      setProfileDialogOpen(false)
-      mutateProfiles()
-    }
-  }, [setProfileFetcher.state, setProfileFetcher.data])
-
-  useEffect(() => {
-    if (clearProfileFetcher.state === 'idle' && clearProfileFetcher.data?.ok) {
-      toast.success('Charging profile cleared')
-      mutateProfiles()
-    }
-  }, [clearProfileFetcher.state, clearProfileFetcher.data])
-
-  // Optimistic removal for charging profiles
-  const clearingProfileId = clearProfileFetcher.formData?.get(
-    'chargingProfileId'
-  ) as string | null
-  const visibleProfiles = profiles.filter(
-    (p) => String(p.chargingProfileId) !== clearingProfileId
-  )
-
-  // Optimistic removal — hide the tag being removed
-  const removingTagId = removeFetcher.formData?.get('authTagId') as
-    | string
-    | null
-  const visibleAuthList = authList.filter((t) => t.id !== removingTagId)
-
-  function handleFirmwareUpdate() {
-    if (!firmwareUrl.trim()) return
-    toast.success('Firmware update requested')
-    setFirmwareUrl('')
-  }
-
-  function handleRequestDiagnostics() {
-    toast.success('Diagnostics upload requested')
-  }
-
-  function handleSaveGeneral() {
-    toast.success('Charger settings saved')
-  }
-
-  function handleDeleteCharger() {
-    if (
-      confirm(
-        'Are you sure you want to delete this charger? This action cannot be undone.'
-      )
-    ) {
-      toast.success('Charger deleted')
-      navigate(`/chargers?site=${siteId}`)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* OCPP Connection */}
-      <Card>
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">OCPP Connection</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Configure your charger to connect to this WebSocket endpoint
-          </p>
-          <div className="mt-3">
-            <OcppUrlStrip chargePointId={charger.chargePointId} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* General Settings */}
-      <Card>
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">General</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Basic charger configuration
-          </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="displayName" className="text-xs">
-                Display Name
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="maxPower" className="text-xs">
-                Max Power (kW)
-              </Label>
-              <Input
-                id="maxPower"
-                type="number"
-                value={maxPower}
-                onChange={(e) => setMaxPower(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button size="sm" onClick={handleSaveGeneral}>
-              <RiSaveLine aria-hidden="true" data-icon="inline-start" />
-              Save
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* OCPP Configuration */}
-      <Card>
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">OCPP Configuration</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Read and modify charge point configuration keys
-          </p>
-          <div className="mt-4">
-            <div className="rounded-lg border">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                <span>Key</span>
-                <span>Value</span>
-                <span className="w-6" />
-              </div>
-              <div className="divide-y">
-                {configKeys.map((config) => (
-                  <div
-                    key={config.key}
-                    className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2"
-                  >
-                    <div>
-                      <span className="text-xs font-medium">{config.key}</span>
-                      {config.readonly && (
-                        <span className="ml-1.5 text-[10px] text-muted-foreground">
-                          (read-only)
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      {config.editing ? (
-                        <Input
-                          className="h-7 text-xs"
-                          value={config.editValue}
-                          onChange={(e) =>
-                            setConfigKeys((prev) =>
-                              prev.map((k) =>
-                                k.key === config.key
-                                  ? { ...k, editValue: e.target.value }
-                                  : k
-                              )
-                            )
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveConfig(config.key)
-                            if (e.key === 'Escape')
-                              handleCancelConfig(config.key)
-                          }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span className="truncate text-xs text-muted-foreground tabular-nums">
-                          {config.value}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 justify-end">
-                      {config.editing ? (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => handleSaveConfig(config.key)}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => handleCancelConfig(config.key)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : !config.readonly ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          aria-label={`Edit ${config.key}`}
-                          onClick={() => handleEditConfig(config.key)}
-                        >
-                          <RiEditLine aria-hidden="true" className="size-3" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Charging Profiles */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold">Charging Profiles</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Set power limits and time-based charging schedules
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setProfileDialogOpen(true)}
-            >
-              <RiAddLine aria-hidden="true" data-icon="inline-start" />
-              Create Profile
-            </Button>
-          </div>
-          {visibleProfiles.length === 0 ? (
-            <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
-              <RiFlashlightLine
-                aria-hidden="true"
-                className="mx-auto size-8 text-muted-foreground/40"
-              />
-              <p className="mt-2 text-sm text-muted-foreground">
-                No charging profiles configured
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-lg border">
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                <span>ID</span>
-                <span>Purpose</span>
-                <span>Kind</span>
-                <span>Connector</span>
-                <span className="sr-only">Actions</span>
-              </div>
-              <div className="divide-y">
-                {visibleProfiles.map((profile) => (
-                  <div
-                    key={profile.id}
-                    className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 px-3 py-2"
-                  >
-                    <span className="flex items-center gap-2 text-xs font-medium tabular-nums">
-                      <RiFlashlightLine
-                        aria-hidden="true"
-                        className="size-3.5 text-muted-foreground"
-                      />
-                      #{profile.chargingProfileId}
-                    </span>
-                    <div className="flex flex-col">
-                      <Badge
-                        className={cn(
-                          'w-fit text-[10px]',
-                          profile.chargingProfilePurpose ===
-                            'ChargePointMaxProfile'
-                            ? 'bg-blue-500/15 text-blue-700'
-                            : profile.chargingProfilePurpose ===
-                                'TxDefaultProfile'
-                              ? 'bg-amber-500/15 text-amber-700'
-                              : 'bg-purple-500/15 text-purple-700'
-                        )}
-                      >
-                        {profile.chargingProfilePurpose}
-                      </Badge>
-                      {profile.schedule && (
-                        <span className="mt-0.5 text-[10px] text-muted-foreground">
-                          {profile.schedule.chargingSchedulePeriod.length}{' '}
-                          period
-                          {profile.schedule.chargingSchedulePeriod.length !== 1
-                            ? 's'
-                            : ''}
-                          {' \u00b7 '}
-                          {profile.schedule.chargingRateUnit}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {profile.chargingProfileKind}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {profile.connectorId === 0
-                        ? 'All'
-                        : `#${profile.connectorId}`}
-                    </span>
-                    <clearProfileFetcher.Form method="post">
-                      <input
-                        type="hidden"
-                        name="intent"
-                        value="clearChargingProfile"
-                      />
-                      <input
-                        type="hidden"
-                        name="chargerId"
-                        value={charger.id}
-                      />
-                      <input
-                        type="hidden"
-                        name="chargingProfileId"
-                        value={profile.chargingProfileId}
-                      />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
-                        aria-label={`Remove profile #${profile.chargingProfileId}`}
-                      >
-                        <RiDeleteBinLine
-                          aria-hidden="true"
-                          className="size-3"
-                        />
-                      </Button>
-                    </clearProfileFetcher.Form>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Create Charging Profile Dialog */}
-      <CreateChargingProfileDialog
-        open={profileDialogOpen}
-        onOpenChange={setProfileDialogOpen}
-        chargerId={charger.id}
-        connectors={charger.connectors}
-      />
-
-      {/* Authorization */}
-      <Card>
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">Authorization</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Local authorization list management
-          </p>
-          <div className="mt-4 rounded-lg border">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-              <span>ID Tag</span>
-              <span>Status</span>
-              <span>Expiry</span>
-              <span className="sr-only">Actions</span>
-            </div>
-            <div className="divide-y">
-              {visibleAuthList.length === 0 && (
-                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                  No authorization tags configured
-                </p>
-              )}
-              {visibleAuthList.map((auth) => (
-                <div
-                  key={auth.id}
-                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-3 py-2"
-                >
-                  <span className="flex items-center gap-2 text-xs font-medium">
-                    <RiShieldKeyholeLine
-                      aria-hidden="true"
-                      className="size-3.5 text-muted-foreground"
-                    />
-                    {auth.idTag}
-                  </span>
-                  <Badge
-                    className={cn(
-                      'text-[10px]',
-                      auth.status === 'Accepted'
-                        ? 'bg-emerald-500/15 text-emerald-700'
-                        : 'bg-red-500/15 text-red-700'
-                    )}
-                  >
-                    {auth.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {auth.expiryDate
-                      ? new Date(auth.expiryDate).toLocaleDateString()
-                      : '—'}
-                  </span>
-                  <removeFetcher.Form method="post">
-                    <input type="hidden" name="intent" value="removeAuthTag" />
-                    <input
-                      type="hidden"
-                      name="chargerId"
-                      value={charger.id}
-                    />
-                    <input
-                      type="hidden"
-                      name="authTagId"
-                      value={auth.id}
-                    />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon"
-                      className="size-6"
-                    >
-                      <RiDeleteBinLine
-                        aria-hidden="true"
-                        className="size-3.5 text-muted-foreground"
-                      />
-                      <span className="sr-only">Remove {auth.idTag}</span>
-                    </Button>
-                  </removeFetcher.Form>
-                </div>
-              ))}
-            </div>
-          </div>
-          <addFetcher.Form method="post" className="mt-3 flex gap-2">
-            <input type="hidden" name="intent" value="addAuthTag" />
-            <input type="hidden" name="chargerId" value={charger.id} />
-            <Input
-              name="idTag"
-              className="h-8 text-xs"
-              placeholder="Add ID tag..."
-              value={newIdTag}
-              onChange={(e) => setNewIdTag(e.target.value)}
+            <ConnectorCard
+              key={conn.id}
+              connector={conn}
+              chargerId={charger.id}
             />
-            <Button
-              type="submit"
-              size="sm"
-              className="h-8"
-              disabled={
-                addFetcher.state === 'submitting' || !newIdTag.trim()
-              }
-            >
-              <RiAddLine aria-hidden="true" data-icon="inline-start" />
-              Add
-            </Button>
-          </addFetcher.Form>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </div>
 
-      {/* Firmware */}
-      <Card>
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">Firmware &amp; Diagnostics</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Update firmware and request diagnostic uploads
-          </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-3 rounded-lg border p-4">
-              <div className="flex items-center gap-2">
-                <RiUploadLine
-                  aria-hidden="true"
-                  className="size-4 text-muted-foreground"
-                />
-                <p className="text-xs font-medium">Firmware Update</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Current:</span>
-                <span className="font-medium text-foreground">
-                  {charger.firmwareVersion}
-                </span>
-                <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700">
-                  {charger.firmwareStatus}
-                </Badge>
-              </div>
-              <Input
-                className="h-8 text-xs"
-                placeholder="Firmware download URL..."
-                value={firmwareUrl}
-                onChange={(e) => setFirmwareUrl(e.target.value)}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={handleFirmwareUpdate}
-              >
-                <RiUploadLine aria-hidden="true" data-icon="inline-start" />
-                Update Firmware
-              </Button>
-            </div>
-            <div className="flex flex-col gap-3 rounded-lg border p-4">
-              <div className="flex items-center gap-2">
-                <RiSettings3Line
-                  aria-hidden="true"
-                  className="size-4 text-muted-foreground"
-                />
-                <p className="text-xs font-medium">Diagnostics</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Status:</span>
-                <span className="font-medium text-foreground">
-                  {charger.diagnosticsStatus}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={handleRequestDiagnostics}
-              >
-                Request Diagnostics Upload
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tab Navigation */}
+      <nav className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1 sm:w-fit">
+        {tabs.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={`${tab.to}${siteParam}`}
+            end={tab.end}
+            className={({ isActive }) =>
+              cn(
+                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
+                isActive
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+              )
+            }
+          >
+            <tab.icon aria-hidden="true" className="size-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">{tab.label}</span>
+          </NavLink>
+        ))}
+      </nav>
 
-      {/* Danger Zone */}
-      <Card className="border-red-200">
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Irreversible actions
-          </p>
-          <div className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50/30 p-4">
-            <div>
-              <p className="text-sm font-medium">Delete this charger</p>
-              <p className="text-xs text-muted-foreground">
-                Remove this charger and all its data permanently.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-300 text-red-700 hover:bg-red-50"
-              onClick={handleDeleteCharger}
-            >
-              <RiDeleteBinLine aria-hidden="true" data-icon="inline-start" />
-              Delete
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tab Content */}
+      <Outlet context={{ charger } satisfies ChargerOutletContext} />
     </div>
   )
 }
+
+// --- ConnectorCard ---
 
 function ConnectorCard({
   connector,
@@ -1813,7 +322,6 @@ function ConnectorCard({
               </Badge>
             </div>
 
-            {/* Active session details */}
             {isActive && (
               <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
                 <div className="flex items-center justify-between">
@@ -1866,6 +374,7 @@ function ConnectorCard({
                     size="sm"
                     className="h-7 border-red-200 text-xs text-red-600 hover:bg-red-50"
                     onClick={() => setStopOpen(true)}
+                    disabled={!connector.transactionId}
                   >
                     <RiShutDownLine
                       aria-hidden="true"
@@ -1877,7 +386,6 @@ function ConnectorCard({
               </div>
             )}
 
-            {/* Suspended session */}
             {isSuspended && (
               <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/30 p-3">
                 <div className="flex items-center justify-between">
@@ -1894,7 +402,6 @@ function ConnectorCard({
               </div>
             )}
 
-            {/* Faulted */}
             {isFaulted && connector.errorCode !== 'NoError' && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50/30 p-3">
                 <div className="flex items-center gap-2">
@@ -1909,7 +416,6 @@ function ConnectorCard({
               </div>
             )}
 
-            {/* Available — Start Charging */}
             {connector.status === 'Available' && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1936,7 +442,6 @@ function ConnectorCard({
         </CardContent>
       </Card>
 
-      {/* Start Charging Dialog */}
       <StartChargingDialog
         open={startOpen}
         onOpenChange={setStartOpen}
@@ -1946,11 +451,12 @@ function ConnectorCard({
         connectorType={connector.connectorType}
       />
 
-      {/* Stop Charging Dialog */}
       <StopChargingDialog
         open={stopOpen}
         onOpenChange={setStopOpen}
+        chargerId={chargerId}
         connectorId={connector.id}
+        transactionId={connector.transactionId}
         vehicleId={connector.vehicleId}
         sessionKwh={connector.sessionKwh}
         sessionStartedAt={connector.sessionStartedAt}
@@ -1958,6 +464,8 @@ function ConnectorCard({
     </>
   )
 }
+
+// --- StartChargingDialog ---
 
 function StartChargingDialog({
   open,
@@ -1974,9 +482,9 @@ function StartChargingDialog({
   maxPowerKw: string
   connectorType: string
 }) {
-  const startFetcher = useFetcher()
   const [idTag, setIdTag] = useState('')
   const [powerLimit, setPowerLimit] = useState(maxPowerKw)
+  const [step, setStep] = useState<'form' | 'submitting' | 'success'>('form')
 
   const { data: authData } = useSWR<{ items: AuthTag[] }>(
     open ? ['charger.listAuthTags', { id: chargerId }] : null,
@@ -1984,21 +492,35 @@ function StartChargingDialog({
   )
   const authTags = authData?.items ?? []
 
-  const isSubmitting = startFetcher.state === 'submitting'
-  const isSuccess = startFetcher.state === 'idle' && startFetcher.data?.ok
-
   function handleClose() {
     onOpenChange(false)
     setTimeout(() => {
       setIdTag('')
       setPowerLimit(String(maxPowerKw))
+      setStep('form')
     }, 200)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!idTag) return
+    setStep('submitting')
+    try {
+      await fetcher([
+        'charger.remoteStart',
+        { id: chargerId, connectorId, idTag, powerLimitKw: Number(powerLimit) },
+      ])
+      setStep('success')
+    } catch {
+      toast.error('Failed to start charging')
+      setStep('form')
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
-        {!isSubmitting && !isSuccess && (
+        {step === 'form' && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -2015,15 +537,7 @@ function StartChargingDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <startFetcher.Form
-              method="post"
-              className="flex flex-col gap-4 py-2"
-            >
-              <input type="hidden" name="intent" value="remoteStart" />
-              <input type="hidden" name="chargerId" value={chargerId} />
-              <input type="hidden" name="connectorId" value={connectorId} />
-
-              {/* Connector info */}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-2">
               <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
                 <RiPlugLine
                   aria-hidden="true"
@@ -2042,7 +556,6 @@ function StartChargingDialog({
                 </Badge>
               </div>
 
-              {/* ID Tag */}
               <div className="grid gap-2">
                 <Label
                   htmlFor="startIdTag"
@@ -2053,7 +566,6 @@ function StartChargingDialog({
                 </Label>
                 <select
                   id="startIdTag"
-                  name="idTag"
                   value={idTag}
                   onChange={(e) => setIdTag(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
@@ -2074,7 +586,6 @@ function StartChargingDialog({
                 </p>
               </div>
 
-              {/* Power Limit */}
               <div className="grid gap-2">
                 <Label
                   htmlFor="powerLimit"
@@ -2086,14 +597,16 @@ function StartChargingDialog({
                 <Input
                   id="powerLimit"
                   type="number"
-                  min="1"
-                  max={maxPowerKw}
+                  min="0"
+                  max={maxPowerKw || undefined}
                   step="0.1"
                   value={powerLimit}
                   onChange={(e) => setPowerLimit(e.target.value)}
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  Max: {maxPowerKw} kW. Leave as-is for full power.
+                  {Number(maxPowerKw) > 0
+                    ? `Max: ${maxPowerKw} kW. Set 0 for no limit.`
+                    : 'Set 0 for no limit.'}
                 </p>
               </div>
 
@@ -2109,11 +622,11 @@ function StartChargingDialog({
                   Start Charging
                 </Button>
               </DialogFooter>
-            </startFetcher.Form>
+            </form>
           </>
         )}
 
-        {isSubmitting && (
+        {step === 'submitting' && (
           <div className="flex flex-col items-center py-10">
             <div className="relative">
               <div className="size-16 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500" />
@@ -2133,7 +646,7 @@ function StartChargingDialog({
           </div>
         )}
 
-        {isSuccess && (
+        {step === 'success' && (
           <div className="flex flex-col items-center py-10">
             <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
               <RiCheckboxCircleLine
@@ -2151,9 +664,7 @@ function StartChargingDialog({
               <div className="grid gap-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ID Tag</span>
-                  <span className="font-medium">
-                    {startFetcher.data?.idTag}
-                  </span>
+                  <span className="font-medium">{idTag}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Power Limit</span>
@@ -2177,17 +688,23 @@ function StartChargingDialog({
   )
 }
 
+// --- StopChargingDialog ---
+
 function StopChargingDialog({
   open,
   onOpenChange,
+  chargerId,
   connectorId,
+  transactionId,
   vehicleId,
   sessionKwh,
   sessionStartedAt,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  chargerId: string
   connectorId: number
+  transactionId: number | null
   vehicleId?: string
   sessionKwh: string
   sessionStartedAt?: string
@@ -2196,11 +713,19 @@ function StopChargingDialog({
     'confirm'
   )
 
-  function handleStop() {
+  async function handleStop() {
+    if (!transactionId) return
     setStep('stopping')
-    setTimeout(() => {
+    try {
+      await fetcher([
+        'charger.remoteStop',
+        { id: chargerId, transactionId },
+      ])
       setStep('stopped')
-    }, 1500)
+    } catch {
+      toast.error('Failed to stop charging')
+      setStep('confirm')
+    }
   }
 
   function handleClose() {
@@ -2226,8 +751,7 @@ function StopChargingDialog({
                 Stop Charging
               </DialogTitle>
               <DialogDescription>
-                This will send a remote stop command to connector #{connectorId}
-                .
+                This will send a remote stop command to connector #{connectorId}.
               </DialogDescription>
             </DialogHeader>
 
@@ -2318,982 +842,45 @@ function StopChargingDialog({
   )
 }
 
-function SessionRow({
-  session,
-  selected,
-  onClick,
+// --- OcppUrlStrip (exported for settings) ---
+
+export function OcppUrlStrip({
+  chargePointId,
 }: {
-  session: Session
-  selected: boolean
-  onClick: () => void
+  chargePointId: string
 }) {
-  const isActive = session.status === 'Active'
+  const [copied, setCopied] = useState(false)
+  const url = `${OCPP_BASE_URL}/${chargePointId}`
+
+  function handleCopy() {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(
-          'flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-colors',
-          isActive && 'border-blue-200 bg-blue-50/30',
-          !isActive && 'hover:bg-muted/50',
-          selected && !isActive && 'border-foreground/20 bg-muted/30',
-          selected && 'rounded-b-none'
-        )}
-      >
-        {/* Status dot */}
-        <span className="relative flex size-2.5">
-          {isActive && (
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75 motion-reduce:animate-none" />
-          )}
-          <span
-            className={cn(
-              'relative inline-flex size-2.5 rounded-full',
-              isActive ? 'bg-blue-500' : 'bg-gray-300'
-            )}
-          />
-        </span>
-
-        {/* Connector */}
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <RiPlugLine aria-hidden="true" className="size-3" />#
-          {session.connectorId}
-        </span>
-
-        {/* ID Tag */}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {session.idTag || '—'}
-        </span>
-
-        {/* Energy */}
-        <span className="text-sm font-semibold tabular-nums">
-          {Number(session.energyKwh).toFixed(1)} kWh
-        </span>
-
-        {/* Max power */}
-        <span className="hidden text-xs text-muted-foreground tabular-nums sm:block">
-          {formatPower(Number(session.maxPowerKw))} peak
-        </span>
-
-        {/* Duration */}
-        <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
-          <RiTimeLine aria-hidden="true" className="size-3" />
-          {sessionDuration(session.startedAt, session.endedAt)}
-        </span>
-
-        {/* Time */}
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {formatTime(session.startedAt)}
-        </span>
-
-        {/* Expand indicator */}
-        <RiArrowDownSLine
+    <div className="mt-2 flex items-center gap-0">
+      <div className="flex min-w-0 items-center gap-1.5 rounded-l-md border border-r-0 bg-muted/50 px-2.5 py-1">
+        <RiLinksLine
           aria-hidden="true"
-          className={cn(
-            'size-4 text-muted-foreground transition-transform',
-            selected && 'rotate-180'
-          )}
+          className="size-3 shrink-0 text-muted-foreground"
         />
-      </button>
-
-      {/* Expanded detail panel */}
-      {selected && <SessionDetail session={session} />}
-    </div>
-  )
-}
-
-function SessionDetail({ session }: { session: Session }) {
-  const isActive = session.status === 'Active'
-
-  return (
-    <div
-      className={cn(
-        'rounded-b-lg border border-t-0 px-5 py-4',
-        isActive
-          ? 'border-blue-200 bg-blue-50/20'
-          : 'border-foreground/20 bg-muted/20'
-      )}
-    >
-      <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Transaction ID
-          </p>
-          <p className="mt-0.5 font-mono text-sm font-semibold">
-            #{session.transactionId}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            ID Tag
-          </p>
-          <p className="mt-0.5 font-mono text-sm">{session.idTag || '—'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Connector
-          </p>
-          <p className="mt-0.5 text-sm">#{session.connectorId}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Energy Delivered
-          </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums">
-            {Number(session.energyKwh).toFixed(2)} kWh
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Duration
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums">
-            {sessionDuration(session.startedAt, session.endedAt)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Peak Power
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums">
-            {formatPower(Number(session.maxPowerKw))}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Status
-          </p>
-          <Badge
-            className={cn(
-              'mt-0.5 text-[10px]',
-              isActive
-                ? 'bg-blue-500/15 text-blue-700'
-                : 'bg-emerald-500/15 text-emerald-700'
-            )}
-          >
-            {session.status}
-          </Badge>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Started
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums">
-            {new Date(session.startedAt).toLocaleString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Ended
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums">
-            {session.endedAt
-              ? new Date(session.endedAt).toLocaleString([], {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'In progress'}
-          </p>
-        </div>
-        {session.stopReason && (
-          <div>
-            <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Stop Reason
-            </p>
-            <p className="mt-0.5 text-sm">{session.stopReason}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Meter values */}
-      <div className="mt-4 flex items-center gap-4 rounded-md border bg-background/60 px-4 py-2.5">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Meter Start:</span>
-          <span className="font-mono tabular-nums">
-            {session.meterStart.toLocaleString()} Wh
-          </span>
-        </div>
-        <span className="text-muted-foreground">&rarr;</span>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Meter Stop:</span>
-          <span className="font-mono tabular-nums">
-            {session.meterStop !== null
-              ? `${session.meterStop.toLocaleString()} Wh`
-              : '—'}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 truncate font-medium">{value}</dd>
-    </div>
-  )
-}
-
-// --- Reservations ---
-
-type ReservationActionData = { ok: boolean; intent: string; reservationId?: number }
-
-function ReservationCard({
-  reservation,
-  chargerId,
-  cancelFetcher,
-}: {
-  reservation: Reservation
-  chargerId: string
-  cancelFetcher: ReturnType<typeof useFetcher<ReservationActionData>>
-}) {
-  const isActive = reservation.status === 'Active'
-  const cancellingId = cancelFetcher.formData
-    ? Number(cancelFetcher.formData.get('reservationId'))
-    : null
-  const isCancelling = cancellingId === reservation.reservationId
-  const expiryDate = new Date(reservation.expiryDate)
-  const isExpired = expiryDate.getTime() < Date.now()
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
-        isActive && !isExpired
-          ? 'border-emerald-200 bg-emerald-50/30'
-          : 'bg-muted/20'
-      )}
-    >
-      {/* Connector badge */}
-      <span className="flex shrink-0 items-center justify-center rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-        #{reservation.connectorId}
-      </span>
-
-      {/* Reservation ID */}
-      <span className="shrink-0 font-mono text-xs font-semibold text-muted-foreground tabular-nums">
-        R-{reservation.reservationId}
-      </span>
-
-      {/* ID Tag */}
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-        {reservation.idTag}
-      </span>
-
-      {/* Parent ID Tag */}
-      {reservation.parentIdTag && (
-        <span className="hidden truncate text-xs text-muted-foreground sm:block">
-          via {reservation.parentIdTag}
+        <span className="truncate font-mono text-[11px] text-muted-foreground select-all">
+          {url}
         </span>
-      )}
-
-      {/* Expiry */}
-      <span
-        className={cn(
-          'shrink-0 text-xs tabular-nums',
-          isActive && !isExpired ? 'text-emerald-700' : 'text-muted-foreground'
-        )}
-      >
-        {isActive && !isExpired
-          ? `Expires ${timeAgo(reservation.expiryDate).replace(' ago', ' left').replace('Just now', 'now')}`
-          : formatDateTime(reservation.expiryDate)}
-      </span>
-
-      {/* Status badge */}
-      <Badge
-        className={cn(
-          'shrink-0 text-[10px]',
-          reservationStatusColor(reservation.status)
-        )}
-      >
-        {reservation.status}
-      </Badge>
-
-      {/* Cancel button — active only */}
-      {isActive && (
-        <cancelFetcher.Form method="post">
-          <input type="hidden" name="intent" value="cancelReservation" />
-          <input type="hidden" name="chargerId" value={chargerId} />
-          <input type="hidden" name="reservationId" value={reservation.reservationId} />
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="h-7 shrink-0 border-red-200 text-xs text-red-600 hover:bg-red-50"
-            disabled={isCancelling}
-          >
-            {isCancelling ? (
-              <RiLoader4Line aria-hidden="true" className="size-3 animate-spin" />
-            ) : (
-              <>
-                <RiCalendarCloseLine
-                  aria-hidden="true"
-                  data-icon="inline-start"
-                />
-                Cancel
-              </>
-            )}
-          </Button>
-        </cancelFetcher.Form>
-      )}
-    </div>
-  )
-}
-
-function NewReservationDialog({
-  open,
-  onOpenChange,
-  chargerId,
-  connectors,
-  reserveFetcher,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  chargerId: string
-  connectors: ConnectorDetail[]
-  reserveFetcher: ReturnType<typeof useFetcher<ReservationActionData>>
-}) {
-  const defaultExpiry = () => {
-    const d = new Date(Date.now() + 30 * 60000)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
-
-  const [connectorId, setConnectorId] = useState<number | null>(null)
-  const [idTag, setIdTag] = useState('')
-  const [reservationId, setReservationId] = useState('')
-  const [expiryDate, setExpiryDate] = useState(defaultExpiry)
-  const [parentIdTag, setParentIdTag] = useState('')
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-
-  const submitting = reserveFetcher.state === 'submitting'
-
-  function reset() {
-    setConnectorId(null)
-    setIdTag('')
-    setReservationId('')
-    setExpiryDate(defaultExpiry())
-    setParentIdTag('')
-    setAdvancedOpen(false)
-  }
-
-  function handleClose() {
-    onOpenChange(false)
-    setTimeout(reset, 200)
-  }
-
-  // Close dialog on successful submission
-  useEffect(() => {
-    if (reserveFetcher.state === 'idle' && reserveFetcher.data?.ok) {
-      toast.success(`Connector #${connectorId} reserved for ${idTag.trim()}`)
-      handleClose()
-    }
-  }, [reserveFetcher.state, reserveFetcher.data])
-
-  function validate(): string | null {
-    if (connectorId === null) return 'Please select a connector'
-    if (!idTag.trim()) return 'ID tag is required'
-    if (!reservationId.trim() || isNaN(Number(reservationId))) {
-      return 'A valid reservation ID is required'
-    }
-    if (!expiryDate) return 'Expiry date is required'
-    if (new Date(expiryDate).getTime() <= Date.now()) {
-      return 'Expiry date must be in the future'
-    }
-    return null
-  }
-
-  function handleSubmit() {
-    const err = validate()
-    if (err) {
-      toast.error(err)
-      return
-    }
-    reserveFetcher.submit(
-      {
-        intent: 'reserveNow',
-        chargerId,
-        connectorId: String(connectorId),
-        idTag: idTag.trim(),
-        expiryDate: new Date(expiryDate).toISOString(),
-        parentIdTag: parentIdTag.trim(),
-        reservationId,
-      },
-      { method: 'post' },
-    )
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
-              <RiCalendarCheckLine
-                aria-hidden="true"
-                className="size-4 text-emerald-600"
-              />
-            </div>
-            New Reservation
-          </DialogTitle>
-          <DialogDescription>
-            Reserve a connector for a specific ID tag and time window.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4 py-2">
-          {/* Connector selector */}
-          <div className="grid gap-2">
-            <Label className="text-xs">Connector</Label>
-            <div className="flex gap-2">
-              {connectors.map((conn) => {
-                const isAvailable = conn.status === 'Available'
-                return (
-                  <button
-                    key={conn.id}
-                    type="button"
-                    disabled={!isAvailable}
-                    onClick={() => setConnectorId(conn.id)}
-                    className={cn(
-                      'flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-xs transition-colors',
-                      connectorId === conn.id
-                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700'
-                        : isAvailable
-                          ? 'hover:border-foreground/30 hover:bg-muted/50'
-                          : 'cursor-not-allowed opacity-40'
-                    )}
-                  >
-                    <RiPlugLine aria-hidden="true" className="size-4" />
-                    <span className="font-semibold">#{conn.id}</span>
-                    <span
-                      className={cn(
-                        'text-[10px]',
-                        isAvailable
-                          ? 'text-emerald-600'
-                          : 'text-muted-foreground'
-                      )}
-                    >
-                      {conn.status}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {connectors.every((c) => c.status !== 'Available') && (
-              <p className="text-[10px] text-amber-600">
-                No connectors are currently available for reservation.
-              </p>
-            )}
-          </div>
-
-          {/* ID Tag */}
-          <div className="grid gap-2">
-            <Label
-              htmlFor="res-idTag"
-              className="flex items-center gap-1.5 text-xs"
-            >
-              <RiUserLine aria-hidden="true" className="size-3" />
-              ID Tag
-            </Label>
-            <Input
-              id="res-idTag"
-              placeholder="e.g. USER-001"
-              value={idTag}
-              onChange={(e) => setIdTag(e.target.value)}
-            />
-          </div>
-
-          {/* Reservation ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="res-id" className="text-xs">
-              Reservation ID
-            </Label>
-            <Input
-              id="res-id"
-              type="number"
-              min="1"
-              placeholder="e.g. 102"
-              value={reservationId}
-              onChange={(e) => setReservationId(e.target.value)}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              A unique numeric ID for this reservation (OCPP field).
-            </p>
-          </div>
-
-          {/* Expiry Date */}
-          <div className="grid gap-2">
-            <Label
-              htmlFor="res-expiry"
-              className="flex items-center gap-1.5 text-xs"
-            >
-              <RiTimeLine aria-hidden="true" className="size-3" />
-              Expiry Date &amp; Time
-            </Label>
-            <Input
-              id="res-expiry"
-              type="datetime-local"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-            />
-          </div>
-
-          {/* Advanced (collapsible) */}
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <RiArrowDownSLine
-                  aria-hidden="true"
-                  className={cn(
-                    'size-3.5 transition-transform',
-                    advancedOpen && 'rotate-180'
-                  )}
-                />
-                Advanced options
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <div className="grid gap-2">
-                <Label htmlFor="res-parentIdTag" className="text-xs">
-                  Parent ID Tag{' '}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="res-parentIdTag"
-                  placeholder="e.g. FLEET-A"
-                  value={parentIdTag}
-                  onChange={(e) => setParentIdTag(e.target.value)}
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Group tag for fleet or shared authorization.
-                </p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? (
-              <>
-                <RiLoader4Line
-                  aria-hidden="true"
-                  data-icon="inline-start"
-                  className="animate-spin"
-                />
-                Reserving…
-              </>
-            ) : (
-              <>
-                <RiCalendarCheckLine
-                  aria-hidden="true"
-                  data-icon="inline-start"
-                />
-                Reserve Connector
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ReservationsTab({
-  chargerId,
-  connectors,
-}: {
-  chargerId: string
-  connectors: ConnectorDetail[]
-}) {
-  const { data: reservationsData, isLoading: loading, mutate: mutateReservations } = useSWR<{ items: Reservation[] }>(
-    ['charger.listReservations', { id: chargerId }],
-    fetcher,
-  )
-  const reservations = reservationsData?.items ?? []
-  const [newDialogOpen, setNewDialogOpen] = useState(false)
-  const [pastOpen, setPastOpen] = useState(false)
-
-  const cancelFetcher = useFetcher<ReservationActionData>()
-  const reserveFetcher = useFetcher<ReservationActionData>()
-
-  // Revalidate SWR after reserve completes
-  useEffect(() => {
-    if (reserveFetcher.state === 'idle' && reserveFetcher.data?.ok) {
-      mutateReservations()
-    }
-  }, [reserveFetcher.state, reserveFetcher.data])
-
-  // Revalidate SWR after cancel completes
-  useEffect(() => {
-    if (cancelFetcher.state === 'idle' && cancelFetcher.data?.ok) {
-      toast.success(`Reservation #${cancelFetcher.data.reservationId} cancelled`)
-      mutateReservations()
-    }
-  }, [cancelFetcher.state, cancelFetcher.data])
-
-  // Optimistic cancel — show cancelled status immediately
-  const cancellingId = cancelFetcher.formData
-    ? Number(cancelFetcher.formData.get('reservationId'))
-    : null
-  const displayReservations = reservations.map((r) =>
-    r.reservationId === cancellingId ? { ...r, status: 'Cancelled' } : r
-  )
-
-  const activeReservations = displayReservations.filter((r) => r.status === 'Active')
-  const pastReservations = displayReservations.filter((r) => r.status !== 'Active')
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-8 w-36" />
-        </div>
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-lg" />
-        ))}
       </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Reservations</h3>
-        <Button size="sm" onClick={() => setNewDialogOpen(true)}>
-          <RiAddLine aria-hidden="true" data-icon="inline-start" />
-          New Reservation
-        </Button>
-      </div>
-
-      {/* Empty state */}
-      {reservations.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-12 text-center">
-          <RiCalendarCheckLine
-            aria-hidden="true"
-            className="size-10 text-muted-foreground/40"
-          />
-          <p className="mt-3 text-sm font-medium">No reservations yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Reserve a connector to hold it for a specific ID tag.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => setNewDialogOpen(true)}
-          >
-            <RiAddLine aria-hidden="true" data-icon="inline-start" />
-            Create First Reservation
-          </Button>
-        </div>
-      )}
-
-      {/* Active section */}
-      {activeReservations.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-            Active
-          </p>
-          {activeReservations.map((r) => (
-            <ReservationCard
-              key={r.reservationId}
-              reservation={r}
-              chargerId={chargerId}
-              cancelFetcher={cancelFetcher}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Past section (collapsible) */}
-      {pastReservations.length > 0 && (
-        <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase hover:text-foreground"
-            >
-              <RiArrowDownSLine
-                aria-hidden="true"
-                className={cn(
-                  'size-3.5 transition-transform',
-                  pastOpen && 'rotate-180'
-                )}
-              />
-              Past ({pastReservations.length})
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2 flex flex-col gap-2">
-            {pastReservations.map((r) => (
-              <ReservationCard
-                key={r.reservationId}
-                reservation={r}
-                chargerId={chargerId}
-                cancelFetcher={cancelFetcher}
-              />
-            ))}
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      <NewReservationDialog
-        open={newDialogOpen}
-        onOpenChange={setNewDialogOpen}
-        chargerId={chargerId}
-        connectors={connectors}
-        reserveFetcher={reserveFetcher}
-      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-auto shrink-0 rounded-l-none px-2 py-1"
+        onClick={handleCopy}
+      >
+        {copied ? (
+          <RiCheckLine aria-hidden="true" className="size-3 text-emerald-500" />
+        ) : (
+          <RiFileCopyLine aria-hidden="true" className="size-3" />
+        )}
+      </Button>
     </div>
-  )
-}
-
-// --- Create Charging Profile Dialog ---
-
-function CreateChargingProfileDialog({
-  open,
-  onOpenChange,
-  chargerId,
-  connectors,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  chargerId: string
-  connectors: ConnectorDetail[]
-}) {
-  const profileFetcher = useFetcher()
-  const [connectorId, setConnectorId] = useState('0')
-  const [profileId, setProfileId] = useState('1')
-  const [stackLevel, setStackLevel] = useState('0')
-  const [purpose, setPurpose] = useState('TxDefaultProfile')
-  const [kind, setKind] = useState('Absolute')
-  const [rateUnit, setRateUnit] = useState('W')
-  const [limit, setLimit] = useState('')
-  const [recurrencyKind, setRecurrencyKind] = useState('')
-
-  const isSubmitting = profileFetcher.state === 'submitting'
-
-  useEffect(() => {
-    if (profileFetcher.state === 'idle' && profileFetcher.data?.ok) {
-      onOpenChange(false)
-      setProfileId('1')
-      setStackLevel('0')
-      setPurpose('TxDefaultProfile')
-      setKind('Absolute')
-      setRateUnit('W')
-      setLimit('')
-      setRecurrencyKind('')
-      setConnectorId('0')
-    }
-  }, [profileFetcher.state, profileFetcher.data])
-
-  const profileJson = JSON.stringify({
-    chargingProfileId: parseInt(profileId) || 1,
-    stackLevel: parseInt(stackLevel) || 0,
-    chargingProfilePurpose: purpose,
-    chargingProfileKind: kind,
-    recurrencyKind: kind === 'Recurring' ? recurrencyKind || 'Daily' : '',
-    chargingSchedule: {
-      chargingRateUnit: rateUnit,
-      chargingSchedulePeriod: limit
-        ? [{ startPeriod: 0, limit: parseFloat(limit), numberPhases: 3 }]
-        : [],
-    },
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create Charging Profile</DialogTitle>
-          <DialogDescription>
-            Set power limits and time-based charging schedules for this charger.
-          </DialogDescription>
-        </DialogHeader>
-        <profileFetcher.Form method="post" className="flex flex-col gap-4 py-2">
-          <input type="hidden" name="intent" value="setChargingProfile" />
-          <input type="hidden" name="chargerId" value={chargerId} />
-          <input type="hidden" name="connectorId" value={connectorId} />
-          <input type="hidden" name="profileJson" value={profileJson} />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-connector" className="text-xs">
-                Connector
-              </Label>
-              <select
-                id="cp-connector"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                value={connectorId}
-                onChange={(e) => setConnectorId(e.target.value)}
-              >
-                <option value="0">All connectors</option>
-                {connectors.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    Connector #{c.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-profile-id" className="text-xs">
-                Profile ID
-              </Label>
-              <Input
-                id="cp-profile-id"
-                type="number"
-                className="text-xs"
-                value={profileId}
-                onChange={(e) => setProfileId(e.target.value)}
-                min={1}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-purpose" className="text-xs">
-                Purpose
-              </Label>
-              <select
-                id="cp-purpose"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-              >
-                <option value="ChargePointMaxProfile">
-                  ChargePointMaxProfile
-                </option>
-                <option value="TxDefaultProfile">TxDefaultProfile</option>
-                <option value="TxProfile">TxProfile</option>
-              </select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-kind" className="text-xs">
-                Kind
-              </Label>
-              <select
-                id="cp-kind"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-              >
-                <option value="Absolute">Absolute</option>
-                <option value="Recurring">Recurring</option>
-                <option value="Relative">Relative</option>
-              </select>
-            </div>
-          </div>
-
-          {kind === 'Recurring' && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-recurrency" className="text-xs">
-                Recurrency Kind
-              </Label>
-              <select
-                id="cp-recurrency"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                value={recurrencyKind}
-                onChange={(e) => setRecurrencyKind(e.target.value)}
-              >
-                <option value="Daily">Daily</option>
-                <option value="Weekly">Weekly</option>
-              </select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-rate-unit" className="text-xs">
-                Rate Unit
-              </Label>
-              <select
-                id="cp-rate-unit"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                value={rateUnit}
-                onChange={(e) => setRateUnit(e.target.value)}
-              >
-                <option value="W">Watts (W)</option>
-                <option value="A">Amps (A)</option>
-              </select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="cp-limit" className="text-xs">
-                Limit ({rateUnit})
-              </Label>
-              <Input
-                id="cp-limit"
-                type="number"
-                className="text-xs"
-                placeholder={rateUnit === 'W' ? 'e.g. 7400' : 'e.g. 32'}
-                value={limit}
-                onChange={(e) => setLimit(e.target.value)}
-                min={0}
-                step="0.1"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="cp-stack" className="text-xs">
-              Stack Level
-            </Label>
-            <Input
-              id="cp-stack"
-              type="number"
-              className="text-xs"
-              value={stackLevel}
-              onChange={(e) => setStackLevel(e.target.value)}
-              min={0}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Higher stack level takes priority over lower ones
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting || !limit}>
-              {isSubmitting && (
-                <RiLoader4Line
-                  aria-hidden="true"
-                  className="size-3.5 animate-spin"
-                />
-              )}
-              Set Profile
-            </Button>
-          </DialogFooter>
-        </profileFetcher.Form>
-      </DialogContent>
-    </Dialog>
   )
 }

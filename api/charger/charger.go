@@ -33,6 +33,7 @@ type ConnectorItem struct {
 	VehicleID        *string         `json:"vehicleId"`
 	SessionStartedAt *time.Time      `json:"sessionStartedAt"`
 	SessionKWH       decimal.Decimal `json:"sessionKwh"`
+	TransactionID    *int            `json:"transactionId"`
 }
 
 // List
@@ -191,6 +192,7 @@ func List(ctx context.Context, p *ListParams) (*ListResult, error) {
 			ci.VehicleID = sess.vehicleID
 			ci.SessionStartedAt = &sess.startTime
 			ci.SessionKWH = sess.energyKwh
+			ci.TransactionID = sess.transactionID
 		}
 		items[idx].Connectors = append(items[idx].Connectors, ci)
 		items[idx].CurrentPowerKw = items[idx].CurrentPowerKw.Add(ci.PowerKW)
@@ -388,6 +390,7 @@ func Get(ctx context.Context, p *GetParams) (*GetResult, error) {
 			ci.VehicleID = sess.vehicleID
 			ci.SessionStartedAt = &sess.startTime
 			ci.SessionKWH = sess.energyKwh
+			ci.TransactionID = sess.transactionID
 		}
 		r.Connectors = append(r.Connectors, ci)
 		r.CurrentPowerKw = r.CurrentPowerKw.Add(ci.PowerKW)
@@ -501,9 +504,10 @@ type connectorRow struct {
 }
 
 type activeSessionRow struct {
-	vehicleID *string
-	startTime time.Time
-	energyKwh decimal.Decimal
+	vehicleID     *string
+	startTime     time.Time
+	energyKwh     decimal.Decimal
+	transactionID *int
 }
 
 type todayStatRow struct {
@@ -611,18 +615,21 @@ func fetchActiveSessions(ctx context.Context, chargerIDs []string) (map[string]a
 		var idTag string
 		var startTime time.Time
 		var energyKwh decimal.Decimal
+		var transactionID int
 		if err := scan(
 			&chargerID,
 			&connectorID,
 			&idTag,
 			&startTime,
 			&energyKwh,
+			&transactionID,
 		); err != nil {
 			return err
 		}
 		row := activeSessionRow{
-			startTime: startTime,
-			energyKwh: energyKwh,
+			startTime:     startTime,
+			energyKwh:     energyKwh,
+			transactionID: &transactionID,
 		}
 		if idTag != "" {
 			row.vehicleID = &idTag
@@ -635,7 +642,8 @@ func fetchActiveSessions(ctx context.Context, chargerIDs []string) (map[string]a
 			connector_id,
 			id_tag,
 			start_time,
-			energy_kwh
+			energy_kwh,
+			transaction_id
 		from ev_charging_sessions
 		where charger_id = any($1)
 		  and end_time is null

@@ -77,85 +77,81 @@ func Start(ctx context.Context, p *StartParams) (*StartResult, error) {
 		}
 	}
 
-	// create charging session
+	// create charging session, update connector, and reservation atomically
 	id := xid.New().String()
 	var transactionID int
-	err = pgctx.QueryRow(ctx, `
-		insert into ev_charging_sessions (
-			id,
-			charger_id,
-			connector_id,
-			id_tag,
-			reservation_id,
-			start_time,
-			meter_start
-		)
-		select
-			$1,
-			ec.id,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6
-		from ev_chargers ec
-		where ec.charge_point_id = $7
-		returning transaction_id
-	`,
-		id,
-		p.ConnectorID,
-		p.IdTag,
-		p.ReservationID,
-		startTime,
-		p.MeterStart,
-		chargePointID,
-	).Scan(
-		&transactionID,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// update connector status to Charging
-	_, err = pgctx.Exec(ctx, `
-		update ev_connectors
-		set status = 'Charging',
-			updated_at = now()
-		where charger_id = (select id from ev_chargers where charge_point_id = $1)
-			and connector_id = $2
-	`,
-		chargePointID,
-		p.ConnectorID,
-	)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to update connector status",
-			"error", err,
-			"chargePointID", chargePointID,
-			"connectorId", p.ConnectorID,
-		)
-	}
-
-	// if reservation was used, mark it as Used
-	if p.ReservationID != nil {
-		_, err = pgctx.Exec(ctx, `
-			update ev_reservations
-			set status = 'Used',
-				updated_at = now()
-			where charger_id = (select id from ev_chargers where charge_point_id = $1)
-				and reservation_id = $2
-				and status = 'Reserved'
+	err = pgctx.RunInTx(ctx, func(ctx context.Context) error {
+		err := pgctx.QueryRow(ctx, `
+			insert into ev_charging_sessions (
+				id,
+				charger_id,
+				connector_id,
+				id_tag,
+				reservation_id,
+				start_time,
+				meter_start
+			)
+			select
+				$1,
+				ec.id,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6
+			from ev_chargers ec
+			where ec.charge_point_id = $7
+			returning transaction_id
 		`,
+			id,
+			p.ConnectorID,
+			p.IdTag,
+			p.ReservationID,
+			startTime,
+			p.MeterStart,
 			chargePointID,
-			*p.ReservationID,
+		).Scan(
+			&transactionID,
 		)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to update reservation status",
-				"error", err,
-				"chargePointID", chargePointID,
-				"reservationId", *p.ReservationID,
-			)
+			return err
 		}
-	}
+
+		// update connector status to Charging
+		_, err = pgctx.Exec(ctx, `
+			update ev_connectors
+			set status = 'Charging',
+				updated_at = now()
+			where charger_id = (select id from ev_chargers where charge_point_id = $1)
+				and connector_id = $2
+		`,
+			chargePointID,
+			p.ConnectorID,
+		)
+		if err != nil {
+			return err
+		}
+
+		// if reservation was used, mark it as Used
+		if p.ReservationID != nil {
+			_, err = pgctx.Exec(ctx, `
+				update ev_reservations
+				set status = 'Used',
+					updated_at = now()
+				where charger_id = (select id from ev_chargers where charge_point_id = $1)
+					and reservation_id = $2
+					and status = 'Reserved'
+			`,
+				chargePointID,
+				*p.ReservationID,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 
 	slog.InfoContext(ctx, "start transaction",
 		"chargePointID", chargePointID,

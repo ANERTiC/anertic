@@ -143,6 +143,7 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.listChargingProfiles", am.Handler(charger.ListChargingProfiles))
 	a.Handle("POST /charger.triggerMessage", am.Handler(charger.TriggerMessage))
 	a.Handle("POST /charger.remoteStart", am.Handler(charger.RemoteStart))
+	a.Handle("POST /charger.remoteStop", am.Handler(charger.RemoteStop))
 	a.Handle("POST /charger.reserveNow", am.Handler(charger.ReserveNow))
 	a.Handle("POST /charger.cancelReservation", am.Handler(charger.CancelReservation))
 	a.Handle("POST /charger.listReservations", am.Handler(charger.ListReservations))

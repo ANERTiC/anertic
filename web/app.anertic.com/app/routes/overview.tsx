@@ -22,7 +22,7 @@ import {
   RiArrowUpSLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
-import { useNavigate } from 'react-router'
+import { Link } from 'react-router'
 
 import { useSiteId } from '~/layouts/site'
 import { Card, CardContent } from '~/components/ui/card'
@@ -70,8 +70,8 @@ interface ChargerStatus {
   id: string
   chargePointId: string
   status: string
-  currentPowerKw: number
-  sessionEnergyKwh: number
+  currentPowerKw: string
+  sessionEnergyKwh: string
   lastHeartbeatAt: string | null
 }
 
@@ -154,32 +154,32 @@ function generateMockData(): SiteOverview {
         id: 'chr-1',
         chargePointId: 'CP-001',
         status: 'Charging',
-        currentPowerKw: 7.2,
-        sessionEnergyKwh: 14.3,
+        currentPowerKw: '7.2',
+        sessionEnergyKwh: '14.3',
         lastHeartbeatAt: new Date(Date.now() - 30000).toISOString(),
       },
       {
         id: 'chr-2',
         chargePointId: 'CP-002',
         status: 'Charging',
-        currentPowerKw: 11.0,
-        sessionEnergyKwh: 6.8,
+        currentPowerKw: '11.0',
+        sessionEnergyKwh: '6.8',
         lastHeartbeatAt: new Date(Date.now() - 15000).toISOString(),
       },
       {
         id: 'chr-3',
         chargePointId: 'CP-003',
         status: 'Available',
-        currentPowerKw: 0,
-        sessionEnergyKwh: 0,
+        currentPowerKw: '0',
+        sessionEnergyKwh: '0',
         lastHeartbeatAt: new Date(Date.now() - 120000).toISOString(),
       },
       {
         id: 'chr-4',
         chargePointId: 'CP-004',
         status: 'Faulted',
-        currentPowerKw: 0,
-        sessionEnergyKwh: 0,
+        currentPowerKw: '0',
+        sessionEnergyKwh: '0',
         lastHeartbeatAt: null,
       },
     ],
@@ -342,7 +342,6 @@ function scoreLabel(score: number) {
 
 export default function Overview() {
   const siteId = useSiteId()
-  const navigate = useNavigate()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -383,14 +382,14 @@ export default function Overview() {
   return (
     <div
       className={cn(
-        'space-y-6 transition-opacity duration-500',
+        'space-y-6 motion-safe:transition-opacity motion-safe:duration-500',
         mounted ? 'opacity-100' : 'opacity-0'
       )}
     >
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          <h1 className="text-xl font-semibold tracking-tight text-pretty sm:text-2xl">
             {data.siteName || 'Overview'}
           </h1>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -538,7 +537,7 @@ export default function Overview() {
                     <div
                       key={insight.id}
                       className={cn(
-                        'group cursor-pointer rounded-lg border p-4 transition-all hover:bg-muted/50',
+                        'group cursor-pointer rounded-lg border p-4 transition-colors hover:bg-muted/50',
                         accent.border
                       )}
                     >
@@ -571,7 +570,7 @@ export default function Overview() {
                             {insight.message}
                           </p>
                           {insight.action && (
-                            <button className="mt-2.5 flex items-center gap-1 text-xs font-semibold text-foreground/70 transition-colors group-hover:text-foreground">
+                            <button className="mt-2.5 flex items-center gap-1 rounded text-xs font-semibold text-foreground/70 transition-colors group-hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               {insight.action}
                               <RiArrowRightLine className="size-3 transition-transform group-hover:translate-x-0.5" />
                             </button>
@@ -632,7 +631,7 @@ export default function Overview() {
                           {timeAgo(insight.createdAt)}
                         </span>
                         {insight.action && (
-                          <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                          <button className="flex items-center gap-1 rounded text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             {insight.action}
                             <RiArrowRightLine className="size-3" />
                           </button>
@@ -827,21 +826,21 @@ export default function Overview() {
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground">Power</span>
                           <span className="font-medium tabular-nums">
-                            {formatPower(charger.currentPowerKw)}
+                            {formatPower(Number(charger.currentPowerKw))}
                           </span>
                         </div>
                         <div className="h-1.5 overflow-hidden rounded-full bg-blue-100">
                           <div
                             className="h-full rounded-full bg-blue-500"
                             style={{
-                              width: `${Math.min(100, (charger.currentPowerKw / 22) * 100)}%`,
+                              width: `${Math.min(100, (Number(charger.currentPowerKw) / 22) * 100)}%`,
                             }}
                           />
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground">Session</span>
                           <span className="tabular-nums">
-                            {charger.sessionEnergyKwh.toFixed(1)} kWh
+                            {Number(charger.sessionEnergyKwh).toFixed(1)} kWh
                           </span>
                         </div>
                       </div>
@@ -972,7 +971,7 @@ function MetricPill({
 function EnergyFlowDiagram({ data }: { data: SiteOverview }) {
   const evPowerKw = data.chargers
     .filter((c) => c.status === 'Charging')
-    .reduce((s, c) => s + c.currentPowerKw, 0)
+    .reduce((s, c) => s + Number(c.currentPowerKw), 0)
   const netPower = data.solarPowerKw - data.consumptionPowerKw - evPowerKw
 
   return (

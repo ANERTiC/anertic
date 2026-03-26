@@ -32,12 +32,12 @@ interface ConnectorStatus {
   status: string
   errorCode: string
   connectorType: string
-  maxPowerKw: number
-  powerKw: number
+  maxPowerKw: string
+  powerKw: string
   lastStatusAt: string | null
   vehicleId: string | null
   sessionStartedAt: string | null
-  sessionKwh: number
+  sessionKwh: string
 }
 
 interface Charger {
@@ -48,15 +48,15 @@ interface Charger {
   status: string
   registrationStatus: string
   connectorCount: number
-  maxPowerKw: number
+  maxPowerKw: string
   vendor: string
   model: string
   serialNumber: string
   firmwareVersion: string
   lastHeartbeatAt: string | null
   createdAt: string
-  currentPowerKw: number
-  todayEnergyKwh: number
+  currentPowerKw: string
+  todayEnergyKwh: string
   todaySessions: number
   connectors: ConnectorStatus[] | null
 }
@@ -88,9 +88,9 @@ function computeFleetSummary(chargers: Charger[]): FleetSummary {
   const available = chargers.filter((c) => c.status === 'Available').length
   const faulted = chargers.filter((c) => c.status === 'Faulted').length
   const offline = chargers.filter((c) => !c.lastHeartbeatAt).length
-  const totalPowerKw = chargers.reduce((s, c) => s + (c.currentPowerKw || 0), 0)
-  const maxCapacityKw = chargers.reduce((s, c) => s + (c.maxPowerKw || 0), 0)
-  const todayEnergyKwh = chargers.reduce((s, c) => s + (c.todayEnergyKwh || 0), 0)
+  const totalPowerKw = chargers.reduce((s, c) => s + (Number(c.currentPowerKw) || 0), 0)
+  const maxCapacityKw = chargers.reduce((s, c) => s + (Number(c.maxPowerKw) || 0), 0)
+  const todayEnergyKwh = chargers.reduce((s, c) => s + (Number(c.todayEnergyKwh) || 0), 0)
   const todaySessions = chargers.reduce((s, c) => s + (c.todaySessions || 0), 0)
 
   return {
@@ -551,7 +551,7 @@ function ChargerCard({ charger, href }: { charger: Charger; href: string }) {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1 tabular-nums">
               <RiFlashlightLine aria-hidden="true" className="size-3" />
-              {formatEnergy(charger.todayEnergyKwh || 0)} today
+              {formatEnergy(Number(charger.todayEnergyKwh) || 0)} today
             </span>
             <span className="flex items-center gap-1 tabular-nums">
               <RiLoopLeftLine aria-hidden="true" className="size-3" />
@@ -620,18 +620,18 @@ function ConnectorRow({ connector }: { connector: ConnectorStatus }) {
       {isActive && (
         <div className="flex items-center gap-3 text-xs tabular-nums">
           <span className="font-semibold text-blue-700">
-            {formatPower(connector.powerKw)}
+            {formatPower(Number(connector.powerKw))}
           </span>
           <span className="text-muted-foreground">
-            {connector.sessionKwh.toFixed(1)} kWh
+            {Number(connector.sessionKwh).toFixed(1)} kWh
           </span>
         </div>
       )}
-      {isSuspended && connector.sessionKwh > 0 && (
+      {isSuspended && Number(connector.sessionKwh) > 0 && (
         <div className="flex items-center gap-2 text-xs tabular-nums">
           <span className="text-amber-600">Paused</span>
           <span className="text-muted-foreground">
-            {connector.sessionKwh.toFixed(1)} kWh
+            {Number(connector.sessionKwh).toFixed(1)} kWh
           </span>
         </div>
       )}

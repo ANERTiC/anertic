@@ -79,7 +79,7 @@ interface Charger {
   status: string
   registrationStatus: string
   connectorCount: number
-  maxPowerKw: number
+  maxPowerKw: string
   vendor: string
   model: string
   serialNumber: string
@@ -90,10 +90,10 @@ interface Charger {
   heartbeatInterval: number
   lastHeartbeatAt: string | null
   createdAt: string
-  currentPowerKw: number
-  todayEnergyKwh: number
+  currentPowerKw: string
+  todayEnergyKwh: string
   todaySessions: number
-  totalEnergyKwh: number
+  totalEnergyKwh: string
   totalSessions: number
   connectors: ConnectorDetail[]
 }
@@ -101,13 +101,13 @@ interface Charger {
 interface ConnectorDetail {
   id: number
   status: string
-  powerKw: number
-  maxPowerKw: number
+  powerKw: string
+  maxPowerKw: string
   connectorType: string
   errorCode: string
   vehicleId?: string
   sessionStartedAt?: string
-  sessionKwh: number
+  sessionKwh: string
   lastStatusAt: string | null
 }
 
@@ -116,8 +116,8 @@ interface Session {
   connectorId: number
   startedAt: string
   endedAt: string | null
-  energyKwh: number
-  maxPowerKw: number
+  energyKwh: string
+  maxPowerKw: string
   idTag: string
   status: string
   meterStart: number
@@ -1323,8 +1323,8 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
     connector.status === 'SuspendedEV' || connector.status === 'SuspendedEVSE'
   const isFaulted = connector.status === 'Faulted'
   const powerPercent =
-    connector.maxPowerKw > 0
-      ? (connector.powerKw / connector.maxPowerKw) * 100
+    Number(connector.maxPowerKw) > 0
+      ? (Number(connector.powerKw) / Number(connector.maxPowerKw)) * 100
       : 0
 
   const [startOpen, setStartOpen] = useState(false)
@@ -1390,7 +1390,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   <div>
                     <p className="text-[10px] text-muted-foreground">Power</p>
                     <p className="text-lg font-bold text-blue-700 tabular-nums">
-                      {formatPower(connector.powerKw)}
+                      {formatPower(Number(connector.powerKw))}
                     </p>
                   </div>
                   <div>
@@ -1398,7 +1398,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                       Session Energy
                     </p>
                     <p className="text-lg font-bold tabular-nums">
-                      {connector.sessionKwh.toFixed(1)}{' '}
+                      {Number(connector.sessionKwh).toFixed(1)}{' '}
                       <span className="text-sm font-normal text-muted-foreground">
                         kWh
                       </span>
@@ -1448,7 +1448,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDetail }) {
                   </span>
                 </div>
                 <p className="mt-1 text-sm tabular-nums">
-                  {connector.sessionKwh.toFixed(1)} kWh delivered
+                  {Number(connector.sessionKwh).toFixed(1)} kWh delivered
                 </p>
               </div>
             )}
@@ -1527,12 +1527,12 @@ function StartChargingDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   connectorId: number
-  maxPowerKw: number
+  maxPowerKw: string
   connectorType: string
 }) {
   const [step, setStep] = useState<'config' | 'sending' | 'sent'>('config')
   const [idTag, setIdTag] = useState('')
-  const [powerLimit, setPowerLimit] = useState(String(maxPowerKw))
+  const [powerLimit, setPowerLimit] = useState(maxPowerKw)
   function handleStart() {
     if (!idTag.trim()) {
       toast.error('Please enter an ID tag')
@@ -1733,7 +1733,7 @@ function StopChargingDialog({
   onOpenChange: (open: boolean) => void
   connectorId: number
   vehicleId?: string
-  sessionKwh: number
+  sessionKwh: string
   sessionStartedAt?: string
 }) {
   const [step, setStep] = useState<'confirm' | 'stopping' | 'stopped'>(
@@ -1792,7 +1792,7 @@ function StopChargingDialog({
                     Energy Delivered
                   </span>
                   <span className="font-medium tabular-nums">
-                    {sessionKwh.toFixed(1)} kWh
+                    {Number(sessionKwh).toFixed(1)} kWh
                   </span>
                 </div>
                 {sessionStartedAt && (
@@ -1912,12 +1912,12 @@ function SessionRow({
 
         {/* Energy */}
         <span className="text-sm font-semibold tabular-nums">
-          {session.energyKwh.toFixed(1)} kWh
+          {Number(session.energyKwh).toFixed(1)} kWh
         </span>
 
         {/* Max power */}
         <span className="hidden text-xs text-muted-foreground tabular-nums sm:block">
-          {formatPower(session.maxPowerKw)} peak
+          {formatPower(Number(session.maxPowerKw))} peak
         </span>
 
         {/* Duration */}
@@ -1985,7 +1985,7 @@ function SessionDetail({ session }: { session: Session }) {
             Energy Delivered
           </p>
           <p className="mt-0.5 text-sm font-semibold tabular-nums">
-            {session.energyKwh.toFixed(2)} kWh
+            {Number(session.energyKwh).toFixed(2)} kWh
           </p>
         </div>
         <div>
@@ -2001,7 +2001,7 @@ function SessionDetail({ session }: { session: Session }) {
             Peak Power
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
-            {formatPower(session.maxPowerKw)}
+            {formatPower(Number(session.maxPowerKw))}
           </p>
         </div>
         <div>

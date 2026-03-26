@@ -53,7 +53,7 @@ func upsertConnectorStatus(ctx context.Context, chargePointID string, connectorI
 		select
 			substr(md5(ec.id || '-' || $2::text), 1, 20),
 			ec.id,
-			$2,
+			$2::int,
 			$3,
 			$4,
 			$5,

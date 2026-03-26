@@ -433,6 +433,52 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 			slog.ErrorContext(ctx, "failed to update reservation status after cancel", "error", err, "chargePointID", chargePointID)
 		}
 		slog.InfoContext(ctx, "CancelReservation accepted by charger", "chargePointID", chargePointID, "reservationId", req.ReservationID)
+
+	case "RemoteStartTransaction":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse RemoteStartTransaction response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set remote_start_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update remote_start_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "RemoteStartTransaction response", "chargePointID", chargePointID, "status", resp.Status)
+
+	case "RemoteStopTransaction":
+		var resp struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse RemoteStopTransaction response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+		status := commandStatusOk
+		if resp.Status != "Accepted" {
+			status = commandStatusError
+		}
+		_, err := pgctx.Exec(ctx, `
+			update ev_chargers
+			set remote_stop_status = $2,
+			    updated_at = now()
+			where charge_point_id = $1
+		`, chargePointID, status)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update remote_stop_status", "error", err, "chargePointID", chargePointID)
+		}
+		slog.InfoContext(ctx, "RemoteStopTransaction response", "chargePointID", chargePointID, "status", resp.Status)
 	}
 }
 

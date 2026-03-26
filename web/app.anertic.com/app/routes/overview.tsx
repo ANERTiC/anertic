@@ -657,7 +657,7 @@ export default function Overview() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="py-0">
           <CardContent className="p-5">
-            <h3 className="text-sm font-medium text-muted-foreground">
+            <h3 className="text-sm font-medium text-pretty text-muted-foreground">
               Energy Mix
             </h3>
             <div className="mt-4 flex items-center justify-center">
@@ -695,7 +695,7 @@ export default function Overview() {
         <Card className="py-0 lg:col-span-2">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-sm font-medium text-pretty text-muted-foreground">
                 Today's Energy
               </h3>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -772,16 +772,16 @@ export default function Overview() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground">
+            <h3 className="text-sm font-medium text-pretty text-muted-foreground">
               Chargers
             </h3>
-            <button
-              onClick={() => navigate(`/chargers?site=${siteId}`)}
-              className="flex items-center gap-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            <Link
+              to={`/chargers?site=${siteId}`}
+              className="flex items-center gap-0.5 rounded text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               View all
               <RiArrowRightSLine className="size-3.5" />
-            </button>
+            </Link>
           </div>
           {data.chargers.length === 0 ? (
             <Card>
@@ -795,14 +795,13 @@ export default function Overview() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {data.chargers.slice(0, 4).map((charger) => (
-                <Card
+                <Link
                   key={charger.id}
-                  className="cursor-pointer transition-colors hover:bg-muted/50"
-                  onClick={() =>
-                    navigate(`/chargers/${charger.id}?site=${siteId}`)
-                  }
+                  to={`/chargers/${charger.id}?site=${siteId}`}
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <CardContent className="p-4">
+                  <Card className="transition-colors hover:bg-muted/50">
+                    <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
@@ -845,8 +844,9 @@ export default function Overview() {
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
@@ -854,7 +854,7 @@ export default function Overview() {
 
         <Card className="flex h-full flex-col py-0">
           <CardContent className="flex flex-1 flex-col p-5">
-            <h3 className="text-sm font-medium text-muted-foreground">
+            <h3 className="text-sm font-medium text-pretty text-muted-foreground">
               Devices
             </h3>
             <div className="mt-4 flex items-center gap-4">
@@ -872,13 +872,13 @@ export default function Overview() {
               </div>
             </div>
             <div className="flex-1" />
-            <button
-              onClick={() => navigate(`/devices?site=${siteId}`)}
-              className="mt-3 flex w-full items-center justify-center gap-1 rounded-md border py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            <Link
+              to={`/devices?site=${siteId}`}
+              className="mt-3 flex w-full items-center justify-center gap-1 rounded-md border py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <RiEyeLine className="size-3" />
-              View devices
-            </button>
+              View Devices
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -1245,7 +1245,7 @@ function EnergyNode({
       </div>
       <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
         <div
-          className={cn('h-full rounded-full transition-all duration-700', s.bar)}
+          className={cn('h-full rounded-full transition-[width] duration-700', s.bar)}
           style={{ width: `${Math.max(barPercent, 2)}%` }}
         />
       </div>
@@ -1452,7 +1452,7 @@ function EnergyRing({
           strokeDasharray={`${gridArc} ${circumference}`}
           strokeDashoffset={0}
           strokeLinecap="round"
-          className="transition-all duration-700"
+          style={{ transition: 'stroke-dasharray 0.7s, stroke-dashoffset 0.7s' }}
         />
         <circle
           cx={size / 2}
@@ -1464,7 +1464,7 @@ function EnergyRing({
           strokeDasharray={`${solarArc} ${circumference}`}
           strokeDashoffset={-gridArc}
           strokeLinecap="round"
-          className="transition-all duration-700"
+          style={{ transition: 'stroke-dasharray 0.7s, stroke-dashoffset 0.7s' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
@@ -1506,7 +1506,7 @@ function EnergyMixRow({
       <div className="h-1 overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
-            'h-full rounded-full transition-all duration-700',
+            'h-full rounded-full transition-[width] duration-700',
             color
           )}
           style={{ width: `${percent}%` }}

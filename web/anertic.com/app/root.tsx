@@ -24,6 +24,7 @@ export const meta: Route.MetaFunction = () => [
       "An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem.",
   },
   { property: "og:type", content: "website" },
+  { property: "og:url", content: "https://anertic.com" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

@@ -32,6 +32,9 @@ import {
   RiCalendarCheckLine,
   RiCalendarCloseLine,
   RiLoader4Line,
+  RiFileCopyLine,
+  RiCheckLine,
+  RiLinksLine,
 } from '@remixicon/react'
 import { toast } from 'sonner'
 
@@ -297,6 +300,51 @@ function formatDateTime(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+const OCPP_BASE_URL = 'wss://ocpp.anertic.com'
+
+function OcppUrlStrip({ chargePointId }: { chargePointId: string }) {
+  const [copied, setCopied] = useState(false)
+  const url = `${OCPP_BASE_URL}/${chargePointId}`
+
+  function handleCopy() {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-0">
+      <div className="flex min-w-0 items-center gap-1.5 rounded-l-md border border-r-0 bg-muted/50 px-2.5 py-1">
+        <RiLinksLine
+          aria-hidden="true"
+          className="size-3 shrink-0 text-muted-foreground"
+        />
+        <span className="truncate font-mono text-[11px] text-muted-foreground select-all">
+          {url}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={cn(
+          'flex items-center gap-1 rounded-r-md border px-2 py-1 text-[11px] font-medium transition-colors',
+          copied
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400'
+            : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+        aria-label="Copy OCPP URL"
+      >
+        {copied ? (
+          <RiCheckLine aria-hidden="true" className="size-3" />
+        ) : (
+          <RiFileCopyLine aria-hidden="true" className="size-3" />
+        )}
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
+  )
 }
 
 // --- Main Component ---
@@ -1000,6 +1048,19 @@ function SettingsTab({ charger }: { charger: Charger }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* OCPP Connection */}
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold">OCPP Connection</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Configure your charger to connect to this WebSocket endpoint
+          </p>
+          <div className="mt-3">
+            <OcppUrlStrip chargePointId={charger.chargePointId} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* General Settings */}
       <Card>
         <CardContent className="p-5">

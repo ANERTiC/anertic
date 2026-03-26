@@ -145,23 +145,23 @@ interface Reservation {
 
 interface DailyEnergy {
   date: string
-  energyKwh: number
+  energyKwh: string
   sessions: number
-  peakPowerKw: number
+  peakPowerKw: string
 }
 
 interface HourlyPower {
   hour: number
-  powerKw: number
-  energyKwh: number
+  powerKw: string
+  energyKwh: string
 }
 
 interface AnalyticsSummary {
-  totalKwh: number
+  totalKwh: string
   totalSessions: number
-  avgDailyKwh: number
-  avgSessionKwh: number
-  peakPowerKw: number
+  avgDailyKwh: string
+  avgSessionKwh: string
+  peakPowerKw: string
 }
 
 interface AnalyticsResult {
@@ -712,13 +712,13 @@ function AnalyticsTab({
   }
 
   const { daily, hourly, summary } = analytics
-  const maxDailyKwh = Math.max(...daily.map((d) => d.energyKwh), 0.1)
-  const maxHourlyPower = Math.max(...hourly.map((h) => h.powerKw), 0.1)
+  const maxDailyKwh = Math.max(...daily.map((d) => Number(d.energyKwh)), 0.1)
+  const maxHourlyPower = Math.max(...hourly.map((h) => Number(h.powerKw)), 0.1)
   const currentHour = new Date().getHours()
 
   // Compute bussiest day label from data
   const busiestDay = daily.length > 0
-    ? [...daily].sort((a, b) => b.energyKwh - a.energyKwh)[0]
+    ? [...daily].sort((a, b) => Number(b.energyKwh) - Number(a.energyKwh))[0]
     : null
   const busiestDayLabel = busiestDay
     ? dailyLabel(busiestDay.date, daily.indexOf(busiestDay), daily.length)
@@ -734,7 +734,7 @@ function AnalyticsTab({
               7-Day Total
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.totalKwh.toFixed(1)}
+              {Number(summary.totalKwh).toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kWh
               </span>
@@ -753,7 +753,7 @@ function AnalyticsTab({
               {summary.totalSessions}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              avg {summary.avgSessionKwh.toFixed(1)} kWh/session
+              avg {Number(summary.avgSessionKwh).toFixed(1)} kWh/session
             </p>
           </CardContent>
         </Card>
@@ -763,7 +763,7 @@ function AnalyticsTab({
               Daily Average
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.avgDailyKwh.toFixed(1)}
+              {Number(summary.avgDailyKwh).toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kWh
               </span>
@@ -779,7 +779,7 @@ function AnalyticsTab({
               Peak Power
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.peakPowerKw.toFixed(1)}
+              {Number(summary.peakPowerKw).toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kW
               </span>
@@ -803,7 +803,7 @@ function AnalyticsTab({
             {daily.map((day, i) => {
               const label = dailyLabel(day.date, i, daily.length)
               const totalH =
-                maxDailyKwh > 0 ? (day.energyKwh / maxDailyKwh) * 100 : 0
+                maxDailyKwh > 0 ? (Number(day.energyKwh) / maxDailyKwh) * 100 : 0
 
               return (
                 <div
@@ -851,7 +851,7 @@ function AnalyticsTab({
           <div className="mt-4 flex h-36 items-end gap-px">
             {hourly.map((h) => {
               const barH =
-                maxHourlyPower > 0 ? (h.powerKw / maxHourlyPower) * 100 : 0
+                maxHourlyPower > 0 ? (Number(h.powerKw) / maxHourlyPower) * 100 : 0
               const isCurrent = h.hour === currentHour
               const isFuture = h.hour > currentHour
 

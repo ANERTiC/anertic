@@ -651,133 +651,8 @@ export default function Overview() {
           Supporting Data Below
           ═══════════════════════ */}
 
-      {/* Live Power Strip — Desktop */}
-      <Card className="hidden overflow-hidden py-0 md:block">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-5 divide-x">
-            <PowerCell
-              icon={RiSunLine}
-              label="Solar"
-              kw={data.solarPowerKw}
-              kwh={data.todaySolarKwh}
-              color="amber"
-            />
-            <PowerCell
-              icon={RiBattery2ChargeLine}
-              label="Battery"
-              kw={data.batteryPowerKw}
-              soc={data.batterySoc}
-              color="emerald"
-            />
-            <PowerCell
-              icon={RiFlashlightLine}
-              label="Load"
-              kw={data.consumptionPowerKw}
-              kwh={data.todayConsumptionKwh}
-              color="violet"
-            />
-            <PowerCell
-              icon={RiPlugLine}
-              label="Grid"
-              kw={data.gridPowerKw}
-              kwh={data.todayGridKwh}
-              color="blue"
-            />
-            <PowerCell
-              icon={RiChargingPile2Line}
-              label="EV"
-              kw={data.chargers
-                .filter((c) => c.status === 'Charging')
-                .reduce((s, c) => s + c.currentPowerKw, 0)}
-              kwh={data.todayChargeKwh}
-              color="cyan"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Live Energy Flow — Mobile */}
-      <Card className="overflow-hidden py-0 md:hidden">
-        <CardContent className="p-0">
-          <div className="flex items-center gap-2 border-b px-4 py-3">
-            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Energy Flow
-            </span>
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
-            </span>
-          </div>
-          <div className="space-y-1 p-4">
-            <div className="px-1 text-[9px] font-bold tracking-widest text-muted-foreground/50 uppercase">
-              Sources
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <FlowNode
-                icon={RiSunLine}
-                label="Solar"
-                value={formatPower(data.solarPowerKw)}
-                sub={`${formatEnergy(data.todaySolarKwh)} today`}
-                color="amber"
-              />
-              <FlowNode
-                icon={RiPlugLine}
-                label="Grid"
-                value={formatPower(data.gridPowerKw)}
-                sub={`${formatEnergy(data.todayGridKwh)} today`}
-                color="blue"
-              />
-            </div>
-
-            <div className="flex justify-center py-0.5">
-              <div className="energy-flow-line h-6" />
-            </div>
-
-            <div className="flex justify-center">
-              <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-2.5">
-                <RiBattery2ChargeLine className="size-5 text-emerald-600" />
-                <div>
-                  <p className="text-base font-bold text-emerald-700 tabular-nums">
-                    {data.batterySoc}%
-                  </p>
-                  <p className="text-[10px] text-emerald-600/70">
-                    {data.batteryPowerKw > 0 ? '+' : ''}
-                    {formatPower(data.batteryPowerKw)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-center py-0.5">
-              <div className="energy-flow-line h-6" />
-            </div>
-
-            <div className="px-1 text-[9px] font-bold tracking-widest text-muted-foreground/50 uppercase">
-              Consumption
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <FlowNode
-                icon={RiFlashlightLine}
-                label="Load"
-                value={formatPower(data.consumptionPowerKw)}
-                sub={`${formatEnergy(data.todayConsumptionKwh)} today`}
-                color="violet"
-              />
-              <FlowNode
-                icon={RiChargingPile2Line}
-                label="EV"
-                value={formatPower(
-                  data.chargers
-                    .filter((c) => c.status === 'Charging')
-                    .reduce((s, c) => s + c.currentPowerKw, 0)
-                )}
-                sub={`${formatEnergy(data.todayChargeKwh)} today`}
-                color="cyan"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Energy Flow Diagram */}
+      <EnergyFlowDiagram data={data} />
 
       {/* Energy Mix + Timeline */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -1094,64 +969,452 @@ function MetricPill({
   )
 }
 
-function PowerCell({
+function EnergyFlowDiagram({ data }: { data: SiteOverview }) {
+  const evPowerKw = data.chargers
+    .filter((c) => c.status === 'Charging')
+    .reduce((s, c) => s + c.currentPowerKw, 0)
+  const netPower = data.solarPowerKw - data.consumptionPowerKw - evPowerKw
+
+  return (
+    <Card className="overflow-hidden py-0">
+      <CardContent className="p-0">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-5 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Energy Flow
+            </span>
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+            </span>
+          </div>
+        </div>
+
+        {/* Desktop: horizontal Sources → Battery → Consumers */}
+        <div className="hidden items-center gap-3 p-6 md:flex lg:gap-4 lg:p-8">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <EnergyNode
+              icon={RiSunLine}
+              label="Solar"
+              power={data.solarPowerKw}
+              energy={data.todaySolarKwh}
+              color="amber"
+            />
+            <EnergyNode
+              icon={RiPlugLine}
+              label="Grid"
+              power={data.gridPowerKw}
+              energy={data.todayGridKwh}
+              color="blue"
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 px-1">
+            <FlowWire direction="right" className="w-10 lg:w-16" />
+            <FlowArrowIcon direction="right" />
+          </div>
+
+          <FlowBatteryHub
+            soc={data.batterySoc}
+            powerKw={data.batteryPowerKw}
+            size={110}
+          />
+
+          <div className="flex shrink-0 items-center gap-1.5 px-1">
+            <FlowArrowIcon direction="right" />
+            <FlowWire direction="right" className="w-10 lg:w-16" />
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <EnergyNode
+              icon={RiFlashlightLine}
+              label="Load"
+              power={data.consumptionPowerKw}
+              energy={data.todayConsumptionKwh}
+              color="violet"
+            />
+            <EnergyNode
+              icon={RiChargingPile2Line}
+              label="EV"
+              power={evPowerKw}
+              energy={data.todayChargeKwh}
+              color="cyan"
+            />
+          </div>
+        </div>
+
+        {/* Mobile: vertical flow */}
+        <div className="space-y-2 p-4 md:hidden">
+          <div className="px-1 text-[9px] font-bold tracking-widest text-muted-foreground/50 uppercase">
+            Sources
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <EnergyNode
+              icon={RiSunLine}
+              label="Solar"
+              power={data.solarPowerKw}
+              energy={data.todaySolarKwh}
+              color="amber"
+              compact
+            />
+            <EnergyNode
+              icon={RiPlugLine}
+              label="Grid"
+              power={data.gridPowerKw}
+              energy={data.todayGridKwh}
+              color="blue"
+              compact
+            />
+          </div>
+
+          <div className="flex justify-center py-1">
+            <div className="flex flex-col items-center gap-1">
+              <FlowWire direction="down" className="h-4" />
+              <FlowArrowIcon direction="down" />
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <FlowBatteryHub
+              soc={data.batterySoc}
+              powerKw={data.batteryPowerKw}
+              size={100}
+            />
+          </div>
+
+          <div className="flex justify-center py-1">
+            <div className="flex flex-col items-center gap-1">
+              <FlowArrowIcon direction="down" />
+              <FlowWire direction="down" className="h-4" />
+            </div>
+          </div>
+
+          <div className="px-1 text-[9px] font-bold tracking-widest text-muted-foreground/50 uppercase">
+            Consumption
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <EnergyNode
+              icon={RiFlashlightLine}
+              label="Load"
+              power={data.consumptionPowerKw}
+              energy={data.todayConsumptionKwh}
+              color="violet"
+              compact
+            />
+            <EnergyNode
+              icon={RiChargingPile2Line}
+              label="EV"
+              power={evPowerKw}
+              energy={data.todayChargeKwh}
+              color="cyan"
+              compact
+            />
+          </div>
+        </div>
+
+        {/* Summary strip */}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t bg-muted/30 px-4 py-2.5 text-[11px] sm:justify-around">
+          <span className="text-muted-foreground">
+            Production{' '}
+            <span className="font-semibold tabular-nums text-amber-700">
+              {formatPower(data.solarPowerKw)}
+            </span>
+          </span>
+          <span className="hidden text-border sm:inline">|</span>
+          <span className="text-muted-foreground">
+            Consumption{' '}
+            <span className="font-semibold tabular-nums text-violet-700">
+              {formatPower(data.consumptionPowerKw + evPowerKw)}
+            </span>
+          </span>
+          <span className="hidden text-border sm:inline">|</span>
+          <span className="text-muted-foreground">
+            Net{' '}
+            <span
+              className={cn(
+                'font-semibold tabular-nums',
+                netPower >= 0 ? 'text-emerald-600' : 'text-red-500'
+              )}
+            >
+              {netPower >= 0 ? '+' : ''}
+              {formatPower(Math.abs(netPower))}
+            </span>
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EnergyNode({
   icon: Icon,
   label,
-  kw,
-  kwh,
-  soc,
+  power,
+  energy,
   color,
+  compact,
 }: {
   icon: typeof RiSunLine
   label: string
-  kw: number
-  kwh?: number
-  soc?: number
-  color: string
+  power: number
+  energy: number
+  color: 'amber' | 'blue' | 'violet' | 'cyan'
+  compact?: boolean
 }) {
-  const colorMap: Record<string, { text: string; bg: string }> = {
-    amber: { text: 'text-amber-700', bg: 'from-amber-50' },
-    emerald: { text: 'text-emerald-700', bg: 'from-emerald-50' },
-    violet: { text: 'text-violet-700', bg: 'from-violet-50' },
-    blue: { text: 'text-blue-700', bg: 'from-blue-50' },
-    cyan: { text: 'text-cyan-700', bg: 'from-cyan-50' },
+  const styles = {
+    amber: {
+      iconBg: 'bg-amber-100',
+      iconText: 'text-amber-600',
+      border: 'border-l-amber-400',
+      powerText: 'text-amber-700',
+      bar: 'bg-amber-400',
+    },
+    blue: {
+      iconBg: 'bg-blue-100',
+      iconText: 'text-blue-600',
+      border: 'border-l-blue-400',
+      powerText: 'text-blue-700',
+      bar: 'bg-blue-400',
+    },
+    violet: {
+      iconBg: 'bg-violet-100',
+      iconText: 'text-violet-600',
+      border: 'border-l-violet-400',
+      powerText: 'text-violet-700',
+      bar: 'bg-violet-400',
+    },
+    cyan: {
+      iconBg: 'bg-cyan-100',
+      iconText: 'text-cyan-600',
+      border: 'border-l-cyan-400',
+      powerText: 'text-cyan-700',
+      bar: 'bg-cyan-400',
+    },
   }
-  const c = colorMap[color] || colorMap.blue
+  const s = styles[color]
+  const barPercent = Math.min(100, (power / 22) * 100)
 
-  return (
-    <div className="relative p-4">
-      <div
-        className={cn(
-          'absolute inset-0 bg-gradient-to-br to-transparent',
-          c.bg
-        )}
-      />
-      <div className="relative">
-        <div
-          className={cn(
-            'flex items-center gap-1.5 text-[10px] font-medium tracking-wider uppercase opacity-70',
-            c.text
-          )}
-        >
-          <Icon className="size-3" />
-          {label}
+  if (compact) {
+    return (
+      <div className={cn('rounded-lg border border-l-[3px] p-2.5', s.border)}>
+        <div className="flex items-center gap-2">
+          <Icon className={cn('size-3.5', s.iconText)} />
+          <span className="text-[10px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+            {label}
+          </span>
         </div>
         <p
-          className={cn(
-            'mt-2 text-lg font-bold tracking-tight tabular-nums',
-            c.text
-          )}
+          className={cn('mt-1 text-base font-bold tabular-nums', s.powerText)}
         >
-          {soc !== undefined ? `${soc}%` : formatPower(kw)}
+          {formatPower(power)}
         </p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
-          {soc !== undefined
-            ? `${kw > 0 ? '+' : ''}${formatPower(kw)}`
-            : kwh !== undefined
-              ? `${formatEnergy(kwh)} today`
-              : ''}
+        <p className="text-[10px] text-muted-foreground">
+          {formatEnergy(energy)} today
         </p>
       </div>
+    )
+  }
+
+  return (
+    <div className={cn('rounded-lg border border-l-[3px] p-3', s.border)}>
+      <div className="flex items-center gap-2.5">
+        <div
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-lg',
+            s.iconBg
+          )}
+        >
+          <Icon className={cn('size-4', s.iconText)} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'text-lg font-bold leading-tight tabular-nums',
+              s.powerText
+            )}
+          >
+            {formatPower(power)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-2 text-[10px] text-muted-foreground">
+        {formatEnergy(energy)} today
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn('h-full rounded-full transition-all duration-700', s.bar)}
+          style={{ width: `${Math.max(barPercent, 2)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function FlowWire({
+  direction,
+  className,
+}: {
+  direction: 'right' | 'down'
+  className?: string
+}) {
+  const isH = direction === 'right'
+
+  return (
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-full bg-border/60',
+        isH ? 'h-[2px]' : 'w-[2px]',
+        className
+      )}
+    >
+      <div
+        className="absolute rounded-full"
+        style={{
+          ...(isH
+            ? { top: -1, bottom: -1, width: '30%' }
+            : { left: -1, right: -1, height: '30%' }),
+          background: isH
+            ? 'linear-gradient(90deg, transparent, oklch(0.65 0.14 163), transparent)'
+            : 'linear-gradient(180deg, transparent, oklch(0.65 0.14 163), transparent)',
+          boxShadow: '0 0 6px oklch(0.65 0.14 163 / 0.4)',
+          animation: isH
+            ? 'flow-pulse-h 1.6s ease-in-out infinite'
+            : 'flow-pulse-v 1.6s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute rounded-full"
+        style={{
+          ...(isH
+            ? { top: -1, bottom: -1, width: '30%' }
+            : { left: -1, right: -1, height: '30%' }),
+          background: isH
+            ? 'linear-gradient(90deg, transparent, oklch(0.65 0.14 163), transparent)'
+            : 'linear-gradient(180deg, transparent, oklch(0.65 0.14 163), transparent)',
+          boxShadow: '0 0 6px oklch(0.65 0.14 163 / 0.4)',
+          animation: isH
+            ? 'flow-pulse-h 1.6s ease-in-out 0.8s infinite'
+            : 'flow-pulse-v 1.6s ease-in-out 0.8s infinite',
+        }}
+      />
+    </div>
+  )
+}
+
+function FlowArrowIcon({ direction }: { direction: 'right' | 'down' }) {
+  return (
+    <div
+      style={
+        direction === 'right'
+          ? {
+              width: 0,
+              height: 0,
+              borderTop: '4px solid transparent',
+              borderBottom: '4px solid transparent',
+              borderLeft: '5px solid oklch(0.65 0.14 163 / 0.6)',
+            }
+          : {
+              width: 0,
+              height: 0,
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '5px solid oklch(0.65 0.14 163 / 0.6)',
+            }
+      }
+    />
+  )
+}
+
+function FlowBatteryHub({
+  soc,
+  powerKw,
+  size,
+}: {
+  soc: number
+  powerKw: number
+  size: number
+}) {
+  const isCharging = powerKw > 0
+  const isDischarging = powerKw < 0
+  const state = isCharging ? 'Charging' : isDischarging ? 'Discharging' : 'Idle'
+
+  const stroke = 8
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const filled = (soc / 100) * circumference
+  const gap = circumference - filled
+
+  const socColor =
+    soc >= 60
+      ? 'text-emerald-600'
+      : soc >= 30
+        ? 'text-amber-600'
+        : 'text-red-600'
+  const strokeColor =
+    soc >= 60
+      ? 'stroke-emerald-500'
+      : soc >= 30
+        ? 'stroke-amber-500'
+        : 'stroke-red-500'
+  const trackColor =
+    soc >= 60
+      ? 'stroke-emerald-500/15'
+      : soc >= 30
+        ? 'stroke-amber-500/15'
+        : 'stroke-red-500/15'
+
+  return (
+    <div className="flex shrink-0 flex-col items-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="-rotate-90"
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            className={trackColor}
+            strokeWidth={stroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            className={strokeColor}
+            strokeWidth={stroke}
+            strokeDasharray={`${filled} ${gap}`}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dasharray 1s ease-out' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <RiBattery2ChargeLine className={cn('size-4', socColor)} />
+          <span
+            className={cn(
+              'text-xl font-bold leading-tight tabular-nums',
+              socColor
+            )}
+          >
+            {soc}%
+          </span>
+        </div>
+      </div>
+      <p className="mt-1 text-[10px] font-medium text-foreground/70">
+        {state}
+      </p>
+      <p className="text-[10px] tabular-nums text-muted-foreground">
+        {powerKw > 0 ? '+' : ''}
+        {formatPower(powerKw)}
+      </p>
     </div>
   )
 }
@@ -1214,71 +1477,6 @@ function EnergyRing({
           {selfSufficiency.toFixed(0)}% self
         </p>
       </div>
-    </div>
-  )
-}
-
-function FlowNode({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color,
-}: {
-  icon: typeof RiSunLine
-  label: string
-  value: string
-  sub: string
-  color: string
-}) {
-  const colors: Record<
-    string,
-    { bg: string; text: string; icon: string; border: string }
-  > = {
-    amber: {
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-      icon: 'text-amber-500',
-      border: 'border-amber-200',
-    },
-    blue: {
-      bg: 'bg-blue-50',
-      text: 'text-blue-700',
-      icon: 'text-blue-500',
-      border: 'border-blue-200',
-    },
-    violet: {
-      bg: 'bg-violet-50',
-      text: 'text-violet-700',
-      icon: 'text-violet-500',
-      border: 'border-violet-200',
-    },
-    cyan: {
-      bg: 'bg-cyan-50',
-      text: 'text-cyan-700',
-      icon: 'text-cyan-500',
-      border: 'border-cyan-200',
-    },
-  }
-  const c = colors[color] || colors.blue
-
-  return (
-    <div className={cn('rounded-lg border p-3', c.bg, c.border)}>
-      <div className="flex items-center gap-1.5">
-        <Icon className={cn('size-3.5', c.icon)} />
-        <span
-          className={cn(
-            'text-[10px] font-semibold tracking-wider uppercase opacity-70',
-            c.text
-          )}
-        >
-          {label}
-        </span>
-      </div>
-      <p className={cn('mt-1.5 text-lg font-bold tabular-nums', c.text)}>
-        {value}
-      </p>
-      <p className="text-[10px] text-muted-foreground">{sub}</p>
     </div>
   )
 }

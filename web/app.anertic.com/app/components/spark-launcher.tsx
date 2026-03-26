@@ -104,12 +104,12 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
         {/* Popup panel */}
         {open && (
           <div className="absolute right-0 bottom-16 w-80 origin-bottom-right motion-safe:animate-scale-fade-in sm:w-96">
-            <div className="overflow-hidden rounded-2xl border border-purple-200/40 bg-white/95 shadow-2xl shadow-purple-500/10 ring-1 ring-black/5 backdrop-blur-xl dark:border-purple-800/30 dark:bg-zinc-900/95 dark:shadow-purple-500/20">
+            <div className="overflow-hidden rounded-2xl border border-emerald-200/40 bg-white/95 shadow-2xl shadow-emerald-500/10 ring-1 ring-black/5 backdrop-blur-xl dark:border-emerald-800/30 dark:bg-zinc-900/95 dark:shadow-emerald-500/20">
               {/* Header */}
-              <div className="relative overflow-hidden border-b border-purple-100/60 px-4 py-3 dark:border-purple-900/40">
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/[0.06] via-purple-500/[0.04] to-fuchsia-500/[0.06]" />
+              <div className="relative overflow-hidden border-b border-emerald-100/60 px-4 py-3 dark:border-emerald-900/40">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/[0.06] via-primary/[0.04] to-teal-500/[0.06]" />
                 <div className="relative flex items-center gap-2.5">
-                  <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-sm shadow-purple-500/25">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-700 shadow-sm shadow-emerald-500/25">
                     <span className="text-xs text-white" aria-hidden="true">
                       ✦
                     </span>
@@ -130,9 +130,9 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
 
               {/* Input */}
               <form onSubmit={handleSubmit} className="px-3 pt-3 pb-2">
-                <div className="group flex items-center gap-2 rounded-xl border border-purple-200/50 bg-muted/30 px-3 py-2 transition-colors focus-within:border-purple-400/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-500/15 dark:border-purple-800/40 dark:focus-within:bg-zinc-800">
+                <div className="group flex items-center gap-2 rounded-xl border border-emerald-200/50 bg-muted/30 px-3 py-2 transition-colors focus-within:border-emerald-400/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/15 dark:border-emerald-800/40 dark:focus-within:bg-zinc-800">
                   <RiSparklingLine
-                    className="size-4 shrink-0 text-purple-400"
+                    className="size-4 shrink-0 text-emerald-500"
                     aria-hidden="true"
                   />
                   <input
@@ -145,7 +145,7 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
                   />
                   <button
                     type="submit"
-                    className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-700 text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
                     aria-label="Send"
                   >
                     <RiArrowRightLine className="size-3.5" />
@@ -164,7 +164,7 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
                       key={s.text}
                       onClick={() => goToChat(s.text)}
                       style={{ animationDelay: `${80 + i * 50}ms` }}
-                      className="flex items-start gap-1.5 rounded-lg border border-transparent bg-muted/40 px-2.5 py-2 text-left transition-all hover:border-purple-200/50 hover:bg-purple-50/50 active:scale-[0.98] motion-safe:animate-fade-in-up dark:hover:border-purple-800/40 dark:hover:bg-purple-950/30"
+                      className="flex items-start gap-1.5 rounded-lg border border-transparent bg-muted/40 px-2.5 py-2 text-left transition-all hover:border-emerald-200/50 hover:bg-emerald-50/50 active:scale-[0.98] motion-safe:animate-fade-in-up dark:hover:border-emerald-800/40 dark:hover:bg-emerald-950/30"
                     >
                       <span className="mt-px text-xs leading-none" aria-hidden="true">
                         {s.icon}
@@ -184,7 +184,7 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
 
               {/* Recent chats */}
               {recentChats.length > 0 && (
-                <div className="border-t border-purple-100/40 px-3 py-2 dark:border-purple-900/30">
+                <div className="border-t border-emerald-100/40 px-3 py-2 dark:border-emerald-900/30">
                   <p className="mb-1.5 px-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
                     Recent
                   </p>
@@ -214,10 +214,10 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
               )}
 
               {/* Footer */}
-              <div className="border-t border-purple-100/40 dark:border-purple-900/30">
+              <div className="border-t border-emerald-100/40 dark:border-emerald-900/30">
                 <button
                   onClick={() => goToChat()}
-                  className="flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-purple-600 transition-colors hover:bg-purple-50/60 dark:text-purple-400 dark:hover:bg-purple-950/30"
+                  className="flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50/60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
                 >
                   Open full chat
                   <RiArrowRightLine className="size-3" aria-hidden="true" />
@@ -232,11 +232,11 @@ export function SparkLauncher({ siteId }: { siteId: string }) {
           onClick={() => setOpen((prev) => !prev)}
           aria-label="Open Spark assistant"
           aria-expanded={open}
-          className="group relative flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-lg shadow-purple-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-purple-500/40 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
+          className="group relative flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
         >
           {/* Glow ring */}
           <span
-            className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-400 to-fuchsia-400 opacity-0 blur-md transition-opacity group-hover:opacity-50 motion-safe:animate-pulse"
+            className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-400 opacity-0 blur-md transition-opacity group-hover:opacity-50 motion-safe:animate-pulse"
             aria-hidden="true"
           />
           <RiSparklingLine className="relative size-5" />

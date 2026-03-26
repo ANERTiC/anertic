@@ -247,23 +247,23 @@ export function AppSidebar({
                         cn(
                           'group/ai relative overflow-hidden transition-all',
                           isActive
-                            ? 'bg-gradient-to-r from-violet-500/15 via-purple-500/10 to-fuchsia-500/15 text-purple-700 dark:text-purple-300'
-                            : 'hover:bg-gradient-to-r hover:from-violet-500/10 hover:to-fuchsia-500/10'
+                            ? 'bg-gradient-to-r from-emerald-500/15 via-primary/10 to-teal-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'hover:bg-gradient-to-r hover:from-emerald-500/10 hover:to-teal-500/10'
                         )
                       }
                     >
                       <span className="relative flex size-4 items-center justify-center">
-                        <span className="absolute inset-0 rounded-sm bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-20 group-hover/ai:opacity-30" />
+                        <span className="absolute inset-0 rounded-sm bg-gradient-to-br from-primary to-emerald-700 opacity-20 group-hover/ai:opacity-30" />
                         <RiSparklingLine
                           aria-hidden="true"
-                          className="relative size-4 text-purple-600 dark:text-purple-400"
+                          className="relative size-4 text-emerald-600 dark:text-emerald-400"
                         />
                       </span>
                       <span className="flex items-center gap-1.5">
                         Spark
                         <span className="relative flex size-1.5">
-                          <span className="absolute inline-flex size-full rounded-full bg-purple-400 opacity-75 motion-safe:animate-ping" />
-                          <span className="relative inline-flex size-1.5 rounded-full bg-purple-500" />
+                          <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
+                          <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
                         </span>
                       </span>
                     </NavLink>

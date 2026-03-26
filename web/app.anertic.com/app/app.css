@@ -101,6 +101,24 @@
   animation: energy-flow 0.8s linear infinite;
 }
 
+/* Energy flow — glowing pulse traveling along wire */
+@keyframes flow-pulse-h {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+@keyframes flow-pulse-v {
+  0% { top: -30%; }
+  100% { top: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .energy-flow-line,
+  [style*="flow-pulse"] {
+    animation: none !important;
+  }
+}
+
 /* Power bar segment grow animation */
 @keyframes bar-grow {
   from {

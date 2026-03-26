@@ -31,7 +31,7 @@ export function MessageBubble({ message, justFinished }: MessageBubbleProps) {
       <div className="flex gap-2.5">
         <div
           className={cn(
-            'flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600',
+            'flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-700',
             justFinished && 'motion-safe:animate-spark-complete'
           )}
         >

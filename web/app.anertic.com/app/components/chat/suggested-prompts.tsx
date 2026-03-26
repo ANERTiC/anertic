@@ -21,7 +21,7 @@ export function SuggestedPrompts({
   return (
     <div className="flex flex-col items-center px-4 pb-6">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 motion-safe:animate-spark-icon">
+        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-emerald-700 motion-safe:animate-spark-icon">
           <span className="text-xl text-white" aria-hidden="true">✦</span>
         </div>
         <h2 className="text-lg font-semibold [text-wrap:balance] motion-safe:animate-fade-in [animation-delay:150ms]">

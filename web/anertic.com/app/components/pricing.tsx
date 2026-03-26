@@ -1,0 +1,130 @@
+import { cn } from "~/lib/utils";
+import { ScrollReveal } from "./scroll-reveal";
+
+const APP_URL =
+  typeof process !== "undefined"
+    ? (process.env.APP_URL ?? "https://app.anertic.com")
+    : "https://app.anertic.com";
+
+const PLANS = [
+  {
+    name: "Starter",
+    price: "Free",
+    period: null,
+    note: "Up to 5 devices",
+    features: [
+      "Energy monitoring",
+      "Basic AI insights",
+      "1 site",
+      "7-day data retention",
+    ],
+    cta: "Get Started",
+    href: APP_URL,
+    featured: false,
+  },
+  {
+    name: "Pro",
+    price: "$49",
+    period: "/mo",
+    note: "Up to 50 devices",
+    features: [
+      "Everything in Starter",
+      "Advanced AI agent",
+      "EV charger management",
+      "Multi-site support",
+      "90-day data retention",
+    ],
+    cta: "Get Started",
+    href: APP_URL,
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    period: null,
+    note: "Unlimited devices",
+    features: [
+      "Everything in Pro",
+      "Dedicated AI model",
+      "API access",
+      "Priority support",
+      "Unlimited retention",
+    ],
+    cta: "Contact Us",
+    href: "#contact",
+    featured: false,
+  },
+];
+
+export function Pricing() {
+  return (
+    <section id="pricing" className="mx-auto max-w-[1120px] px-8 py-24">
+      <ScrollReveal className="text-center">
+        <p className="text-xs font-bold tracking-[0.08em] text-accent">
+          PRICING
+        </p>
+        <h2 className="mt-2.5 text-4xl font-extrabold leading-tight tracking-[-0.035em]">
+          Start free, scale as you grow
+        </h2>
+        <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">
+          No credit card required. Upgrade when you need more.
+        </p>
+      </ScrollReveal>
+
+      <div className="mx-auto mt-14 grid max-w-[860px] grid-cols-1 gap-5 sm:grid-cols-3">
+        {PLANS.map((plan, i) => (
+          <ScrollReveal key={plan.name} delay={i * 50}>
+            <div
+              className={cn(
+                "relative rounded-2xl border bg-white p-8 text-center transition-all duration-300 hover:-translate-y-1",
+                plan.featured
+                  ? "border-accent shadow-[0_0_0_1px_#0d9668,0_8px_32px_rgba(13,150,104,0.08)] hover:shadow-[0_0_0_1px_#0d9668,0_12px_40px_rgba(13,150,104,0.12)]"
+                  : "border-border hover:shadow-[0_12px_36px_rgba(0,0,0,0.05)]",
+              )}
+            >
+              {plan.featured && (
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold tracking-[0.08em] text-white">
+                  POPULAR
+                </span>
+              )}
+
+              <p className="text-[13px] font-medium text-text-2">{plan.name}</p>
+              <p className="mt-1.5 text-[42px] font-extrabold tracking-[-0.03em]">
+                {plan.price}
+                {plan.period && (
+                  <span className="text-sm font-normal text-text-3">
+                    {plan.period}
+                  </span>
+                )}
+              </p>
+              <p className="mb-6 text-[12.5px] text-text-3">{plan.note}</p>
+
+              <ul className="mb-6 flex flex-col gap-2.5 text-left">
+                {plan.features.map((f) => (
+                  <li
+                    key={f}
+                    className="relative pl-5 text-[13px] text-text-2 before:absolute before:left-0 before:top-1.5 before:h-2.5 before:w-2.5 before:rounded-full before:border-[1.5px] before:border-accent before:bg-accent-bg"
+                  >
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href={plan.href}
+                className={cn(
+                  "block w-full rounded-lg py-2.5 text-[13px] font-semibold transition-all active:scale-[0.97]",
+                  plan.featured
+                    ? "bg-accent text-white hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)]"
+                    : "border border-border bg-bg-soft text-text-2 hover:border-text-3 hover:text-text",
+                )}
+              >
+                {plan.cta}
+              </a>
+            </div>
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
+  );
+}

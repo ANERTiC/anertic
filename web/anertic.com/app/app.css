@@ -50,7 +50,3 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes draw-line {
-  from { width: 0; }
-  to { width: 70%; }
-}

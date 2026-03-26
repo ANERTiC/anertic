@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import {
   RiAddLine,
@@ -14,15 +14,31 @@ import {
   RiAlertLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
+import useSWR from 'swr'
 
 import { useSiteId } from '~/layouts/site'
+import { fetcher } from '~/lib/api'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
+import { Skeleton } from '~/components/ui/skeleton'
 import { cn } from '~/lib/utils'
 
 // --- Types ---
+
+interface ConnectorStatus {
+  id: number
+  status: string
+  errorCode: string
+  connectorType: string
+  maxPowerKw: number
+  powerKw: number
+  lastStatusAt: string | null
+  vehicleId: string | null
+  sessionStartedAt: string | null
+  sessionKwh: number
+}
 
 interface Charger {
   id: string
@@ -40,21 +56,13 @@ interface Charger {
   lastHeartbeatAt: string | null
   createdAt: string
   currentPowerKw: number
-  sessionEnergyKwh: number
   todayEnergyKwh: number
   todaySessions: number
-  uptimePercent: number
-  connectors: ConnectorStatus[]
+  connectors: ConnectorStatus[] | null
 }
 
-interface ConnectorStatus {
-  id: number
-  status: string
-  powerKw: number
-  vehicleId?: string
-  sessionStartedAt?: string
-  sessionKwh: number
-  errorCode?: string
+interface ListResult {
+  items: Charger[]
 }
 
 interface FleetSummary {
@@ -71,197 +79,7 @@ interface FleetSummary {
   utilizationPercent: number
 }
 
-// --- Mock Data ---
-
-function generateMockChargers(): Charger[] {
-  return [
-    {
-      id: 'chr-1',
-      siteId: 'site-1',
-      chargePointId: 'CP-001',
-      ocppVersion: '1.6',
-      status: 'Charging',
-      registrationStatus: 'Accepted',
-      connectorCount: 2,
-      maxPowerKw: 22,
-      vendor: 'ABB',
-      model: 'Terra AC W22-T-RD-M-0',
-      serialNumber: 'ABB-2024-001',
-      firmwareVersion: '3.8.1',
-      lastHeartbeatAt: new Date(Date.now() - 15000).toISOString(),
-      createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-      currentPowerKw: 18.4,
-      sessionEnergyKwh: 14.3,
-      todayEnergyKwh: 48.2,
-      todaySessions: 4,
-      uptimePercent: 99.2,
-      connectors: [
-        {
-          id: 1,
-          status: 'Charging',
-          powerKw: 11.2,
-          vehicleId: 'Tesla Model 3',
-          sessionStartedAt: new Date(Date.now() - 3600000).toISOString(),
-          sessionKwh: 9.8,
-        },
-        {
-          id: 2,
-          status: 'Charging',
-          powerKw: 7.2,
-          vehicleId: 'BYD Atto 3',
-          sessionStartedAt: new Date(Date.now() - 1800000).toISOString(),
-          sessionKwh: 4.5,
-        },
-      ],
-    },
-    {
-      id: 'chr-2',
-      siteId: 'site-1',
-      chargePointId: 'CP-002',
-      ocppVersion: '2.0.1',
-      status: 'Charging',
-      registrationStatus: 'Accepted',
-      connectorCount: 2,
-      maxPowerKw: 50,
-      vendor: 'Wallbox',
-      model: 'Supernova DC',
-      serialNumber: 'WB-2024-002',
-      firmwareVersion: '2.1.4',
-      lastHeartbeatAt: new Date(Date.now() - 8000).toISOString(),
-      createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-      currentPowerKw: 43.6,
-      sessionEnergyKwh: 22.1,
-      todayEnergyKwh: 112.8,
-      todaySessions: 7,
-      uptimePercent: 97.8,
-      connectors: [
-        {
-          id: 1,
-          status: 'Charging',
-          powerKw: 43.6,
-          vehicleId: 'MG ZS EV',
-          sessionStartedAt: new Date(Date.now() - 2400000).toISOString(),
-          sessionKwh: 22.1,
-        },
-        {
-          id: 2,
-          status: 'Available',
-          powerKw: 0,
-          sessionKwh: 0,
-        },
-      ],
-    },
-    {
-      id: 'chr-3',
-      siteId: 'site-1',
-      chargePointId: 'CP-003',
-      ocppVersion: '1.6',
-      status: 'Available',
-      registrationStatus: 'Accepted',
-      connectorCount: 2,
-      maxPowerKw: 22,
-      vendor: 'ABB',
-      model: 'Terra AC W22-T-RD-M-0',
-      serialNumber: 'ABB-2024-003',
-      firmwareVersion: '3.8.1',
-      lastHeartbeatAt: new Date(Date.now() - 45000).toISOString(),
-      createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
-      currentPowerKw: 0,
-      sessionEnergyKwh: 0,
-      todayEnergyKwh: 31.5,
-      todaySessions: 3,
-      uptimePercent: 99.8,
-      connectors: [
-        { id: 1, status: 'Available', powerKw: 0, sessionKwh: 0 },
-        { id: 2, status: 'Available', powerKw: 0, sessionKwh: 0 },
-      ],
-    },
-    {
-      id: 'chr-4',
-      siteId: 'site-1',
-      chargePointId: 'CP-004',
-      ocppVersion: '1.6',
-      status: 'Faulted',
-      registrationStatus: 'Accepted',
-      connectorCount: 1,
-      maxPowerKw: 7.4,
-      vendor: 'Delta',
-      model: 'AC Mini Plus',
-      serialNumber: 'DL-2024-004',
-      firmwareVersion: '1.2.0',
-      lastHeartbeatAt: null,
-      createdAt: new Date(Date.now() - 180 * 86400000).toISOString(),
-      currentPowerKw: 0,
-      sessionEnergyKwh: 0,
-      todayEnergyKwh: 0,
-      todaySessions: 0,
-      uptimePercent: 12.3,
-      connectors: [
-        {
-          id: 1,
-          status: 'Faulted',
-          powerKw: 0,
-          sessionKwh: 0,
-          errorCode: 'GroundFailure',
-        },
-      ],
-    },
-    {
-      id: 'chr-5',
-      siteId: 'site-1',
-      chargePointId: 'CP-005',
-      ocppVersion: '2.0.1',
-      status: 'SuspendedEV',
-      registrationStatus: 'Accepted',
-      connectorCount: 2,
-      maxPowerKw: 22,
-      vendor: 'Schneider',
-      model: 'EVlink Pro AC',
-      serialNumber: 'SE-2024-005',
-      firmwareVersion: '4.0.2',
-      lastHeartbeatAt: new Date(Date.now() - 60000).toISOString(),
-      createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
-      currentPowerKw: 0,
-      sessionEnergyKwh: 18.4,
-      todayEnergyKwh: 18.4,
-      todaySessions: 1,
-      uptimePercent: 94.5,
-      connectors: [
-        {
-          id: 1,
-          status: 'SuspendedEV',
-          powerKw: 0,
-          vehicleId: 'Nissan Leaf',
-          sessionStartedAt: new Date(Date.now() - 7200000).toISOString(),
-          sessionKwh: 18.4,
-        },
-        { id: 2, status: 'Available', powerKw: 0, sessionKwh: 0 },
-      ],
-    },
-    {
-      id: 'chr-6',
-      siteId: 'site-1',
-      chargePointId: 'CP-006',
-      ocppVersion: '1.6',
-      status: 'Preparing',
-      registrationStatus: 'Accepted',
-      connectorCount: 1,
-      maxPowerKw: 22,
-      vendor: 'ABB',
-      model: 'Terra AC W22-T-RD-M-0',
-      serialNumber: 'ABB-2024-006',
-      firmwareVersion: '3.8.1',
-      lastHeartbeatAt: new Date(Date.now() - 5000).toISOString(),
-      createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      currentPowerKw: 0,
-      sessionEnergyKwh: 0,
-      todayEnergyKwh: 22.1,
-      todaySessions: 2,
-      uptimePercent: 98.6,
-      connectors: [{ id: 1, status: 'Preparing', powerKw: 0, sessionKwh: 0 }],
-    },
-  ]
-}
+// --- Helpers ---
 
 function computeFleetSummary(chargers: Charger[]): FleetSummary {
   const charging = chargers.filter(
@@ -270,10 +88,10 @@ function computeFleetSummary(chargers: Charger[]): FleetSummary {
   const available = chargers.filter((c) => c.status === 'Available').length
   const faulted = chargers.filter((c) => c.status === 'Faulted').length
   const offline = chargers.filter((c) => !c.lastHeartbeatAt).length
-  const totalPowerKw = chargers.reduce((s, c) => s + c.currentPowerKw, 0)
-  const maxCapacityKw = chargers.reduce((s, c) => s + c.maxPowerKw, 0)
-  const todayEnergyKwh = chargers.reduce((s, c) => s + c.todayEnergyKwh, 0)
-  const todaySessions = chargers.reduce((s, c) => s + c.todaySessions, 0)
+  const totalPowerKw = chargers.reduce((s, c) => s + (c.currentPowerKw || 0), 0)
+  const maxCapacityKw = chargers.reduce((s, c) => s + (c.maxPowerKw || 0), 0)
+  const todayEnergyKwh = chargers.reduce((s, c) => s + (c.todayEnergyKwh || 0), 0)
+  const todaySessions = chargers.reduce((s, c) => s + (c.todaySessions || 0), 0)
 
   return {
     total: chargers.length,
@@ -290,8 +108,6 @@ function computeFleetSummary(chargers: Charger[]): FleetSummary {
       maxCapacityKw > 0 ? (totalPowerKw / maxCapacityKw) * 100 : 0,
   }
 }
-
-// --- Helpers ---
 
 function statusColor(status: string) {
   switch (status) {
@@ -354,7 +170,7 @@ function formatEnergy(kwh: number): string {
   return `${kwh.toFixed(1)} kWh`
 }
 
-function sessionDuration(startedAt?: string): string {
+function sessionDuration(startedAt: string | null | undefined): string {
   if (!startedAt) return ''
   const diff = Date.now() - new Date(startedAt).getTime()
   const mins = Math.floor(diff / 60000)
@@ -369,18 +185,16 @@ export default function Chargers() {
   const siteId = useSiteId()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
 
-  // TODO: Replace with API call when backend is ready
-  // const { data, isLoading, mutate } = useSWR(
-  //   siteId ? ["charger.list", siteId] : null,
-  //   () => api<{ items: Charger[] }>("charger.list", { siteId }),
-  // )
-  const [chargers] = useState<Charger[]>(() => generateMockChargers())
+  const { data, isLoading } = useSWR<ListResult>(
+    siteId ? ['charger.list', { siteId }] : null,
+    fetcher,
+    {
+      refreshInterval: 15000,
+    }
+  )
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const chargers = data?.items || []
 
   const filtered = chargers.filter((c) => {
     const matchesSearch =
@@ -403,13 +217,59 @@ export default function Chargers() {
 
   const fleet = computeFleetSummary(chargers)
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-5">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1.5">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-4 w-52" />
+          </div>
+          <Skeleton className="h-8 w-28 shrink-0" />
+        </div>
+
+        {/* Fleet strip skeleton */}
+        <Card className="overflow-hidden py-0">
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="px-4 py-3.5 space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-2.5 w-24" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Charger card skeletons */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-3.5 w-40" />
+                </div>
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <div className="flex justify-between border-t pt-3">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-5 transition-opacity duration-500 motion-reduce:transition-none',
-        mounted ? 'opacity-100' : 'opacity-0'
-      )}
-    >
+    <div className="flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -608,6 +468,7 @@ function ChargerCard({ charger, href }: { charger: Charger; href: string }) {
     charger.status === 'Charging' || charger.status === 'Preparing'
   const isFaulted = charger.status === 'Faulted'
   const isOnline = !!charger.lastHeartbeatAt
+  const connectors = charger.connectors || []
 
   return (
     <Link
@@ -673,9 +534,16 @@ function ChargerCard({ charger, href }: { charger: Charger; href: string }) {
 
         {/* Connectors */}
         <div className="mt-3 flex flex-1 flex-col gap-2">
-          {charger.connectors.map((conn) => (
-            <ConnectorRow key={conn.id} connector={conn} />
-          ))}
+          {connectors.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              <RiPlugLine aria-hidden="true" className="size-4" />
+              No connectors registered
+            </div>
+          ) : (
+            connectors.map((conn) => (
+              <ConnectorRow key={conn.id} connector={conn} />
+            ))
+          )}
         </div>
 
         {/* Bottom stats */}
@@ -683,11 +551,11 @@ function ChargerCard({ charger, href }: { charger: Charger; href: string }) {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1 tabular-nums">
               <RiFlashlightLine aria-hidden="true" className="size-3" />
-              {formatEnergy(charger.todayEnergyKwh)} today
+              {formatEnergy(charger.todayEnergyKwh || 0)} today
             </span>
             <span className="flex items-center gap-1 tabular-nums">
               <RiLoopLeftLine aria-hidden="true" className="size-3" />
-              {charger.todaySessions} sessions
+              {charger.todaySessions || 0} sessions
             </span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">

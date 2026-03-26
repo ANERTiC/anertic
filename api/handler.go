@@ -141,6 +141,9 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	a.Handle("POST /charger.reserveNow", am.Handler(charger.ReserveNow))
 	a.Handle("POST /charger.cancelReservation", am.Handler(charger.CancelReservation))
 	a.Handle("POST /charger.listReservations", am.Handler(charger.ListReservations))
+	a.Handle("POST /charger.listSessions", am.Handler(charger.ListSessions))
+	a.Handle("POST /charger.listEvents", am.Handler(charger.ListEvents))
+	a.Handle("POST /charger.analytics", am.Handler(charger.Analytics))
 
 	// Connectors
 	a.Handle("POST /connector.list", am.Handler(connector.List))

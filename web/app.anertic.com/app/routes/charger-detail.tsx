@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import useSWR from 'swr'
+
+import { fetcher } from '~/lib/api'
 import {
   RiArrowLeftLine,
   RiFlashlightLine,
@@ -21,7 +24,6 @@ import {
   RiAddLine,
   RiSaveLine,
   RiBarChartBoxLine,
-  RiArrowUpSLine,
   RiArrowDownSLine,
   RiChargingPile2Line,
   RiUserLine,
@@ -88,13 +90,11 @@ interface Charger {
   heartbeatInterval: number
   lastHeartbeatAt: string | null
   createdAt: string
-  // Extended
   currentPowerKw: number
   todayEnergyKwh: number
   todaySessions: number
   totalEnergyKwh: number
   totalSessions: number
-  uptimePercent: number
   connectors: ConnectorDetail[]
 }
 
@@ -118,13 +118,11 @@ interface Session {
   endedAt: string | null
   energyKwh: number
   maxPowerKw: number
-  avgPowerKw: number
-  vehicleId?: string
-  idTag?: string
+  idTag: string
   status: string
   meterStart: number
   meterStop: number | null
-  stopReason?: string
+  stopReason: string | null
   transactionId: number
 }
 
@@ -133,7 +131,7 @@ interface OcppEvent {
   action: string
   direction: 'in' | 'out'
   timestamp: string
-  payload?: string
+  payload: string | null
 }
 
 interface Reservation {
@@ -147,13 +145,9 @@ interface Reservation {
 
 interface DailyEnergy {
   date: string
-  label: string
   energyKwh: number
   sessions: number
   peakPowerKw: number
-  avgSessionKwh: number
-  connector1Kwh: number
-  connector2Kwh: number
 }
 
 interface HourlyPower {
@@ -163,364 +157,25 @@ interface HourlyPower {
 }
 
 interface AnalyticsSummary {
-  last7DaysKwh: number
-  last7DaysSessions: number
-  last7DaysAvgDaily: number
-  last7DaysAvgSession: number
-  last7DaysPeakPower: number
-  changePercent: number
-  changeDirection: 'up' | 'down' | 'stable'
-  bussiestDay: string
-  bussiestHour: string
+  totalKwh: number
+  totalSessions: number
+  avgDailyKwh: number
+  avgSessionKwh: number
+  peakPowerKw: number
 }
 
-// --- Mock Data ---
-
-function generateMockCharger(id: string): Charger {
-  return {
-    id,
-    siteId: 'site-1',
-    chargePointId: 'CP-001',
-    ocppVersion: '1.6',
-    status: 'Charging',
-    registrationStatus: 'Accepted',
-    connectorCount: 2,
-    maxPowerKw: 22,
-    vendor: 'ABB',
-    model: 'Terra AC W22-T-RD-M-0',
-    serialNumber: 'ABB-2024-001',
-    firmwareVersion: '3.8.1',
-    chargeBoxSerialNumber: 'CB-ABB-2024-001',
-    firmwareStatus: 'Installed',
-    diagnosticsStatus: 'Idle',
-    heartbeatInterval: 60,
-    lastHeartbeatAt: new Date(Date.now() - 15000).toISOString(),
-    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-    currentPowerKw: 18.4,
-    todayEnergyKwh: 48.2,
-    todaySessions: 4,
-    totalEnergyKwh: 4218.7,
-    totalSessions: 312,
-    uptimePercent: 99.2,
-    connectors: [
-      {
-        id: 1,
-        status: 'Charging',
-        powerKw: 11.2,
-        maxPowerKw: 22,
-        connectorType: 'Type 2',
-        errorCode: 'NoError',
-        vehicleId: 'Tesla Model 3',
-        sessionStartedAt: new Date(Date.now() - 3600000).toISOString(),
-        sessionKwh: 9.8,
-        lastStatusAt: new Date(Date.now() - 3600000).toISOString(),
-      },
-      {
-        id: 2,
-        status: 'Available',
-        powerKw: 0,
-        maxPowerKw: 22,
-        connectorType: 'Type 2',
-        errorCode: 'NoError',
-        sessionKwh: 0,
-        lastStatusAt: new Date(Date.now() - 600000).toISOString(),
-      },
-    ],
-  }
-}
-
-function generateMockSessions(): Session[] {
-  const now = Date.now()
-  return [
-    {
-      id: 'ses-1',
-      connectorId: 1,
-      startedAt: new Date(now - 3600000).toISOString(),
-      endedAt: null,
-      energyKwh: 9.8,
-      maxPowerKw: 11.2,
-      avgPowerKw: 9.8,
-      vehicleId: 'Tesla Model 3',
-      idTag: 'TESLA-M3',
-      status: 'Active',
-      meterStart: 124500,
-      meterStop: null,
-      transactionId: 317,
-    },
-    {
-      id: 'ses-2',
-      connectorId: 2,
-      startedAt: new Date(now - 1800000).toISOString(),
-      endedAt: null,
-      energyKwh: 4.5,
-      maxPowerKw: 7.2,
-      avgPowerKw: 6.1,
-      vehicleId: 'BYD Atto 3',
-      idTag: 'BYD-ATTO3',
-      status: 'Active',
-      meterStart: 88200,
-      meterStop: null,
-      transactionId: 318,
-    },
-    {
-      id: 'ses-3',
-      connectorId: 1,
-      startedAt: new Date(now - 14400000).toISOString(),
-      endedAt: new Date(now - 10800000).toISOString(),
-      energyKwh: 18.6,
-      maxPowerKw: 22.0,
-      avgPowerKw: 18.6,
-      vehicleId: 'Hyundai Ioniq 5',
-      idTag: 'USER-001',
-      status: 'Completed',
-      meterStart: 105900,
-      meterStop: 124500,
-      stopReason: 'EVDisconnected',
-      transactionId: 316,
-    },
-    {
-      id: 'ses-4',
-      connectorId: 2,
-      startedAt: new Date(now - 21600000).toISOString(),
-      endedAt: new Date(now - 18000000).toISOString(),
-      energyKwh: 12.3,
-      maxPowerKw: 11.0,
-      avgPowerKw: 10.2,
-      idTag: 'ADMIN-001',
-      status: 'Completed',
-      meterStart: 75900,
-      meterStop: 88200,
-      stopReason: 'Local',
-      transactionId: 315,
-    },
-    {
-      id: 'ses-5',
-      connectorId: 1,
-      startedAt: new Date(now - 86400000).toISOString(),
-      endedAt: new Date(now - 82800000).toISOString(),
-      energyKwh: 7.1,
-      maxPowerKw: 7.4,
-      avgPowerKw: 7.1,
-      vehicleId: 'Nissan Leaf',
-      idTag: 'USER-002',
-      status: 'Completed',
-      meterStart: 98800,
-      meterStop: 105900,
-      stopReason: 'EVDisconnected',
-      transactionId: 314,
-    },
-    {
-      id: 'ses-6',
-      connectorId: 2,
-      startedAt: new Date(now - 90000000).toISOString(),
-      endedAt: new Date(now - 86400000).toISOString(),
-      energyKwh: 22.0,
-      maxPowerKw: 22.0,
-      avgPowerKw: 19.8,
-      vehicleId: 'MG ZS EV',
-      idTag: 'GUEST',
-      status: 'Completed',
-      meterStart: 53900,
-      meterStop: 75900,
-      stopReason: 'Remote',
-      transactionId: 313,
-    },
-  ]
-}
-
-function generateMockEvents(): OcppEvent[] {
-  const now = Date.now()
-  return [
-    {
-      id: 'ev-1',
-      action: 'Heartbeat',
-      direction: 'in',
-      timestamp: new Date(now - 15000).toISOString(),
-    },
-    {
-      id: 'ev-2',
-      action: 'MeterValues',
-      direction: 'in',
-      timestamp: new Date(now - 30000).toISOString(),
-      payload: 'connectorId=1, power=11.2kW',
-    },
-    {
-      id: 'ev-3',
-      action: 'MeterValues',
-      direction: 'in',
-      timestamp: new Date(now - 30000).toISOString(),
-      payload: 'connectorId=2, power=7.2kW',
-    },
-    {
-      id: 'ev-4',
-      action: 'StatusNotification',
-      direction: 'in',
-      timestamp: new Date(now - 1800000).toISOString(),
-      payload: 'connector=2, status=Charging',
-    },
-    {
-      id: 'ev-5',
-      action: 'StartTransaction',
-      direction: 'in',
-      timestamp: new Date(now - 1800000).toISOString(),
-      payload: 'connectorId=2, idTag=BYD-ATTO3',
-    },
-    {
-      id: 'ev-6',
-      action: 'StatusNotification',
-      direction: 'in',
-      timestamp: new Date(now - 3600000).toISOString(),
-      payload: 'connector=1, status=Charging',
-    },
-    {
-      id: 'ev-7',
-      action: 'StartTransaction',
-      direction: 'in',
-      timestamp: new Date(now - 3600000).toISOString(),
-      payload: 'connectorId=1, idTag=TESLA-M3',
-    },
-    {
-      id: 'ev-8',
-      action: 'StopTransaction',
-      direction: 'in',
-      timestamp: new Date(now - 10800000).toISOString(),
-      payload: 'transactionId=312, meterStop=18600',
-    },
-    {
-      id: 'ev-9',
-      action: 'Heartbeat',
-      direction: 'in',
-      timestamp: new Date(now - 60000).toISOString(),
-    },
-    {
-      id: 'ev-10',
-      action: 'RemoteStartTransaction',
-      direction: 'out',
-      timestamp: new Date(now - 3700000).toISOString(),
-      payload: 'connectorId=1, idTag=TESLA-M3',
-    },
-  ]
-}
-
-function generateMockAnalytics(): {
+interface AnalyticsResult {
   daily: DailyEnergy[]
   hourly: HourlyPower[]
   summary: AnalyticsSummary
-} {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const now = new Date()
-  const currentHour = now.getHours()
-
-  const daily: DailyEnergy[] = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now)
-    d.setDate(d.getDate() - (6 - i))
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6
-    const base = isWeekend ? 25 : 42
-    const energy = base + Math.random() * 20 - 5
-    const sessions = Math.floor((isWeekend ? 2 : 4) + Math.random() * 3)
-    const peak = 11 + Math.random() * 11
-    const c1 = energy * (0.45 + Math.random() * 0.15)
-    return {
-      date: d.toISOString().split('T')[0],
-      label: i === 6 ? 'Today' : days[d.getDay()],
-      energyKwh: parseFloat(energy.toFixed(1)),
-      sessions,
-      peakPowerKw: parseFloat(peak.toFixed(1)),
-      avgSessionKwh: parseFloat((energy / sessions).toFixed(1)),
-      connector1Kwh: parseFloat(c1.toFixed(1)),
-      connector2Kwh: parseFloat((energy - c1).toFixed(1)),
-    }
-  })
-
-  const hourly: HourlyPower[] = Array.from({ length: 24 }, (_, hour) => {
-    if (hour > currentHour) return { hour, powerKw: 0, energyKwh: 0 }
-    // Simulate typical EV charging pattern: morning commuters + afternoon + evening
-    const morningPeak = Math.exp(-((hour - 9) ** 2) / 6)
-    const afternoonPeak = Math.exp(-((hour - 14) ** 2) / 8)
-    const eveningPeak = Math.exp(-((hour - 19) ** 2) / 6)
-    const base = 1.5
-    const power =
-      base +
-      morningPeak * 15 +
-      afternoonPeak * 10 +
-      eveningPeak * 18 +
-      Math.random() * 2
-    return {
-      hour,
-      powerKw: parseFloat(Math.min(power, 22).toFixed(1)),
-      energyKwh: parseFloat((Math.min(power, 22) * 0.85).toFixed(2)),
-    }
-  })
-
-  const totalKwh = daily.reduce((s, d) => s + d.energyKwh, 0)
-  const totalSessions = daily.reduce((s, d) => s + d.sessions, 0)
-  const peakPower = Math.max(...daily.map((d) => d.peakPowerKw))
-  const busiestDay = [...daily].sort((a, b) => b.energyKwh - a.energyKwh)[0]
-  const busiestHour = [...hourly].sort((a, b) => b.powerKw - a.powerKw)[0]
-
-  return {
-    daily,
-    hourly,
-    summary: {
-      last7DaysKwh: parseFloat(totalKwh.toFixed(1)),
-      last7DaysSessions: totalSessions,
-      last7DaysAvgDaily: parseFloat((totalKwh / 7).toFixed(1)),
-      last7DaysAvgSession: parseFloat(
-        (totalKwh / Math.max(totalSessions, 1)).toFixed(1)
-      ),
-      last7DaysPeakPower: peakPower,
-      changePercent: 12.4,
-      changeDirection: 'up',
-      bussiestDay: busiestDay.label,
-      bussiestHour: `${busiestHour.hour.toString().padStart(2, '0')}:00`,
-    },
-  }
 }
 
-function generateMockReservations(): Reservation[] {
-  const now = Date.now()
-  return [
-    {
-      reservationId: 101,
-      connectorId: 2,
-      idTag: 'USER-001',
-      parentIdTag: null,
-      expiryDate: new Date(now + 25 * 60000).toISOString(),
-      status: 'Active',
-    },
-    {
-      reservationId: 100,
-      connectorId: 1,
-      idTag: 'TESLA-M3',
-      parentIdTag: 'FLEET-A',
-      expiryDate: new Date(now - 3600000).toISOString(),
-      status: 'Expired',
-    },
-    {
-      reservationId: 99,
-      connectorId: 2,
-      idTag: 'ADMIN-001',
-      parentIdTag: null,
-      expiryDate: new Date(now - 7200000).toISOString(),
-      status: 'Used',
-    },
-    {
-      reservationId: 98,
-      connectorId: 1,
-      idTag: 'GUEST',
-      parentIdTag: null,
-      expiryDate: new Date(now - 14400000).toISOString(),
-      status: 'Cancelled',
-    },
-    {
-      reservationId: 97,
-      connectorId: 2,
-      idTag: 'USER-002',
-      parentIdTag: null,
-      expiryDate: new Date(now - 86400000).toISOString(),
-      status: 'Expired',
-    },
-  ]
+// --- Helpers (client-side computations from analytics data) ---
+
+function dailyLabel(date: string, index: number, total: number): string {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const d = new Date(date)
+  return index === total - 1 ? 'Today' : days[d.getDay()]
 }
 
 // --- Helpers ---
@@ -650,23 +305,51 @@ export default function ChargerDetail() {
   const { chargerId } = useParams()
   const siteId = useSiteId()
   const [mounted, setMounted] = useState(false)
-
-  // TODO: Replace with API calls when backend is ready
-  // const { data: charger, isLoading } = useSWR(
-  //   chargerId ? ["charger.get", chargerId] : null,
-  //   () => api<Charger>("charger.get", { id: chargerId }),
-  // )
-  const [charger] = useState<Charger>(() =>
-    generateMockCharger(chargerId || '')
-  )
-  const [sessions] = useState<Session[]>(() => generateMockSessions())
-  const [events] = useState<OcppEvent[]>(() => generateMockEvents())
-  const [analytics] = useState(() => generateMockAnalytics())
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+
+  const { data: charger, isLoading: chargerLoading } = useSWR<Charger>(
+    chargerId ? ['charger.get', { id: chargerId }] : null,
+    fetcher,
+    { refreshInterval: 15000 },
+  )
+
+  const { data: sessionsData } = useSWR<{ items: Session[] }>(
+    chargerId ? ['charger.listSessions', { chargerId }] : null,
+    fetcher,
+  )
+  const sessions = sessionsData?.items ?? []
+
+  const { data: eventsData } = useSWR<{ items: OcppEvent[] }>(
+    chargerId ? ['charger.listEvents', { chargerId, limit: 50 }] : null,
+    fetcher,
+  )
+  const events = eventsData?.items ?? []
+
+  const { data: analytics } = useSWR<AnalyticsResult>(
+    chargerId ? ['charger.analytics', { chargerId, days: 7 }] : null,
+    fetcher,
+  )
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  if (chargerLoading || !charger) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    )
+  }
 
   const isCharging =
     charger.status === 'Charging' || charger.status === 'Preparing'
@@ -837,7 +520,7 @@ export default function ChargerDetail() {
 
         {/* Analytics */}
         <TabsContent value="analytics" className="mt-4">
-          <AnalyticsTab analytics={analytics} charger={charger} />
+          <AnalyticsTab analytics={analytics ?? null} charger={charger} />
         </TabsContent>
 
         {/* Sessions */}
@@ -1011,13 +694,35 @@ function AnalyticsTab({
   analytics,
   charger,
 }: {
-  analytics: ReturnType<typeof generateMockAnalytics>
+  analytics: AnalyticsResult | null
   charger: Charger
 }) {
+  if (!analytics) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-52 w-full rounded-xl" />
+      </div>
+    )
+  }
+
   const { daily, hourly, summary } = analytics
   const maxDailyKwh = Math.max(...daily.map((d) => d.energyKwh), 0.1)
   const maxHourlyPower = Math.max(...hourly.map((h) => h.powerKw), 0.1)
   const currentHour = new Date().getHours()
+
+  // Compute bussiest day label from data
+  const busiestDay = daily.length > 0
+    ? [...daily].sort((a, b) => b.energyKwh - a.energyKwh)[0]
+    : null
+  const busiestDayLabel = busiestDay
+    ? dailyLabel(busiestDay.date, daily.indexOf(busiestDay), daily.length)
+    : '—'
 
   return (
     <div className="flex flex-col gap-5">
@@ -1029,34 +734,14 @@ function AnalyticsTab({
               7-Day Total
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.last7DaysKwh}
+              {summary.totalKwh.toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kWh
               </span>
             </p>
-            <div className="mt-1 flex items-center gap-1">
-              {summary.changeDirection === 'up' ? (
-                <RiArrowUpSLine
-                  aria-hidden="true"
-                  className="size-4 text-emerald-500"
-                />
-              ) : (
-                <RiArrowDownSLine
-                  aria-hidden="true"
-                  className="size-4 text-red-500"
-                />
-              )}
-              <span
-                className={cn(
-                  'text-xs font-medium',
-                  summary.changeDirection === 'up'
-                    ? 'text-emerald-600'
-                    : 'text-red-600'
-                )}
-              >
-                {summary.changePercent}% vs prev week
-              </span>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {summary.totalSessions} sessions total
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -1065,10 +750,10 @@ function AnalyticsTab({
               Sessions
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.last7DaysSessions}
+              {summary.totalSessions}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              avg {summary.last7DaysAvgSession} kWh/session
+              avg {summary.avgSessionKwh.toFixed(1)} kWh/session
             </p>
           </CardContent>
         </Card>
@@ -1078,13 +763,13 @@ function AnalyticsTab({
               Daily Average
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.last7DaysAvgDaily}
+              {summary.avgDailyKwh.toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kWh
               </span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Busiest: {summary.bussiestDay}
+              Busiest: {busiestDayLabel}
             </p>
           </CardContent>
         </Card>
@@ -1094,7 +779,7 @@ function AnalyticsTab({
               Peak Power
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {summary.last7DaysPeakPower}
+              {summary.peakPowerKw.toFixed(1)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
                 kW
               </span>
@@ -1113,25 +798,12 @@ function AnalyticsTab({
             <h3 className="text-sm font-medium">
               Energy Delivered — Last 7 Days
             </h3>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-blue-500" />
-                Connector 1
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-cyan-400" />
-                Connector 2
-              </span>
-            </div>
           </div>
           <div className="mt-4 flex h-48 items-end gap-2">
-            {daily.map((day) => {
+            {daily.map((day, i) => {
+              const label = dailyLabel(day.date, i, daily.length)
               const totalH =
                 maxDailyKwh > 0 ? (day.energyKwh / maxDailyKwh) * 100 : 0
-              const c1Pct =
-                day.energyKwh > 0
-                  ? (day.connector1Kwh / day.energyKwh) * 100
-                  : 0
 
               return (
                 <div
@@ -1140,7 +812,7 @@ function AnalyticsTab({
                 >
                   {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-20 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg border bg-card px-3 py-2 text-[11px] shadow-lg group-hover:block">
-                    <p className="font-semibold">{day.label}</p>
+                    <p className="font-semibold">{label}</p>
                     <p className="tabular-nums">
                       {day.energyKwh} kWh &middot; {day.sessions} sessions
                     </p>
@@ -1148,20 +820,14 @@ function AnalyticsTab({
                       Peak: {day.peakPowerKw} kW
                     </p>
                   </div>
-                  {/* Stacked bar */}
+                  {/* Bar */}
                   <div
-                    className="flex w-full flex-col overflow-hidden rounded-t-md"
+                    className="w-full overflow-hidden rounded-t-md bg-blue-500 transition-[height] duration-500"
                     style={{ height: `${Math.max(totalH, 2)}%` }}
-                  >
-                    <div
-                      className="w-full bg-blue-500 transition-[height] duration-500"
-                      style={{ height: `${c1Pct}%` }}
-                    />
-                    <div className="w-full flex-1 bg-cyan-400 transition-[height] duration-500" />
-                  </div>
+                  />
                   {/* Label */}
                   <span className="mt-2 text-[10px] text-muted-foreground">
-                    {day.label}
+                    {label}
                   </span>
                   <span className="text-[10px] font-medium tabular-nums">
                     {day.energyKwh}
@@ -1224,60 +890,6 @@ function AnalyticsTab({
         </CardContent>
       </Card>
 
-      {/* Per-connector breakdown */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {[1, 2].map((connId) => {
-          const connDailyKwh = daily.map((d) =>
-            connId === 1 ? d.connector1Kwh : d.connector2Kwh
-          )
-          const total = connDailyKwh.reduce((s, v) => s + v, 0)
-          const max = Math.max(...connDailyKwh, 0.1)
-
-          return (
-            <Card key={connId}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <RiPlugLine
-                      aria-hidden="true"
-                      className="size-4 text-muted-foreground"
-                    />
-                    <h3 className="text-sm font-medium">Connector {connId}</h3>
-                  </div>
-                  <span className="text-sm font-bold tabular-nums">
-                    {total.toFixed(1)} kWh
-                  </span>
-                </div>
-                <div className="mt-3 flex h-16 items-end gap-1.5">
-                  {connDailyKwh.map((kwh, i) => {
-                    const h = max > 0 ? (kwh / max) * 100 : 0
-                    return (
-                      <div
-                        key={i}
-                        className="group relative flex flex-1 flex-col items-center justify-end"
-                      >
-                        <div className="pointer-events-none absolute -top-8 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] text-background group-hover:block">
-                          {kwh.toFixed(1)}
-                        </div>
-                        <div
-                          className={cn(
-                            'w-full rounded-t-sm',
-                            connId === 1 ? 'bg-blue-400' : 'bg-cyan-400'
-                          )}
-                          style={{ height: `${Math.max(h, 3)}%` }}
-                        />
-                        <span className="mt-1 text-[9px] text-muted-foreground">
-                          {daily[i].label.slice(0, 3)}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -2293,9 +1905,9 @@ function SessionRow({
           {session.connectorId}
         </span>
 
-        {/* Vehicle */}
+        {/* ID Tag */}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {session.vehicleId || 'Unknown vehicle'}
+          {session.idTag || '—'}
         </span>
 
         {/* Energy */}
@@ -2364,12 +1976,6 @@ function SessionDetail({ session }: { session: Session }) {
         </div>
         <div>
           <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Vehicle
-          </p>
-          <p className="mt-0.5 text-sm">{session.vehicleId || 'Unknown'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
             Connector
           </p>
           <p className="mt-0.5 text-sm">#{session.connectorId}</p>
@@ -2396,14 +2002,6 @@ function SessionDetail({ session }: { session: Session }) {
           </p>
           <p className="mt-0.5 text-sm tabular-nums">
             {formatPower(session.maxPowerKw)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-            Avg Power
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums">
-            {formatPower(session.avgPowerKw)}
           </p>
         </div>
         <div>
@@ -2853,33 +2451,24 @@ function ReservationsTab({
   chargerId: string
   connectors: ConnectorDetail[]
 }) {
-  // TODO: replace with api("charger.listReservations", { id: chargerId })
-  const [reservations, setReservations] = useState<Reservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const [localReservations, setLocalReservations] = useState<Reservation[]>([])
   const [newDialogOpen, setNewDialogOpen] = useState(false)
   const [cancelling, setCancelling] = useState<number | null>(null)
   const [pastOpen, setPastOpen] = useState(false)
 
-  // Suppress unused variable warning while mock is in place
-  void chargerId
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setReservations(generateMockReservations())
-      setLoading(false)
-    }, 500)
-    return () => clearTimeout(t)
-  }, [])
+  // TODO: replace with useSWR when charger.listReservations endpoint is ready
+  const loading = false
+  const reservations = localReservations
 
   function handleCreated(reservation: Reservation) {
-    setReservations((prev) => [reservation, ...prev])
+    setLocalReservations((prev) => [reservation, ...prev])
   }
 
   function handleCancel(reservationId: number) {
     setCancelling(reservationId)
     // TODO: replace with api("charger.cancelReservation", { id: chargerId, reservationId })
     setTimeout(() => {
-      setReservations((prev) =>
+      setLocalReservations((prev) =>
         prev.map((r) =>
           r.reservationId === reservationId ? { ...r, status: 'Cancelled' } : r
         )
@@ -2888,6 +2477,9 @@ function ReservationsTab({
       toast.success(`Reservation #${reservationId} cancelled`)
     }, 1000)
   }
+
+  // suppress unused var until real API is wired
+  void chargerId
 
   const activeReservations = reservations.filter((r) => r.status === 'Active')
   const pastReservations = reservations.filter((r) => r.status !== 'Active')

@@ -6,12 +6,14 @@ import {
   RiFileCopyLine,
   RiCheckLine,
   RiCloseLine,
+  RiSearchLine,
 } from '@remixicon/react'
 
 import { fetcher } from '~/lib/api'
 import { api } from '~/lib/api.server'
 import { Card, CardContent } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
+import { Input } from '~/components/ui/input'
 import { cn } from '~/lib/utils'
 
 import type { Route } from './+types/log'
@@ -99,11 +101,26 @@ function PayloadBlock({
 export default function LogPage({ loaderData }: Route.ComponentProps) {
   const { charger } = useChargerContext()
   const [selected, setSelected] = useState<OcppEvent | null>(null)
+  const [search, setSearch] = useState('')
+  const [direction, setDirection] = useState('')
+
+  const swrKey = [
+    'charger.listEvents',
+    {
+      chargerId: charger.id,
+      limit: 50,
+      ...(search && { search }),
+      ...(direction && { direction }),
+    },
+  ]
 
   const { data: eventsData } = useSWR<{ items: OcppEvent[] }>(
-    ['charger.listEvents', { chargerId: charger.id, limit: 50 }],
+    swrKey,
     fetcher,
-    { fallbackData: { items: loaderData.events } }
+    {
+      fallbackData:
+        !search && !direction ? { items: loaderData.events } : undefined,
+    }
   )
   const events = eventsData?.items ?? []
 
@@ -117,10 +134,34 @@ export default function LogPage({ loaderData }: Route.ComponentProps) {
       {/* Event list */}
       <Card>
         <CardContent className="p-0">
+          {/* Search & filter bar */}
+          <div className="flex items-center gap-2 border-b px-4 py-2.5">
+            <div className="relative flex-1">
+              <RiSearchLine className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search action or payload..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+            <select
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+              className="h-8 rounded-md border border-input bg-transparent px-2 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <option value="">All</option>
+              <option value="in">RX (In)</option>
+              <option value="out">TX (Out)</option>
+            </select>
+          </div>
+
           <div className="divide-y">
             {events.length === 0 && (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No OCPP messages yet
+                {search || direction
+                  ? 'No matching messages'
+                  : 'No OCPP messages yet'}
               </div>
             )}
             {events.map((event, i) => {

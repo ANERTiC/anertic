@@ -71,6 +71,11 @@ func MeterValues(ctx context.Context, p *Params) (*Result, error) {
 
 		// 2. Write unified meter_readings for dashboard
 		insertMeterReadings(ctx, chargePointID, siteID, ts, mv.SampledValue)
+
+		// 3. Update active session max_power_kw from Power.Active.Import
+		if p.TransactionID != nil {
+			updateSessionMaxPower(ctx, *p.TransactionID, mv.SampledValue)
+		}
 	}
 
 	return &Result{}, nil
@@ -372,6 +377,64 @@ func resolveMeterID(ctx context.Context, chargePointID, siteID, phase string) st
 	}
 
 	return meterID
+}
+
+// updateSessionMaxPower extracts Power.Active.Import from sampled values
+// and updates max_power_kw on the active charging session if the new value is higher.
+func updateSessionMaxPower(ctx context.Context, transactionID int, samples []SampledValue) {
+	var powerW decimal.Decimal
+	found := false
+
+	for _, sv := range samples {
+		measurand := sv.Measurand
+		if measurand == "" {
+			continue
+		}
+		if measurand != "Power.Active.Import" {
+			continue
+		}
+
+		value, err := decimal.NewFromString(sv.Value)
+		if err != nil {
+			continue
+		}
+
+		unit := sv.Unit
+		if unit == "" {
+			unit = "W"
+		}
+
+		switch unit {
+		case "kW":
+			value = value.Mul(thousand)
+		}
+
+		powerW = powerW.Add(value)
+		found = true
+	}
+
+	if !found {
+		return
+	}
+
+	powerKW := powerW.Div(thousand)
+
+	_, err := pgctx.Exec(ctx, `
+		update ev_charging_sessions
+		set max_power_kw = greatest(max_power_kw, $1)
+		where transaction_id = $2
+			and end_time is null
+	`,
+		powerKW,
+		transactionID,
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to update session max_power_kw",
+			"error", err,
+			"transactionID", transactionID,
+			"powerKW", powerKW,
+		)
+	}
 }
 
 // ocppPhaseToNum converts OCPP phase string to meter phase number.

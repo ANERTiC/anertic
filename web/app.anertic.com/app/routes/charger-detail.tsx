@@ -45,6 +45,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
 import { cn } from '~/lib/utils'
 
 import type { Route } from './+types/charger-detail'
@@ -600,21 +607,18 @@ function StartChargingDialog({
                   <RiUserLine aria-hidden="true" className="size-3" />
                   ID Tag / Identifier
                 </Label>
-                <select
-                  id="startIdTag"
-                  value={idTag}
-                  onChange={(e) => setIdTag(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                  required
-                  autoFocus
-                >
-                  <option value="">Select an ID tag...</option>
-                  {authTags.map((tag) => (
-                    <option key={tag.id} value={tag.idTag}>
-                      {tag.idTag}
-                    </option>
-                  ))}
-                </select>
+                <Select value={idTag} onValueChange={setIdTag}>
+                  <SelectTrigger id="startIdTag" className="w-full" autoFocus>
+                    <SelectValue placeholder="Select an ID tag..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {authTags.map((tag) => (
+                      <SelectItem key={tag.id} value={tag.idTag}>
+                        {tag.idTag}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-[10px] text-muted-foreground">
                   {authTags.length === 0
                     ? 'No tags configured — add one in Settings'

@@ -3,10 +3,11 @@ package charger
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/acoshift/pgsql"
-	"github.com/acoshift/pgsql/pgctx"
+	"github.com/acoshift/pgsql/pgstmt"
 	"github.com/moonrhythm/validator"
 )
 
@@ -15,6 +16,8 @@ import (
 
 type ListEventsParams struct {
 	ChargerID string `json:"chargerId"`
+	Search    string `json:"search"`
+	Direction string `json:"direction"`
 	Limit     int    `json:"limit"`
 }
 
@@ -24,6 +27,8 @@ func (p *ListEventsParams) Valid() error {
 	if p.Limit <= 0 {
 		p.Limit = 50
 	}
+	p.Search = strings.TrimSpace(p.Search)
+	p.Direction = strings.TrimSpace(p.Direction)
 	return v.Error()
 }
 
@@ -52,7 +57,45 @@ func ListEvents(ctx context.Context, p *ListEventsParams) (*ListEventsResult, er
 
 	items := make([]EventItem, 0)
 
-	err := pgctx.Iter(ctx, func(scan pgsql.Scanner) error {
+	err := pgstmt.Select(func(b pgstmt.SelectStatement) {
+		b.Columns(
+			"call.message_id",
+			"call.action",
+			"call.direction",
+			"call.created_at",
+			"call.payload",
+			pgstmt.Raw("resp.created_at"),
+			pgstmt.Raw("resp.payload::text"),
+			pgstmt.Raw("resp.message_type"),
+			pgstmt.Raw("resp.error_code"),
+			pgstmt.Raw("resp.error_desc"),
+		)
+		b.From("ev_message_log call")
+		b.LeftJoin("ev_message_log resp").On(func(c pgstmt.Cond) {
+			c.EqRaw("resp.charger_id", "call.charger_id")
+			c.EqRaw("resp.charge_point_id", "call.charge_point_id")
+			c.EqRaw("resp.message_id", "call.message_id")
+			c.Raw("resp.message_type in (3, 4)")
+		})
+		b.Where(func(c pgstmt.Cond) {
+			c.Mode().And()
+			c.Eq("call.charger_id", p.ChargerID)
+			c.Eq("call.message_type", 2)
+			if p.Search != "" {
+				search := "%" + p.Search + "%"
+				c.And(func(b pgstmt.Cond) {
+					b.Mode().Or()
+					b.ILike("call.action", search)
+					b.ILike("call.payload::text", search)
+				})
+			}
+			if p.Direction != "" {
+				c.Eq("call.direction", p.Direction)
+			}
+		})
+		b.OrderBy("call.created_at DESC")
+		b.Limit(int64(p.Limit))
+	}).IterWith(ctx, func(scan pgsql.Scanner) error {
 		var it EventItem
 		var reqPayload json.RawMessage
 		var respPayload *string
@@ -82,32 +125,7 @@ func ListEvents(ctx context.Context, p *ListEventsParams) (*ListEventsResult, er
 		}
 		items = append(items, it)
 		return nil
-	}, `
-		select
-			call.message_id,
-			call.action,
-			call.direction,
-			call.created_at,
-			call.payload,
-			resp.created_at,
-			resp.payload::text,
-			resp.message_type,
-			resp.error_code,
-			resp.error_desc
-		from ev_message_log call
-		left join ev_message_log resp
-			on resp.charger_id = call.charger_id
-			and resp.charge_point_id = call.charge_point_id
-			and resp.message_id = call.message_id
-			and resp.message_type in (3, 4)
-		where call.charger_id = $1
-			and call.message_type = 2
-		order by call.created_at desc
-		limit $2
-	`,
-		p.ChargerID,
-		p.Limit,
-	)
+	})
 	if err != nil {
 		return nil, err
 	}

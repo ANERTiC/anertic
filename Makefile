@@ -127,3 +127,15 @@ deploy-web:
 
 release-web:
 	$(call deploy,$(IMAGE_BASE)/web:$(GIT_REV),anertic,web,olufy-0)
+
+deploy-landing:
+	docker buildx build \
+		--platform linux/amd64 \
+		-t $(IMAGE_BASE)/landing:$(GIT_REV) \
+		-f web/anertic.com/Dockerfile \
+		--push \
+		.
+	$(call deploy,$(IMAGE_BASE)/landing:$(GIT_REV),anertic,staging-landing,olufy-0)
+
+release-landing:
+	$(call deploy,$(IMAGE_BASE)/landing:$(GIT_REV),anertic,landing,olufy-0)

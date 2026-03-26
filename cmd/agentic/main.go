@@ -26,6 +26,7 @@ import (
 	"github.com/anertic/anertic/pkg/llm/anthropic"
 	"github.com/anertic/anertic/pkg/llm/openai"
 	"github.com/anertic/anertic/pkg/rdctx"
+	"github.com/anertic/anertic/pkg/supermemory"
 )
 
 func main() {
@@ -61,6 +62,9 @@ func run() error {
 
 	// Config
 	apiURL := cfg.StringDefault("API_URL", "http://localhost:8080")
+	supermemoryAPIKey := cfg.StringDefault("SUPERMEMORY_API_KEY", "")
+	supermemoryBaseURL := cfg.StringDefault("SUPERMEMORY_BASE_URL", "https://api.supermemory.ai")
+	smClient := supermemory.New(supermemoryBaseURL, supermemoryAPIKey)
 	llmProvider := cfg.StringDefault("LLM_PROVIDER", "anthropic")
 	llmModel := cfg.StringDefault("LLM_MODEL", "claude-opus-4-6")
 	maxTokensStr := cfg.StringDefault("LLM_MAX_TOKENS", "16384")
@@ -169,6 +173,7 @@ func run() error {
 	srv.Use(cors.New())
 	srv.UseFunc(pgctx.Middleware(db))
 	srv.UseFunc(rdctx.Middleware(rdb))
+	srv.UseFunc(supermemory.Middleware(smClient))
 	srv.Addr = cfg.StringDefault("AGENTIC_ADDR", ":8082")
 
 	slog.Info("starting agentic server", "addr", srv.Addr, "provider", llmProvider, "model", llmModel)

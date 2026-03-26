@@ -91,6 +91,8 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth |
 | `GOOGLE_REDIRECT_URL` | `http://localhost:8080/auth/google/callback` | OAuth callback |
 | `APP_URL` | `http://localhost:5173` | Frontend URL for auth redirects |
+| `SUPERMEMORY_API_KEY` | — | Supermemory API token |
+| `SUPERMEMORY_BASE_URL` | `https://api.supermemory.ai` | Supermemory API base URL |
 
 ### Agentic (`cmd/agentic`)
 
@@ -107,4 +109,6 @@ React Router 7 + Tailwind CSS 4 + shadcn/ui + Radix UI. Located in `web/app.aner
 | `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
 | `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
 | `OPENAI_BASE_URL` | — | Custom OpenAI-compatible endpoint |
+| `SUPERMEMORY_API_KEY` | — | Supermemory API token |
+| `SUPERMEMORY_BASE_URL` | `https://api.supermemory.ai` | Supermemory API base URL |
 

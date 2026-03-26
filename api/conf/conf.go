@@ -13,6 +13,9 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+
+	SupermemoryAPIKey  string
+	SupermemoryBaseURL string
 }
 
 var (
@@ -29,6 +32,8 @@ func Load() Config {
 			GoogleClientID:     cfg.String("GOOGLE_CLIENT_ID"),
 			GoogleClientSecret: cfg.String("GOOGLE_CLIENT_SECRET"),
 			GoogleRedirectURL:  cfg.StringDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+			SupermemoryAPIKey:  cfg.StringDefault("SUPERMEMORY_API_KEY", ""),
+			SupermemoryBaseURL: cfg.StringDefault("SUPERMEMORY_BASE_URL", "https://api.supermemory.ai"),
 		}
 
 		slog.Info("config: init",

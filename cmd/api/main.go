@@ -27,6 +27,7 @@ import (
 	"github.com/anertic/anertic/api/conf"
 	"github.com/anertic/anertic/pkg/ops"
 	"github.com/anertic/anertic/pkg/rdctx"
+	"github.com/anertic/anertic/pkg/supermemory"
 	"github.com/anertic/anertic/schema"
 )
 
@@ -129,8 +130,10 @@ func run() error {
 		Secure:   session.PreferSecure,
 		SameSite: http.SameSiteLaxMode,
 	})))
+	smClient := supermemory.New(appCfg.SupermemoryBaseURL, appCfg.SupermemoryAPIKey)
 	srv.UseFunc(pgctx.Middleware(db))
 	srv.UseFunc(rdctx.Middleware(rdb))
+	srv.UseFunc(supermemory.Middleware(smClient))
 	srv.Addr = cfg.StringDefault("ADDR", ":8080")
 
 	slog.InfoContext(ctx, "starting api server", "addr", srv.Addr)

@@ -40,6 +40,16 @@ func From(ctx context.Context) *Client {
 	return ctx.Value(ctxKey{}).(*Client)
 }
 
+// Middleware injects a Supermemory client into the request context.
+func Middleware(c *Client) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(NewContext(r.Context(), c))
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // --- Documents ---
 
 type AddDocumentParams struct {

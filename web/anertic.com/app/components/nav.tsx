@@ -23,7 +23,7 @@ const PRODUCTS = [
   {
     label: "ANERTiC",
     href: "/",
-    description: "Smart Energy Management",
+    description: "AI for your energy",
     accent: "#0d9668",
     icon: (
       <svg

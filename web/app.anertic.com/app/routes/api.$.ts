@@ -1,5 +1,9 @@
 import { data } from 'react-router'
-import { commitSession, getSessionFromRequest } from '~/sessions.server'
+import {
+  commitSession,
+  destroySession,
+  getSessionFromRequest,
+} from '~/sessions.server'
 import { fetchBackend, isAuthError, tryRefreshToken } from '~/lib/api.server'
 import type { Route } from './+types/api.$'
 
@@ -40,7 +44,10 @@ async function proxy(request: Request, params: Route.ActionArgs['params']) {
         ok: false,
         error: { code: 'unauthorized', message: 'Session expired' },
       },
-      { status: 401 }
+      {
+        status: 401,
+        headers: { 'Set-Cookie': await destroySession(session) },
+      }
     )
   }
 

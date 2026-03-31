@@ -1,4 +1,9 @@
-import { getSessionFromRequest, commitSession } from '~/sessions.server'
+import { redirect } from 'react-router'
+import {
+  getSessionFromRequest,
+  commitSession,
+  destroySession,
+} from '~/sessions.server'
 
 export const API_BASE = process.env.API_URL || 'http://localhost:8080'
 
@@ -102,7 +107,10 @@ export async function api<T>(
         }
       }
     }
-    throw new ServerApiError('unauthorized', 'Session expired')
+    // Refresh failed or no refresh token — destroy session and redirect to login
+    throw redirect('/login', {
+      headers: { 'Set-Cookie': await destroySession(session) },
+    })
   }
 
   if (!responseData.ok) {

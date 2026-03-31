@@ -41,7 +41,7 @@ export function Nav() {
             href={APP_URL}
             className="min-h-11 rounded-full bg-accent px-5 py-2.5 text-[13px] font-semibold text-white transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]"
           >
-            Get Started
+            Start Free
           </a>
         </div>
       </nav>

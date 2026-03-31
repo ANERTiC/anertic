@@ -153,6 +153,13 @@ export interface AuthTag {
   updatedAt: string
 }
 
+export interface ConfigurationItem {
+  key: string
+  value: string | null
+  readonly: boolean
+  updatedAt: string | null
+}
+
 export type ReservationActionData = {
   ok: boolean
   intent: string
@@ -275,10 +282,12 @@ export function sessionDuration(
 ): string {
   const end = endedAt ? new Date(endedAt).getTime() : Date.now()
   const diff = end - new Date(startedAt).getTime()
-  const mins = Math.floor(diff / 60000)
+  const secs = Math.floor(diff / 1000)
+  const mins = Math.floor(secs / 60)
   const hrs = Math.floor(mins / 60)
   if (hrs > 0) return `${hrs}h ${mins % 60}m`
-  return `${mins}m`
+  if (mins > 0) return `${mins}m ${secs % 60}s`
+  return `${secs}s`
 }
 
 export function formatTime(dateStr: string): string {

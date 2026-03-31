@@ -70,6 +70,7 @@ import {
   sessionDuration,
   OCPP_BASE_URL,
 } from './charger-detail/types'
+import type { ShouldRevalidateFunctionArgs } from 'react-router'
 
 // --- Revalidation ---
 
@@ -77,11 +78,9 @@ export function shouldRevalidate({
   currentParams,
   nextParams,
   defaultShouldRevalidate,
-}: {
-  currentParams: Record<string, string>
-  nextParams: Record<string, string>
-  defaultShouldRevalidate: boolean
-}) {
+  currentUrl,
+  nextUrl,
+}: ShouldRevalidateFunctionArgs) {
   // Skip refetch when switching tabs within the same charger
   if (currentParams.chargerId === nextParams.chargerId) {
     return false
@@ -275,7 +274,7 @@ function ChargerDetailContent({ initial }: { initial: Charger }) {
             prefetch="intent"
             className={({ isActive }) =>
               cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
+                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
                 isActive
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
@@ -759,10 +758,7 @@ function StopChargingDialog({
     if (!transactionId) return
     setStep('stopping')
     try {
-      await fetcher([
-        'charger.remoteStop',
-        { id: chargerId, transactionId },
-      ])
+      await fetcher(['charger.remoteStop', { id: chargerId, transactionId }])
       onMutate()
       setStep('stopped')
     } catch {
@@ -794,7 +790,8 @@ function StopChargingDialog({
                 Stop Charging
               </DialogTitle>
               <DialogDescription>
-                This will send a remote stop command to connector #{connectorId}.
+                This will send a remote stop command to connector #
+                {connectorId}.
               </DialogDescription>
             </DialogHeader>
 
@@ -887,11 +884,7 @@ function StopChargingDialog({
 
 // --- OcppUrlStrip (exported for settings) ---
 
-export function OcppUrlStrip({
-  chargePointId,
-}: {
-  chargePointId: string
-}) {
+export function OcppUrlStrip({ chargePointId }: { chargePointId: string }) {
   const [copied, setCopied] = useState(false)
   const url = `${OCPP_BASE_URL}/${chargePointId}`
 

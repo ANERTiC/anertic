@@ -24,7 +24,11 @@ export const meta: Route.MetaFunction = () => [
   { title: 'ANERTiC — AI-Powered Energy Platform' },
   { name: 'description', content: 'Know your energy. Optimize your future.' },
 ]
-
+export function headers(_: Route.HeadersArgs) {
+  return {
+    'Cache-Control': 'max-age=3600, s-maxage=86400',
+  }
+}
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="overflow-y-auto">
@@ -88,7 +92,8 @@ const ERROR_CONFIG: Record<
     title: 'Page not found',
     description: "The page you're looking for doesn't exist or has been moved.",
     accentClass: 'text-primary',
-    iconBgClass: 'bg-primary text-primary-foreground shadow-lg shadow-primary/25',
+    iconBgClass:
+      'bg-primary text-primary-foreground shadow-lg shadow-primary/25',
     pulseClass: 'bg-primary',
   },
   network: {
@@ -133,7 +138,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="flex w-full max-w-sm flex-col items-center gap-8">
         {/* Icon */}
-        <div className={`flex size-14 items-center justify-center rounded-2xl ${config.iconBgClass}`}>
+        <div
+          className={`flex size-14 items-center justify-center rounded-2xl ${config.iconBgClass}`}
+        >
           <Icon className="size-7" />
         </div>
 
@@ -159,7 +166,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         {/* Raw error detail */}
         {rawMessage && rawMessage !== config.description && (
           <div className="w-full rounded-lg border bg-muted/30 p-4">
-            <p className="font-mono text-xs leading-relaxed text-muted-foreground break-all">
+            <p className="font-mono text-xs leading-relaxed break-all text-muted-foreground">
               {rawMessage}
             </p>
           </div>
@@ -167,7 +174,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
         {/* Dev stack trace */}
         {stack && (
-          <details className="w-full group">
+          <details className="group w-full">
             <summary className="mb-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground">
               Show stack trace
             </summary>
@@ -180,7 +187,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         {/* Actions */}
         <div className="flex w-full flex-col gap-2">
           {variant === 'network' ? (
-            <Button size="lg" className="w-full gap-2" onClick={() => window.location.reload()}>
+            <Button
+              size="lg"
+              className="w-full gap-2"
+              onClick={() => window.location.reload()}
+            >
               <RiRefreshLine className="size-4" />
               Retry connection
             </Button>

@@ -8,47 +8,47 @@ const APP_URL =
 
 const PLANS = [
   {
-    name: "Starter",
+    name: "Home",
     price: "฿1,500",
     period: "/mo",
-    note: "1–3 smart meters included",
+    note: "1–3 smart meters",
     hardware: "Hardware from ฿15,000",
     features: [
       "Real-time dashboard",
-      "Basic alerts",
-      "Monthly reports",
-      "1 site",
+      "Usage alerts & reports",
+      "AI energy assistant",
+      "1 property",
     ],
-    cta: "Get Started",
+    cta: "Start Free",
     href: APP_URL,
     featured: false,
   },
   {
-    name: "Business",
+    name: "Home+",
     price: "฿6,000",
     period: "/mo",
-    note: "5–10 meters + EV chargers",
+    note: "Meters + EV charger + solar",
     hardware: "Hardware from ฿80,000",
     features: [
-      "Everything in Starter",
-      "AI anomaly detection",
-      "EV load balancing",
-      "Solar & battery integration",
+      "Everything in Home",
+      "Smart EV charging",
+      "Solar & battery optimization",
+      "Off-peak automation",
       "API access",
     ],
-    cta: "Get Started",
+    cta: "Start Free",
     href: APP_URL,
     featured: true,
   },
   {
-    name: "Enterprise",
+    name: "Multi-Property",
     price: "Custom",
     period: null,
-    note: "20+ meters, multi-site, EV fleet",
+    note: "Landlords, property managers, multi-home",
     hardware: null,
     features: [
-      "Everything in Business",
-      "White-label option",
+      "Everything in Home+",
+      "Unlimited properties",
       "Dedicated onboarding",
       "SLA 99.9% uptime",
       "Custom AI reports",
@@ -67,11 +67,11 @@ export function Pricing() {
           PRICING
         </p>
         <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-          Hardware + AI, one platform
+          Smart energy starts at home
         </h2>
         <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">
-          Smart meters and AI-powered software bundled together. Pay annually
-          and get 2 months free.
+          Hardware and AI bundled together. No vendor lock-in — works with any
+          device. Pay annually and get 2 months free.
         </p>
       </ScrollReveal>
 

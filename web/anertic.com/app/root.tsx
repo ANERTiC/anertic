@@ -11,17 +11,17 @@ import type { Route } from "./+types/root";
 import "./app.css";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "ANERTiC — AI Personal Energy Platform" },
+  { title: "ANERTiC — Home Energy AI" },
   {
     name: "description",
     content:
-      "An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem. EV charging, smart monitoring, and AI-powered insights.",
+      "One AI for all your home energy. Smart notifications, EV charging optimization, and solar intelligence — any brand, any device, no smart plugs needed.",
   },
-  { property: "og:title", content: "ANERTiC — AI Personal Energy Platform" },
+  { property: "og:title", content: "ANERTiC — Home Energy AI" },
   {
     property: "og:description",
     content:
-      "An autonomous AI agent that monitors, optimizes, and manages your energy ecosystem.",
+      "Smart notifications that save 10–15% on home energy. Works with any meter, EV charger, or solar inverter — regardless of brand.",
   },
   { property: "og:type", content: "website" },
   { property: "og:url", content: "https://anertic.com" },

@@ -15,6 +15,7 @@ import {
   RiAddLine,
   RiSaveLine,
   RiLoader4Line,
+  RiRefreshLine,
 } from '@remixicon/react'
 
 import { useSiteId } from '~/layouts/site'
@@ -39,43 +40,13 @@ import {
   useChargerContext,
   type AuthTag,
   type ChargingProfileData,
+  type ConfigurationItem,
   type ConnectorDetail,
 } from './types'
 
-// Mock OCPP configuration keys
-const MOCK_CONFIG_KEYS = [
-  { key: 'HeartbeatInterval', value: '60', readonly: false },
-  { key: 'MeterValueSampleInterval', value: '30', readonly: false },
-  { key: 'ClockAlignedDataInterval', value: '0', readonly: false },
-  { key: 'ConnectionTimeOut', value: '120', readonly: false },
-  {
-    key: 'MeterValuesAlignedData',
-    value: 'Energy.Active.Import.Register',
-    readonly: false,
-  },
-  {
-    key: 'MeterValuesSampledData',
-    value: 'Energy.Active.Import.Register,Power.Active.Import',
-    readonly: false,
-  },
-  { key: 'NumberOfConnectors', value: '2', readonly: true },
-  { key: 'ChargePointModel', value: 'Terra AC W22-T-RD-M-0', readonly: true },
-  { key: 'ChargePointVendor', value: 'ABB', readonly: true },
-  {
-    key: 'SupportedFeatureProfiles',
-    value: 'Core,FirmwareManagement,LocalAuthListManagement,SmartCharging',
-    readonly: true,
-  },
-  { key: 'AuthorizeRemoteTxRequests', value: 'true', readonly: false },
-  { key: 'LocalAuthListEnabled', value: 'true', readonly: false },
-  { key: 'LocalPreAuthorize', value: 'false', readonly: false },
-  { key: 'StopTransactionOnEVSideDisconnect', value: 'true', readonly: false },
-  { key: 'UnlockConnectorOnEVSideDisconnect', value: 'true', readonly: false },
-]
-
 export async function loader({ params, request }: Route.LoaderArgs) {
   try {
-    const [authResult, profilesResult] = await Promise.all([
+    const [authResult, profilesResult, configResult] = await Promise.all([
       api<{ items: AuthTag[] }>(request, 'charger.listAuthTags', {
         id: params.chargerId,
       }),
@@ -84,15 +55,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         'charger.listChargingProfiles',
         { id: params.chargerId }
       ),
+      api<{ items: ConfigurationItem[] }>(
+        request,
+        'charger.listConfigurations',
+        { id: params.chargerId }
+      ),
     ])
     return {
       authTags: authResult.result.items ?? [],
       profiles: profilesResult.result.items ?? [],
+      configurations: configResult.result.items ?? [],
     }
   } catch {
     return {
       authTags: [] as AuthTag[],
       profiles: [] as ChargingProfileData[],
+      configurations: [] as ConfigurationItem[],
     }
   }
 }
@@ -149,9 +127,23 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
   const { charger } = useChargerContext()
   const navigate = useNavigate()
   const siteId = useSiteId()
-  const [configKeys, setConfigKeys] = useState(
-    MOCK_CONFIG_KEYS.map((k) => ({ ...k, editing: false, editValue: k.value }))
+
+  // OCPP Configuration
+  const {
+    data: configData,
+    mutate: mutateConfig,
+    isValidating: configValidating,
+  } = useSWR<{ items: ConfigurationItem[] }>(
+    ['charger.listConfigurations', { id: charger.id }],
+    fetcher,
+    { fallbackData: { items: loaderData.configurations } }
   )
+  const configItems = configData?.items ?? []
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
   const { data: authData, mutate: mutateAuth } = useSWR<{ items: AuthTag[] }>(
     ['charger.listAuthTags', { id: charger.id }],
     fetcher,
@@ -174,27 +166,48 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
   const [displayName, setDisplayName] = useState(charger.chargePointId)
   const [maxPower, setMaxPower] = useState(String(charger.maxPowerKw))
 
-  function handleEditConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) =>
-        k.key === key ? { ...k, editing: true, editValue: k.value } : k
-      )
-    )
+  function handleEditConfig(key: string, currentValue: string | null) {
+    setEditingKey(key)
+    setEditValue(currentValue ?? '')
   }
 
-  function handleSaveConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) =>
-        k.key === key ? { ...k, editing: false, value: k.editValue } : k
+  async function handleSaveConfig(key: string) {
+    setSavingKey(key)
+    try {
+      await fetcher([
+        'charger.changeConfiguration',
+        { id: charger.id, key, value: editValue },
+      ])
+      toast.success(`Configuration "${key}" updated`)
+      setEditingKey(null)
+      mutateConfig()
+    } catch (err) {
+      toast.error(
+        `Failed to set "${key}": ${err instanceof Error ? err.message : 'Unknown error'}`
       )
-    )
-    toast.success(`Configuration "${key}" updated`)
+    } finally {
+      setSavingKey(null)
+    }
   }
 
-  function handleCancelConfig(key: string) {
-    setConfigKeys((prev) =>
-      prev.map((k) => (k.key === key ? { ...k, editing: false } : k))
-    )
+  function handleCancelConfig() {
+    setEditingKey(null)
+  }
+
+  async function handleRefreshConfig() {
+    setRefreshing(true)
+    try {
+      await fetcher(['charger.getConfiguration', { id: charger.id }])
+      toast.success('Configuration refresh requested')
+      // wait briefly for the OCPP response to arrive and be stored
+      setTimeout(() => mutateConfig(), 2000)
+    } catch (err) {
+      toast.error(
+        `Failed to refresh: ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   useEffect(() => {
@@ -320,94 +333,126 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       {/* OCPP Configuration */}
       <Card>
         <CardContent className="p-5">
-          <h3 className="text-sm font-semibold">OCPP Configuration</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Read and modify charge point configuration keys
-          </p>
-          <div className="mt-4">
-            <div className="rounded-lg border">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                <span>Key</span>
-                <span>Value</span>
-                <span className="w-6" />
-              </div>
-              <div className="divide-y">
-                {configKeys.map((config) => (
-                  <div
-                    key={config.key}
-                    className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2"
-                  >
-                    <div>
-                      <span className="text-xs font-medium">{config.key}</span>
-                      {config.readonly && (
-                        <span className="ml-1.5 text-[10px] text-muted-foreground">
-                          (read-only)
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      {config.editing ? (
-                        <Input
-                          className="h-7 text-xs"
-                          value={config.editValue}
-                          onChange={(e) =>
-                            setConfigKeys((prev) =>
-                              prev.map((k) =>
-                                k.key === config.key
-                                  ? { ...k, editValue: e.target.value }
-                                  : k
-                              )
-                            )
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveConfig(config.key)
-                            if (e.key === 'Escape')
-                              handleCancelConfig(config.key)
-                          }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span className="truncate text-xs text-muted-foreground tabular-nums">
-                          {config.value}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 justify-end">
-                      {config.editing ? (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => handleSaveConfig(config.key)}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => handleCancelConfig(config.key)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : !config.readonly ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          aria-label={`Edit ${config.key}`}
-                          onClick={() => handleEditConfig(config.key)}
-                        >
-                          <RiEditLine aria-hidden="true" className="size-3" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">OCPP Configuration</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Read and modify charge point configuration keys
+              </p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshConfig}
+              disabled={refreshing}
+            >
+              <RiRefreshLine
+                aria-hidden="true"
+                data-icon="inline-start"
+                className={cn(refreshing && 'animate-spin')}
+              />
+              {refreshing ? 'Refreshing...' : 'Refresh from Charger'}
+            </Button>
+          </div>
+          <div className="mt-4">
+            {configItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <RiSettings3Line
+                  aria-hidden="true"
+                  className="mx-auto size-8 text-muted-foreground/40"
+                />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No configuration keys stored
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Click "Refresh from Charger" to fetch configuration
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <span>Key</span>
+                  <span>Value</span>
+                  <span className="w-6" />
+                </div>
+                <div className="divide-y">
+                  {configItems.map((config) => (
+                    <div
+                      key={config.key}
+                      className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-3 py-2"
+                    >
+                      <div>
+                        <span className="text-xs font-medium">
+                          {config.key}
+                        </span>
+                        {config.readonly && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground">
+                            (read-only)
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        {editingKey === config.key ? (
+                          <Input
+                            className="h-7 text-xs"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter')
+                                handleSaveConfig(config.key)
+                              if (e.key === 'Escape') handleCancelConfig()
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="truncate text-xs text-muted-foreground tabular-nums">
+                            {config.value ?? '—'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 justify-end">
+                        {editingKey === config.key ? (
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => handleSaveConfig(config.key)}
+                              disabled={savingKey === config.key}
+                            >
+                              {savingKey === config.key ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={handleCancelConfig}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : !config.readonly ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            aria-label={`Edit ${config.key}`}
+                            onClick={() =>
+                              handleEditConfig(config.key, config.value)
+                            }
+                          >
+                            <RiEditLine
+                              aria-hidden="true"
+                              className="size-3"
+                            />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

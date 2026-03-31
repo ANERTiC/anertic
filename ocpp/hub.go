@@ -8,6 +8,7 @@ import (
 
 	"github.com/acoshift/pgsql/pgctx"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/xid"
 )
 
 // Command status constants — mirrors pkg/ocpp.CommandStatusXxx.
@@ -227,6 +228,50 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 		}
 		slog.InfoContext(ctx, "ClearCache response", "chargePointID", chargePointID, "status", resp.Status)
 
+	case "GetConfiguration":
+		var resp struct {
+			ConfigurationKey []struct {
+				Key      string  `json:"key"`
+				Readonly bool    `json:"readonly"`
+				Value    *string `json:"value"`
+			} `json:"configurationKey"`
+			UnknownKey []string `json:"unknownKey"`
+		}
+		if err := json.Unmarshal(responsePayload, &resp); err != nil {
+			slog.ErrorContext(ctx, "failed to parse GetConfiguration response", "error", err, "chargePointID", chargePointID)
+			return
+		}
+
+		var chargerID string
+		err := pgctx.QueryRow(ctx, `
+			select id from ev_chargers where charge_point_id = $1
+		`, chargePointID).Scan(&chargerID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to resolve charger_id for GetConfiguration", "error", err, "chargePointID", chargePointID)
+			return
+		}
+
+		for _, ck := range resp.ConfigurationKey {
+			_, err := pgctx.Exec(ctx, `
+				insert into ev_configurations (id, charger_id, key, value, readonly, updated_at)
+				values ($1, $2, $3, $4, $5, now())
+				on conflict (charger_id, key)
+				do update set value = excluded.value,
+				             readonly = excluded.readonly,
+				             updated_at = now()
+			`,
+				xid.New().String(),
+				chargerID,
+				ck.Key,
+				ck.Value,
+				ck.Readonly,
+			)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to upsert configuration key", "error", err, "chargePointID", chargePointID, "key", ck.Key)
+			}
+		}
+		slog.InfoContext(ctx, "GetConfiguration response", "chargePointID", chargePointID, "keys", len(resp.ConfigurationKey), "unknownKeys", len(resp.UnknownKey))
+
 	case "ChangeConfiguration":
 		var resp struct {
 			Status string `json:"status"`
@@ -242,6 +287,40 @@ func (h *Hub) HandleResponse(ctx context.Context, chargePointID string, action s
 		if resp.Status == "RebootRequired" {
 			slog.WarnContext(ctx, "ChangeConfiguration requires reboot", "chargePointID", chargePointID, "status", resp.Status)
 		}
+
+		// persist the changed value when accepted
+		if resp.Status == "Accepted" || resp.Status == "RebootRequired" {
+			var req struct {
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			}
+			if err := json.Unmarshal(requestPayload, &req); err != nil {
+				slog.ErrorContext(ctx, "failed to parse ChangeConfiguration request", "error", err, "chargePointID", chargePointID)
+			} else {
+				var chargerID string
+				if err := pgctx.QueryRow(ctx, `
+					select id from ev_chargers where charge_point_id = $1
+				`, chargePointID).Scan(&chargerID); err != nil {
+					slog.ErrorContext(ctx, "failed to resolve charger_id for ChangeConfiguration persist", "error", err, "chargePointID", chargePointID)
+				} else {
+					_, err := pgctx.Exec(ctx, `
+						insert into ev_configurations (id, charger_id, key, value, updated_at)
+						values ($1, $2, $3, $4, now())
+						on conflict (charger_id, key)
+						do update set value = excluded.value, updated_at = now()
+					`,
+						xid.New().String(),
+						chargerID,
+						req.Key,
+						req.Value,
+					)
+					if err != nil {
+						slog.ErrorContext(ctx, "failed to upsert configuration after ChangeConfiguration", "error", err, "chargePointID", chargePointID, "key", req.Key)
+					}
+				}
+			}
+		}
+
 		_, err := pgctx.Exec(ctx, `
 			update ev_chargers
 			set change_configuration_status = $2,

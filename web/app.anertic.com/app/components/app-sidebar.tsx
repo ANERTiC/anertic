@@ -226,6 +226,7 @@ export function AppSidebar({
                             ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                             : ''
                         }
+                        prefetch="intent"
                       >
                         <item.icon aria-hidden="true" className="size-4" />
                         <span>{item.label}</span>

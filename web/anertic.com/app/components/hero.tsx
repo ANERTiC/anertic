@@ -43,21 +43,22 @@ export function Hero() {
       <div className="motion-safe:animate-rise motion-safe:[animation-delay:0.25s]">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-bg px-3.5 py-1 text-xs font-semibold tracking-[0.06em] text-accent">
           <span className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-breathe motion-safe:[animation-duration:2s]" />
-          AI PERSONAL ENERGY
+          OPEN HOME ENERGY AI
         </span>
       </div>
 
       {/* Headline */}
-      <h1 className="mx-auto mt-5 max-w-[620px] text-pretty text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-4xl md:text-5xl motion-safe:animate-rise motion-safe:[animation-delay:0.35s]">
-        Your <span className="text-accent">intelligent</span> agent
+      <h1 className="mx-auto mt-5 max-w-[680px] text-pretty text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-4xl md:text-5xl motion-safe:animate-rise motion-safe:[animation-delay:0.35s]">
+        One AI for <span className="text-accent">all</span> your
         <br />
-        for smarter energy
+        home energy
       </h1>
 
       {/* Subtitle */}
-      <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-text-2 sm:text-[17px] motion-safe:animate-rise motion-safe:[animation-delay:0.45s]">
-        An autonomous AI that monitors, optimizes, and manages your entire
-        energy ecosystem — from EV chargers to power consumption.
+      <p className="mx-auto mt-4 max-w-[500px] text-base leading-relaxed text-text-2 sm:text-[17px] motion-safe:animate-rise motion-safe:[animation-delay:0.45s]">
+        Smart notifications that tell you when to run the washing machine on
+        free solar, or charge the EV before tomorrow's rain. Save 10–15%
+        without smart plugs — or go full automation with any device, any brand.
       </p>
 
       {/* CTA */}
@@ -66,13 +67,13 @@ export function Hero() {
           href={APP_URL}
           className="rounded-[10px] bg-accent px-7 py-3 text-sm font-semibold text-white transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(13,150,104,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]"
         >
-          Get Started
+          Start Free
         </a>
         <a
-          href="#features"
+          href="#how"
           className="rounded-[10px] border border-border px-7 py-3 text-sm font-semibold text-text-2 transition-[transform,border-color,color] hover:-translate-y-0.5 hover:border-text-3 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
-          Learn More
+          See How It Works
         </a>
       </div>
     </section>

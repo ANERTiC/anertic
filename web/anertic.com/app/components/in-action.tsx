@@ -9,27 +9,27 @@ type ConversationItem =
 const CONVERSATION: ConversationItem[] = [
   {
     role: "user",
-    text: "How much energy did building A use this month?",
+    text: "How much energy did my house use yesterday?",
   },
   {
     role: "ai",
-    text: "Building A consumed 12,847 kWh this month — 18% less than last month. Peak usage shifted to 2–5 PM. Shifting EV charging to off-peak could save an estimated $4,200/month.",
+    text: "Your home used 32.4 kWh yesterday — 12% below your weekly average. Solar covered 18.7 kWh (58%). Your EV charged 8.2 kWh during off-peak hours, saving ฿45.",
   },
   {
     role: "user",
-    text: "Schedule charger 3 to start at off-peak hours",
+    text: "Schedule the car charger for tonight's cheapest rate",
   },
   {
     role: "ai",
-    text: "Done. Charger 3 will now charge during off-peak hours (10 PM – 6 AM). Based on current TOU rates, this saves approximately $1,400/month.",
+    text: "Done. Your charger will start at 10:30 PM when rates drop to ฿3.2/kWh. Estimated cost for a full charge: ฿128 (vs ฿215 at peak rates).",
   },
   {
     role: "separator",
-    text: "Today, 8:00 AM",
+    text: "Today, 7:00 AM",
   },
   {
     role: "ai",
-    text: "Good morning! Here's your daily report: Total consumption yesterday was 847 kWh across 3 sites. Charger 3 completed 4 off-peak sessions saving $186. Building B's HVAC ran 2 hours longer than usual — I've flagged it for review.",
+    text: "Good morning! Yesterday your solar generated 22.1 kWh — 94% of capacity. EV charging saved ฿87 on off-peak rates. One thing: your kitchen circuit spiked at 3 AM for 2 hours — worth checking.",
   },
 ];
 
@@ -111,7 +111,7 @@ function useChatAnimation(inView: boolean) {
 
 function AiAvatar() {
   return (
-    <div className="mr-2 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent">
+    <div className="mr-2 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0d9668]">
       <svg
         aria-hidden="true"
         width="12"
@@ -135,10 +135,10 @@ function TypingIndicator() {
       style={{ animationDuration: "0.3s" }}
     >
       <AiAvatar />
-      <div className="flex items-center gap-1 rounded-2xl bg-bg-soft px-4 py-3">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-3 [animation-delay:0ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-3 [animation-delay:150ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-3 [animation-delay:300ms]" />
+      <div className="flex items-center gap-1 rounded-2xl bg-[#1e2130] px-4 py-3">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#4a5068] [animation-delay:0ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#4a5068] [animation-delay:150ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#4a5068] [animation-delay:300ms]" />
       </div>
     </div>
   );
@@ -150,9 +150,9 @@ function TimeSeparator({ text }: { text: string }) {
       className="flex items-center gap-3 py-1 motion-safe:animate-rise"
       style={{ animationDuration: "0.3s" }}
     >
-      <div className="h-px flex-1 bg-border" />
-      <span className="text-[11px] font-medium text-text-3">{text}</span>
-      <div className="h-px flex-1 bg-border" />
+      <div className="h-px flex-1 bg-[#2a2d37]" />
+      <span className="text-[11px] font-medium text-[#6b7280]">{text}</span>
+      <div className="h-px flex-1 bg-[#2a2d37]" />
     </div>
   );
 }
@@ -172,12 +172,14 @@ function ChatMessage({ msg }: { msg: DisplayMessage }) {
       {!isUser && <AiAvatar />}
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
-          isUser ? "bg-accent text-white" : "bg-bg-soft text-text"
+          isUser
+            ? "bg-[#0d9668] text-white"
+            : "bg-[#1e2130] text-[#d1d5db]"
         }`}
       >
         {msg.text}
         {msg.isStreaming && (
-          <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-accent align-middle" />
+          <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-[#34d399] align-middle" />
         )}
       </div>
     </div>
@@ -209,70 +211,101 @@ export function InAction() {
   }, [messages, showTyping]);
 
   return (
-    <section id="in-action" className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
-      <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        {/* Left — text */}
-        <ScrollReveal>
-          <p className="text-xs font-bold tracking-[0.08em] text-accent">
-            SEE IT IN ACTION
-          </p>
-          <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-            Talk to your <span className="text-accent">energy</span>
-          </h2>
-          <p className="mt-4 max-w-[380px] text-[15px] leading-relaxed text-text-2">
-            Ask about consumption, schedule EV chargers, get cost-saving
-            recommendations — all through natural conversation with your AI
-            agent.
-          </p>
-        </ScrollReveal>
+    <section
+      id="in-action"
+      style={{ backgroundColor: "#0f1117" }}
+      className="w-full py-16 sm:py-24"
+    >
+      <div className="mx-auto max-w-[1120px] px-5 sm:px-8">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          {/* Left — text */}
+          <ScrollReveal>
+            <p className="text-xs font-bold tracking-[0.08em] text-[#34d399]">
+              SEE IT IN ACTION
+            </p>
+            <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] text-white sm:text-4xl">
+              Talk to your <span className="text-[#34d399]">home</span>
+            </h2>
+            <p className="mt-4 max-w-[380px] text-[15px] leading-relaxed text-[#9ca3af]">
+              Ask about your solar production, schedule EV charging, get savings
+              recommendations — all through natural conversation with your AI.
+            </p>
+          </ScrollReveal>
 
-        {/* Right — chat mockup */}
-        <ScrollReveal delay={100}>
-          <div ref={sectionRef} className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
-            {/* Title bar */}
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-              <div className="flex gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-              </div>
-              <span className="ml-2 text-xs font-semibold text-text-2">
-                ANERTiC AI Agent
-              </span>
-            </div>
-
-            {/* Messages area */}
-            <div ref={messagesRef} className="flex h-[320px] flex-col gap-3 overflow-y-auto px-4 py-4 sm:h-[400px] sm:px-5">
-              {messages.map((msg, i) => (
-                <ChatMessage key={`${i}-${msg.role}`} msg={msg} />
-              ))}
-              {showTyping && <TypingIndicator />}
-            </div>
-
-            {/* Input bar (decorative) */}
-            <div className="border-t border-border px-5 py-3">
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-soft px-4 py-2.5">
-                <span className="flex-1 text-[13px] text-text-3">
-                  Ask your energy agent…
+          {/* Right — chat mockup */}
+          <ScrollReveal delay={100}>
+            <div
+              ref={sectionRef}
+              className="overflow-hidden rounded-2xl shadow-[0_8px_60px_rgba(0,0,0,0.4)]"
+              style={{
+                backgroundColor: "#1a1d27",
+                border: "1px solid #2a2d37",
+              }}
+            >
+              {/* Title bar */}
+              <div
+                className="flex items-center gap-2 px-5 py-3.5"
+                style={{
+                  backgroundColor: "#141720",
+                  borderBottom: "1px solid #2a2d37",
+                }}
+              >
+                <div className="flex gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                </div>
+                <span className="ml-2 text-xs font-semibold text-[#9ca3af]">
+                  Home Energy AI
                 </span>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
-                  <svg
-                    aria-hidden="true"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  >
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                  </svg>
+              </div>
+
+              {/* Messages area */}
+              <div
+                ref={messagesRef}
+                className="flex h-[320px] flex-col gap-3 overflow-y-auto px-4 py-4 sm:h-[400px] sm:px-5"
+                style={{ backgroundColor: "#1a1d27" }}
+              >
+                {messages.map((msg, i) => (
+                  <ChatMessage key={`${i}-${msg.role}`} msg={msg} />
+                ))}
+                {showTyping && <TypingIndicator />}
+              </div>
+
+              {/* Input bar (decorative) */}
+              <div
+                className="px-5 py-3"
+                style={{ borderTop: "1px solid #2a2d37" }}
+              >
+                <div
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+                  style={{
+                    backgroundColor: "#141720",
+                    border: "1px solid #2a2d37",
+                  }}
+                >
+                  <span className="flex-1 text-[13px] text-[#4b5563]">
+                    Ask your energy AI…
+                  </span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0d9668]">
+                    <svg
+                      aria-hidden="true"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    >
+                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </ScrollReveal>
+          </ScrollReveal>
+        </div>
       </div>
     </section>
   );

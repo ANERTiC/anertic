@@ -3,21 +3,21 @@ import { ScrollReveal } from "./scroll-reveal";
 const STEPS = [
   {
     num: "1",
-    title: "Connect Your Devices",
+    title: "Plug In Any Device",
     description:
-      "Plug in your meters, EV chargers, and sensors. We support OCPP, MQTT, and more.",
+      "Smart meters, EV chargers, solar inverters, batteries. Any brand, any protocol — just connect.",
   },
   {
     num: "2",
-    title: "AI Learns Your Patterns",
+    title: "AI Maps Your Home",
     description:
-      "Your agent analyzes usage, identifies waste, and builds an energy model of your operation.",
+      "Usage patterns, solar production, rate schedules, and appliance behavior — modeled in minutes.",
   },
   {
     num: "3",
-    title: "Optimize Automatically",
+    title: "Save on Autopilot",
     description:
-      "Real-time recommendations, automated scheduling, and cost savings — managed by your AI agent.",
+      "Automated charging schedules, load shifting, and energy optimization. Hands-free savings, every day.",
   },
 ];
 
@@ -29,7 +29,7 @@ export function HowItWorks() {
           HOW IT WORKS
         </p>
         <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-          Three steps to <span className="text-accent">smarter</span> energy
+          Three steps to a <span className="text-accent">smarter</span> home
         </h2>
       </ScrollReveal>
 

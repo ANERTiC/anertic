@@ -50,3 +50,15 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Reduced-motion: ensure content is always visible when animations are disabled */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

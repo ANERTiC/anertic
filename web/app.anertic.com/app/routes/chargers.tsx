@@ -173,10 +173,12 @@ function formatEnergy(kwh: number): string {
 function sessionDuration(startedAt: string | null | undefined): string {
   if (!startedAt) return ''
   const diff = Date.now() - new Date(startedAt).getTime()
-  const mins = Math.floor(diff / 60000)
+  const secs = Math.floor(diff / 1000)
+  const mins = Math.floor(secs / 60)
   const hrs = Math.floor(mins / 60)
   if (hrs > 0) return `${hrs}h ${mins % 60}m`
-  return `${mins}m`
+  if (mins > 0) return `${mins}m ${secs % 60}s`
+  return `${secs}s`
 }
 
 // --- Main Component ---

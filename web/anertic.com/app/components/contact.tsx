@@ -12,8 +12,8 @@ export function Contact() {
             Let's talk energy
           </h2>
           <p className="mt-4 max-w-[420px] text-[15px] leading-relaxed text-text-2">
-            Have questions about ANERTiC? Want to discuss enterprise needs? We'd
-            love to hear from you.
+            Have questions about home energy management? Want to discuss
+            multi-property needs? We'd love to hear from you.
           </p>
         </ScrollReveal>
 

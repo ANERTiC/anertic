@@ -94,18 +94,19 @@ export function FluxHero() {
 
       {/* Headline */}
       <h1 className="mx-auto mt-5 max-w-[640px] text-pretty text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-4xl md:text-5xl motion-safe:animate-rise motion-safe:[animation-delay:0.35s]">
-        Any charger.{" "}
+        Smarter charging.{" "}
         <span
           style={{ color: "#3b82f6" }}
         >
-          One platform.
+          Lower costs. Full control.
         </span>
       </h1>
 
       {/* Subtitle */}
       <p className="mx-auto mt-4 max-w-[520px] text-base leading-relaxed text-text-2 sm:text-[17px] motion-safe:animate-rise motion-safe:[animation-delay:0.45s]">
-        Connect any OCPP charger. Smart scheduling, load balancing, and billing
-        — for your home, your business, or your fleet.
+        Stop overpaying for energy. Flux optimizes every charging session around
+        your solar, your rates, and your schedule — whether you manage one
+        charger or a hundred.
       </p>
 
       {/* CTA */}
@@ -114,13 +115,13 @@ export function FluxHero() {
           href={FLUX_URL}
           className="rounded-[10px] bg-[#3b82f6] px-7 py-3 text-sm font-semibold text-white transition-[transform,box-shadow] hover:-translate-y-0.5 hover:bg-[#2563eb] hover:shadow-[0_4px_16px_rgba(59,130,246,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] focus-visible:ring-offset-2 active:scale-[0.97]"
         >
-          Start Free
+          Book a Demo
         </a>
         <a
           href="#contact"
           className="rounded-[10px] border border-border px-7 py-3 text-sm font-semibold text-text-2 transition-[transform,border-color,color] hover:-translate-y-0.5 hover:border-text-3 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] focus-visible:ring-offset-2"
         >
-          Contact Sales
+          See How It Works
         </a>
       </div>
     </section>

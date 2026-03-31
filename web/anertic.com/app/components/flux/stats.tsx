@@ -3,23 +3,23 @@ import { cn } from "~/lib/utils";
 
 const STATS = [
   {
-    number: "Any OCPP",
-    label: "Charger compatible",
+    number: "40%",
+    label: "Average charging cost reduction",
+    sub: "vs. unmanaged charging",
+  },
+  {
+    number: "200+",
+    label: "Compatible OCPP chargers",
     sub: "1.6 · 2.0.1",
   },
   {
-    number: "3",
-    label: "Audiences served",
-    sub: "Home · Business · Fleet",
-  },
-  {
-    number: "Real-time",
-    label: "Session monitoring",
-    sub: null,
+    number: "24/7",
+    label: "Automated scheduling",
+    sub: "Solar · off-peak · demand",
   },
   {
     number: "0",
-    label: "Hardware lock-in",
+    label: "Vendor lock-in",
     sub: "Your charger, our software",
   },
 ];

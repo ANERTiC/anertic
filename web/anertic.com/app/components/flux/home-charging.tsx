@@ -7,9 +7,9 @@ const FLUX_URL =
 
 const FEATURES = [
   {
-    title: "Solar-Aware Charging",
+    title: "Charge on free solar",
     description:
-      "Charge when your panels are producing. Flux syncs with your solar inverter to maximize free energy.",
+      "Why pay the grid when your panels are producing? Flux detects solar surplus and starts charging automatically — zero wasted energy.",
     iconBg: "bg-blue-500/[0.07]",
     iconColor: "#3b82f6",
     icon: (
@@ -30,9 +30,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Off-Peak Scheduling",
+    title: "Never pay peak rates again",
     description:
-      "Automatically shift charging to the cheapest electricity rates. Set it once, save every night.",
+      "Flux learns your rate schedule and shifts every charge to the cheapest window. Set your departure time — wake up to a full battery and a lower bill.",
     iconBg: "bg-indigo-500/[0.07]",
     iconColor: "#6366f1",
     icon: (
@@ -53,9 +53,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Home Load Balancing",
+    title: "No more tripped breakers",
     description:
-      "Prevent breaker trips. Flux dynamically adjusts charging power based on your home's total consumption.",
+      "Running the AC, oven, and charger at once? Flux dynamically throttles charging power to stay within your home's limits — no electrician upgrade needed.",
     iconBg: "bg-cyan-500/[0.07]",
     iconColor: "#06b6d4",
     icon: (
@@ -77,9 +77,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Session Monitoring",
+    title: "Know exactly what you're spending",
     description:
-      "Real-time kWh, cost, and duration for every charge. Full history at your fingertips.",
+      "Real-time cost tracking for every session. See kWh delivered, cost per charge, and monthly savings — all in one dashboard.",
     iconBg: "bg-violet-500/[0.07]",
     iconColor: "#8b5cf6",
     icon: (
@@ -113,11 +113,12 @@ export function HomeCharging() {
         <div className="mt-2.5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-              Charge smarter, not harder
+              Stop overpaying for every charge
             </h2>
             <p className="mt-4 max-w-[440px] text-[15px] leading-relaxed text-text-2">
-              Your EV charger knows your solar output, electricity rates, and
-              home load — so every kilowatt counts.
+              Most EV owners charge at peak rates without realizing it. Flux
+              automatically shifts your charging to the cheapest hours and free
+              solar — saving you up to 40% on every charge.
             </p>
           </div>
           <a

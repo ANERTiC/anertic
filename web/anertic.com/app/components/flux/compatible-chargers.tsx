@@ -24,11 +24,12 @@ export function CompatibleChargers() {
             WORKS WITH ANY OCPP CHARGER
           </p>
           <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-            Your hardware. Our software.
+            Keep your chargers. Ditch the lock-in.
           </h2>
           <p className="mx-auto mt-4 max-w-[480px] text-[15px] leading-relaxed text-text-2">
-            Flux connects via OCPP — the open standard supported by 200+ charger
-            manufacturers worldwide.
+            Already invested in hardware? Good — keep it. Flux works with any
+            OCPP 1.6 or 2.0.1 charger. No rip-and-replace, no proprietary
+            connectors, no vendor traps.
           </p>
         </ScrollReveal>
 

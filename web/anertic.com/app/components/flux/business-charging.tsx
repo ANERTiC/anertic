@@ -2,9 +2,9 @@ import { ScrollReveal } from "../scroll-reveal";
 
 const FEATURES = [
   {
-    title: "Multi-Site Dashboard",
+    title: "One screen for every location",
     description:
-      "Manage all locations from one screen. Real-time status, utilization, and revenue per site.",
+      "Managing chargers across multiple sites shouldn't mean multiple logins. See real-time status, utilization, and revenue for every location in a single dashboard.",
     iconBg: "bg-blue-500/[0.07]",
     icon: (
       <svg
@@ -26,9 +26,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Access Control & RFID",
+    title: "Control who charges and when",
     description:
-      "Control who charges. Support for RFID cards, app-based auth, and guest access codes.",
+      "Stop unauthorized usage eating your electricity budget. RFID, app-based auth, and guest codes — you decide who has access.",
     iconBg: "bg-indigo-500/[0.07]",
     icon: (
       <svg
@@ -49,9 +49,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Billing Per Session",
+    title: "Automated billing, zero manual work",
     description:
-      "Automated invoicing with configurable rates. Per-kWh, per-minute, or flat fee.",
+      "Stop chasing invoices. Flux bills per kWh, per minute, or flat fee — automatically. Configurable rates, automated reports, clean reconciliation.",
     iconBg: "bg-cyan-500/[0.07]",
     icon: (
       <svg
@@ -73,9 +73,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Workplace & Tenant Programs",
+    title: "Employee and tenant charging, simplified",
     description:
-      "Set rates per user group. Employee charging, tenant billing, visitor access — all configurable.",
+      "Set different rates for employees, tenants, and visitors. Automatic deductions, usage reports per user group, and zero admin overhead.",
     iconBg: "bg-violet-500/[0.07]",
     icon: (
       <svg
@@ -111,11 +111,12 @@ export function BusinessCharging() {
           <div className="mt-2.5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-                Turn your chargers into revenue
+                Turn every parking spot into a revenue stream
               </h2>
               <p className="mt-4 max-w-[440px] text-[15px] leading-relaxed text-text-2">
-                Full OCPP fleet management with access control, automated
-                billing, and a real-time dashboard across every site.
+                Your chargers sit idle most of the day. Flux helps you monetize
+                every session with automated billing, access control, and
+                real-time analytics — no manual work.
               </p>
             </div>
             <a

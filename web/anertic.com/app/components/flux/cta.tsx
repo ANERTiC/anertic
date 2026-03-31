@@ -9,7 +9,7 @@ const CARDS = [
   {
     audience: "For Homeowners",
     description:
-      "Start managing your EV charging for free. Connect any OCPP charger in minutes.",
+      "See how much you're overpaying on EV charging. Connect your charger in minutes and start saving from day one.",
     cta: "Start Free",
     href: FLUX_URL,
     variant: "primary" as const,
@@ -33,8 +33,8 @@ const CARDS = [
   {
     audience: "For Business & Fleet",
     description:
-      "Multi-site management, billing, fleet optimization. Let's talk about your needs.",
-    cta: "Contact Sales",
+      "Get a personalized demo showing exactly how Flux can optimize your charging operations and cut costs.",
+    cta: "Book a Demo",
     href: "#contact",
     variant: "outline" as const,
     icon: (
@@ -62,11 +62,11 @@ export function FluxCta() {
     <section className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24">
       <ScrollReveal className="text-center">
         <h2 className="text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-          Ready to charge smarter?
+          Stop leaving money on the table
         </h2>
         <p className="mx-auto mt-4 max-w-[440px] text-[15px] leading-relaxed text-text-2">
-          Whether you're charging one car at home or a fleet of 100, Flux has
-          you covered.
+          Whether you're cutting your home electricity bill or managing a fleet
+          depot, Flux pays for itself in weeks.
         </p>
       </ScrollReveal>
 

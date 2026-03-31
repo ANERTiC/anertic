@@ -2,9 +2,9 @@ import { ScrollReveal } from "../scroll-reveal";
 
 const FEATURES = [
   {
-    title: "Vehicle-to-Charger Assignment",
+    title: "Every vehicle, right charger, right time",
     description:
-      "Assign vehicles to specific chargers or let Flux auto-allocate based on priority and schedule. Zero manual coordination.",
+      "Manual charger assignments waste time and create bottlenecks. Flux auto-allocates based on departure priority, battery state, and charger availability.",
     iconBg: "bg-[#3b82f6]/[0.07]",
     icon: (
       <svg
@@ -28,9 +28,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Depot Scheduling & Priority Queues",
+    title: "Never miss a departure deadline",
     description:
-      "Set charging windows, priority levels, and departure deadlines per vehicle. Flux ensures every vehicle is ready on time.",
+      "Set departure times and Flux builds the optimal charging schedule. High-priority vehicles charge first. Night shift vehicles fill in the gaps.",
     iconBg: "bg-[#6366f1]/[0.07]",
     icon: (
       <svg
@@ -51,9 +51,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Fleet Energy Cost Reporting",
+    title: "See where every baht goes",
     description:
-      "Per-vehicle and per-route energy cost breakdowns. Export to CSV or integrate via API for your accounting and sustainability reports.",
+      "Per-vehicle, per-route energy cost breakdowns. Know exactly which vehicles cost the most to charge — and why. Export to CSV or pull via API.",
     iconBg: "bg-[#06b6d4]/[0.07]",
     icon: (
       <svg
@@ -74,9 +74,9 @@ const FEATURES = [
     ),
   },
   {
-    title: "Driver & Vehicle Analytics",
+    title: "Spot problems before they cost you",
     description:
-      "Track charging patterns, energy consumption trends, and driver behavior across your entire fleet in one unified view.",
+      "Track charging patterns and consumption trends across your fleet. Identify inefficient vehicles, unusual spikes, and driver behavior issues early.",
     iconBg: "bg-[#8b5cf6]/[0.07]",
     icon: (
       <svg
@@ -108,11 +108,12 @@ export function FleetManagement() {
           FOR FLEET OPERATORS
         </p>
         <h2 className="mt-2.5 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
-          Depot charging, optimized
+          Cut fleet charging costs. Hit every departure on time.
         </h2>
         <p className="mt-4 max-w-[440px] text-[15px] leading-relaxed text-text-2">
-          From a handful of company vehicles to a depot of 100+, Flux handles
-          scheduling, allocation, and reporting automatically.
+          Unmanaged depot charging wastes energy and misses deadlines. Flux
+          schedules every vehicle around your rates, priorities, and routes —
+          so your fleet is always ready.
         </p>
       </ScrollReveal>
 

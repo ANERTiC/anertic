@@ -34,7 +34,7 @@ export function FluxStats() {
               <div
                 key={stat.label}
                 className={cn(
-                  "flex flex-col items-center px-6 py-4 text-center",
+                  "flex flex-col items-center px-3 py-4 text-center sm:px-6",
                   i < STATS.length - 1 && "sm:border-r sm:border-border",
                   i % 2 === 0 &&
                     i < STATS.length - 2 &&

@@ -10,13 +10,11 @@ const FEATURES = [
     title: "Charge on free solar",
     description:
       "Why pay the grid when your panels are producing? Flux detects solar surplus and starts charging automatically — zero wasted energy.",
-    iconBg: "bg-blue-500/[0.07]",
-    iconColor: "#3b82f6",
     icon: (
       <svg
         aria-hidden="true"
-        width="22"
-        height="22"
+        width="20"
+        height="20"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#3b82f6"
@@ -33,16 +31,14 @@ const FEATURES = [
     title: "Never pay peak rates again",
     description:
       "Flux learns your rate schedule and shifts every charge to the cheapest window. Set your departure time — wake up to a full battery and a lower bill.",
-    iconBg: "bg-indigo-500/[0.07]",
-    iconColor: "#6366f1",
     icon: (
       <svg
         aria-hidden="true"
-        width="22"
-        height="22"
+        width="20"
+        height="20"
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#6366f1"
+        stroke="#3b82f6"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -56,16 +52,14 @@ const FEATURES = [
     title: "No more tripped breakers",
     description:
       "Running the AC, oven, and charger at once? Flux dynamically throttles charging power to stay within your home's limits — no electrician upgrade needed.",
-    iconBg: "bg-cyan-500/[0.07]",
-    iconColor: "#06b6d4",
     icon: (
       <svg
         aria-hidden="true"
-        width="22"
-        height="22"
+        width="20"
+        height="20"
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#06b6d4"
+        stroke="#3b82f6"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -80,16 +74,14 @@ const FEATURES = [
     title: "Know exactly what you're spending",
     description:
       "Real-time cost tracking for every session. See kWh delivered, cost per charge, and monthly savings — all in one dashboard.",
-    iconBg: "bg-violet-500/[0.07]",
-    iconColor: "#8b5cf6",
     icon: (
       <svg
         aria-hidden="true"
-        width="22"
-        height="22"
+        width="20"
+        height="20"
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#8b5cf6"
+        stroke="#3b82f6"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -100,69 +92,183 @@ const FEATURES = [
   },
 ];
 
+function ChargingMockup() {
+  // Progress ring via conic-gradient: 75% filled = 270deg
+  // Ring is 160x160, stroke width ~14px, so radius ~66px, circumference ~415
+  return (
+    <div
+      aria-hidden="true"
+      className="relative flex items-center justify-center"
+    >
+      {/* Outer glow blob */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 rounded-full opacity-30 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(59,130,246,0.45) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* Card */}
+      <div
+        className="relative w-full max-w-[300px] rounded-[20px] border border-[rgba(59,130,246,0.18)] bg-white p-7 shadow-[0_24px_64px_rgba(0,0,0,0.10),0_4px_16px_rgba(59,130,246,0.08)]"
+        style={{ transform: "rotate(2deg)" }}
+      >
+        {/* Status badge */}
+        <div className="mb-6 flex items-center gap-2">
+          <span
+            className="inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]"
+            style={{ animation: "pulse 2s ease-in-out infinite" }}
+          />
+          <span className="text-[12px] font-semibold tracking-wide text-emerald-600">
+            Charging on Solar
+          </span>
+        </div>
+
+        {/* Progress ring */}
+        <div className="mx-auto mb-6 flex h-[148px] w-[148px] items-center justify-center">
+          {/* Track ring */}
+          <div
+            className="absolute h-[148px] w-[148px] rounded-full"
+            style={{
+              background:
+                "conic-gradient(rgba(59,130,246,0.12) 0deg, rgba(59,130,246,0.12) 360deg)",
+            }}
+          />
+          {/* Background track (inner mask) */}
+          <div
+            className="absolute h-[120px] w-[120px] rounded-full bg-white"
+          />
+          {/* Filled arc — 75% = 270deg */}
+          <div
+            className="absolute h-[148px] w-[148px] rounded-full"
+            style={{
+              background:
+                "conic-gradient(from -90deg, #3b82f6 0deg, #60a5fa 200deg, #a5f3fc 270deg, transparent 270deg)",
+              WebkitMaskImage:
+                "radial-gradient(transparent 59px, black 59px, black 74px, transparent 74px)",
+              maskImage:
+                "radial-gradient(transparent 59px, black 59px, black 74px, transparent 74px)",
+            }}
+          />
+          {/* Center content */}
+          <div className="relative z-10 flex flex-col items-center justify-center">
+            <span
+              className="text-[34px] font-extrabold leading-none tracking-tight"
+              style={{ color: "#1e3a5f" }}
+            >
+              75%
+            </span>
+            <span className="mt-1 text-[11px] font-medium text-[#94a3b8]">
+              charged
+            </span>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-[10px] bg-[#f8fafc] px-3.5 py-2.5">
+            <span className="text-[12px] text-[#64748b]">Energy delivered</span>
+            <span className="text-[13px] font-bold text-[#1e293b]">18.4 kWh</span>
+          </div>
+          <div className="flex items-center justify-between rounded-[10px] bg-[#f0f9ff] px-3.5 py-2.5">
+            <span className="text-[12px] text-[#0369a1]">Off-peak rate</span>
+            <span className="text-[13px] font-bold text-[#0369a1]">฿58.20</span>
+          </div>
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11.5px] text-[#94a3b8]">Est. complete</span>
+            <span className="text-[11.5px] font-semibold text-[#64748b]">
+              6:30 AM
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HomeCharging() {
   return (
     <section
       id="home-charging"
       className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8 sm:py-24"
     >
-      <ScrollReveal>
-        <p className="text-xs font-bold tracking-[0.08em] text-[#3b82f6]">
-          FOR HOMEOWNERS
-        </p>
-        <div className="mt-2.5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
+      <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+        {/* Left column — 60% */}
+        <div className="flex-[3]">
+          <ScrollReveal>
+            <p className="text-xs font-bold tracking-[0.08em] text-[#3b82f6]">
+              FOR HOMEOWNERS
+            </p>
+            <h2 className="mt-3 text-pretty text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-4xl">
               Stop overpaying for every charge
             </h2>
-            <p className="mt-4 max-w-[440px] text-[15px] leading-relaxed text-text-2">
+            <p className="mt-4 max-w-[480px] text-[15px] leading-relaxed text-text-2">
               Most EV owners charge at peak rates without realizing it. Flux
               automatically shifts your charging to the cheapest hours and free
-              solar — saving you up to 40% on every charge.
+              solar — saving you up to{" "}
+              <strong className="font-semibold text-[#1e293b]">
+                40% on every charge
+              </strong>
+              .
             </p>
-          </div>
-          <a
-            href={FLUX_URL}
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-[10px] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(59,130,246,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] focus-visible:ring-offset-2 active:scale-[0.97] sm:self-auto"
-          >
-            Start Free
-            <svg
-              aria-hidden="true"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </a>
-        </div>
-      </ScrollReveal>
+          </ScrollReveal>
 
-      <ScrollReveal>
-        <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
-          {FEATURES.map((feat) => (
-            <div
-              key={feat.title}
-              className="group bg-white p-9 transition-colors hover:bg-[#f5f5f5]"
-            >
-              <div
-                className={`mb-5 flex h-[42px] w-[42px] items-center justify-center rounded-[10px] transition-[transform] duration-300 motion-safe:group-hover:scale-110 motion-safe:group-hover:-rotate-[4deg] ${feat.iconBg}`}
+          {/* Feature rows */}
+          <div className="mt-10 flex flex-col">
+            {FEATURES.map((feat, i) => (
+              <ScrollReveal key={feat.title} delay={i * 60}>
+                <div className="group flex gap-4 py-5 first:pt-0 last:pb-0 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-border">
+                  {/* Icon circle */}
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/[0.08] transition-[transform,background-color] duration-300 motion-safe:group-hover:scale-110 motion-safe:group-hover:bg-blue-500/[0.14]">
+                    {feat.icon}
+                  </div>
+                  {/* Text */}
+                  <div className="min-w-0">
+                    <h3 className="text-[14.5px] font-bold leading-snug">
+                      {feat.title}
+                    </h3>
+                    <p className="mt-1 text-[13px] leading-relaxed text-text-2">
+                      {feat.description}
+                    </p>
+                  </div>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          <ScrollReveal delay={280}>
+            <div className="mt-9">
+              <a
+                href={FLUX_URL}
+                className="inline-flex items-center gap-2 rounded-[10px] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(59,130,246,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] focus-visible:ring-offset-2 active:scale-[0.97]"
               >
-                {feat.icon}
-              </div>
-              <h3 className="mb-1.5 text-[15.5px] font-bold">{feat.title}</h3>
-              <p className="text-[13.5px] leading-relaxed text-text-2">
-                {feat.description}
-              </p>
+                Start Free
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
             </div>
-          ))}
+          </ScrollReveal>
         </div>
-      </ScrollReveal>
+
+        {/* Right column — 40% */}
+        <div className="flex flex-[2] items-center justify-center lg:justify-end">
+          <ScrollReveal delay={120}>
+            <ChargingMockup />
+          </ScrollReveal>
+        </div>
+      </div>
     </section>
   );
 }

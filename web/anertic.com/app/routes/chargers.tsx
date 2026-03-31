@@ -34,9 +34,6 @@ export default function Chargers() {
       <FluxStats />
       <HomeCharging />
       <BusinessCharging />
-      <div className="mx-auto max-w-[1120px] px-5 sm:px-8">
-        <div className="border-t border-border" />
-      </div>
       <FleetManagement />
       <CompatibleChargers />
       <FluxCta />

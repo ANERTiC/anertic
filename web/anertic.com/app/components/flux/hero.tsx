@@ -124,6 +124,118 @@ export function FluxHero() {
           See How It Works
         </a>
       </div>
+
+      {/* Dashboard mockup — multi-location monitoring */}
+      <div className="mx-auto mt-10 max-w-[920px] sm:mt-14 motion-safe:animate-rise motion-safe:[animation-delay:0.7s]">
+        <div
+          aria-hidden="true"
+          className="overflow-hidden rounded-2xl border shadow-[0_20px_80px_rgba(59,130,246,0.08),0_4px_24px_rgba(0,0,0,0.06)]"
+          style={{ borderColor: "rgba(59,130,246,0.12)" }}
+        >
+          {/* Title bar */}
+          <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: "rgba(59,130,246,0.08)", backgroundColor: "#fafbfe" }}>
+            <div className="flex gap-1.5">
+              <div className="size-2.5 rounded-full bg-[#ff5f57]" />
+              <div className="size-2.5 rounded-full bg-[#febc2e]" />
+              <div className="size-2.5 rounded-full bg-[#28c840]" />
+            </div>
+            <span className="ml-2 text-[11px] font-semibold text-text-3">Flux — All Locations</span>
+          </div>
+
+          {/* Dashboard content */}
+          <div className="bg-white p-5 sm:p-6">
+            {/* Top stats row */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: "Total Chargers", value: "24", sub: "across 4 sites", color: "#3b82f6" },
+                { label: "Active Sessions", value: "9", sub: "charging now", color: "#22c55e" },
+                { label: "Today's Energy", value: "342 kWh", sub: "+18% vs yesterday", color: "#f59e0b" },
+                { label: "Revenue (MTD)", value: "฿48,200", sub: "on track", color: "#8b5cf6" },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-border p-3 text-left">
+                  <p className="text-[11px] font-medium text-text-3">{stat.label}</p>
+                  <p className="mt-1 text-[16px] font-extrabold tabular-nums leading-none sm:text-[20px]" style={{ color: stat.color }}>{stat.value}</p>
+                  <p className="mt-1 text-[10px] text-text-3">{stat.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Location rows */}
+            <div className="mt-4 overflow-hidden rounded-xl border border-border">
+              {/* Header */}
+              <div className="hidden border-b border-border bg-[#f8fafc] px-4 py-2 text-[11px] font-semibold text-text-3 sm:grid sm:grid-cols-[1fr_100px_100px_120px_140px] sm:gap-2">
+                <span>Location</span>
+                <span className="text-center">Chargers</span>
+                <span className="text-center">Active</span>
+                <span className="text-center">Energy Today</span>
+                <span className="text-right">Status</span>
+              </div>
+
+              {[
+                { name: "HQ Office", city: "Bangkok", chargers: 8, active: 3, energy: "124 kWh", status: "Online", statusColor: "#22c55e", utilization: 38 },
+                { name: "Siam Complex", city: "Bangkok", chargers: 6, active: 4, energy: "98 kWh", status: "Online", statusColor: "#22c55e", utilization: 67 },
+                { name: "Riverside Mall", city: "Nonthaburi", chargers: 6, active: 2, energy: "86 kWh", status: "Online", statusColor: "#22c55e", utilization: 33 },
+                { name: "Depot East", city: "Samut Prakan", chargers: 4, active: 0, energy: "34 kWh", status: "Scheduled", statusColor: "#f59e0b", utilization: 0 },
+              ].map((site, i) => (
+                <div
+                  key={site.name}
+                  style={i < 3 ? { borderBottom: "1px solid #f1f3f5" } : undefined}
+                >
+                  {/* Mobile layout */}
+                  <div className="flex items-center justify-between px-4 py-3 sm:hidden">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[12px] font-semibold text-text">{site.name}</p>
+                        <span
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: `${site.statusColor}14`, color: site.statusColor }}
+                        >
+                          <span className="size-1.5 rounded-full" style={{ backgroundColor: site.statusColor }} />
+                          {site.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex gap-3 text-[11px] text-text-3">
+                        <span>{site.chargers} chargers</span>
+                        <span className="font-medium" style={{ color: site.active > 0 ? "#3b82f6" : "#9aa0a6" }}>{site.active} active</span>
+                        <span>{site.energy}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop layout */}
+                  <div className="hidden items-center gap-2 px-4 py-3 text-[12px] sm:grid sm:grid-cols-[1fr_100px_100px_120px_140px]">
+                    <div>
+                      <p className="font-semibold text-text">{site.name}</p>
+                      <p className="text-[10px] text-text-3">{site.city}</p>
+                    </div>
+                    <p className="text-center tabular-nums text-text-2">{site.chargers}</p>
+                    <p className="text-center tabular-nums font-semibold" style={{ color: site.active > 0 ? "#3b82f6" : "#9aa0a6" }}>{site.active}</p>
+                    <p className="text-center tabular-nums text-text-2">{site.energy}</p>
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#f1f3f5]">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${site.utilization}%`,
+                            backgroundColor: site.utilization > 50 ? "#3b82f6" : "#93c5fd",
+                          }}
+                        />
+                      </div>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: `${site.statusColor}14`, color: site.statusColor }}
+                      >
+                        <span className="size-1.5 rounded-full" style={{ backgroundColor: site.statusColor }} />
+                        {site.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

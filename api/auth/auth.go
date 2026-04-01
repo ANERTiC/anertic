@@ -68,9 +68,26 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Support both GET (query params) and POST (form values) for OAuth callbacks.
+	// Apple Sign-In uses response_mode=form_post which sends data via POST.
+	callbackState := r.URL.Query().Get("state")
+	code := r.URL.Query().Get("code")
+	if r.Method == http.MethodPost {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		if callbackState == "" {
+			callbackState = r.FormValue("state")
+		}
+		if code == "" {
+			code = r.FormValue("code")
+		}
+	}
+
 	// Validate state
 	savedState := s.PopString("state")
-	if savedState == "" || savedState != r.URL.Query().Get("state") {
+	if savedState == "" || savedState != callbackState {
 		http.Error(w, "invalid state", http.StatusBadRequest)
 		return
 	}
@@ -85,7 +102,6 @@ func ProviderCallback(w http.ResponseWriter, r *http.Request) {
 
 	redirectURL := s.PopString("redirect_url")
 
-	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Error(w, "missing code", http.StatusBadRequest)
 		return

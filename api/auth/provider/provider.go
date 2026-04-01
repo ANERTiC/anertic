@@ -25,7 +25,11 @@ type OAuthProvider interface {
 var providers = map[string]OAuthProvider{}
 
 // Register registers an OAuth provider by name.
+// A nil provider is silently ignored (provider not configured).
 func Register(p OAuthProvider) {
+	if p == nil {
+		return
+	}
 	providers[p.Name()] = p
 }
 

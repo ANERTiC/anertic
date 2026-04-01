@@ -12,6 +12,7 @@ require (
 	github.com/coder/websocket v1.8.14
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/lib/pq v1.11.2
 	github.com/moonrhythm/httpmux v1.2.0
 	github.com/moonrhythm/parapet v0.13.6

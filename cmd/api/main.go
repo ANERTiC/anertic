@@ -76,6 +76,13 @@ func run() error {
 
 	appCfg := conf.Load()
 	provider.Register(provider.NewGoogle(appCfg.GoogleClientID, appCfg.GoogleClientSecret, appCfg.GoogleRedirectURL))
+	provider.Register(provider.NewApple(provider.AppleConfig{
+		TeamID:      appCfg.AppleTeamID,
+		ClientID:    appCfg.AppleClientID,
+		KeyID:       appCfg.AppleKeyID,
+		PrivateKey:  appCfg.ApplePrivateKey,
+		RedirectURL: appCfg.AppleRedirectURL,
+	}))
 
 	mux := httpmux.New()
 

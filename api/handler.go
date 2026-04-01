@@ -51,6 +51,7 @@ func Mount(mux *httpmux.Mux, am *arpc.Manager) {
 	// OAuth routes (public, raw HTTP)
 	mux.HandleFunc("GET /auth/{provider}", auth.ProviderRedirect)
 	mux.HandleFunc("GET /auth/callback", auth.ProviderCallback)
+	mux.HandleFunc("POST /auth/callback", auth.ProviderCallback)
 
 	// Public API routes
 	mux.Handle("POST /auth.refreshToken", am.Handler(auth.RefreshToken))
